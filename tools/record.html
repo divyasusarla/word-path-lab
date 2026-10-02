@@ -113,6 +113,7 @@
 import { SOUNDS, GROUPS } from '../sounds.js';
 
 const RATE = 22050;                 // saved sample rate: plenty for speech, keeps files small
+const SKIP = 0.25;                  // seconds ignored at the start of each take (start-key click)
 const $ = id => document.getElementById(id);
 const fmtDur = s => `${s.toFixed(1)}s`;
 let idx = 0, stream = null, actx = null, analyser = null, recorder = null, chunks = [], recording = false, raf = 0, player = null;
@@ -150,7 +151,8 @@ async function processBlob(blob, kind) {
   const decoded = await actx.decodeAudioData(await blob.arrayBuffer());
   const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(decoded.duration * RATE)), RATE);
   const src = off.createBufferSource(); src.buffer = decoded; src.connect(off.destination); src.start();
-  const x = (await off.startRendering()).getChannelData(0);
+  // Ignore the first quarter-second: it holds the click of the key or button that started recording
+  const x = (await off.startRendering()).getChannelData(0).slice(Math.round(RATE * SKIP));
 
   let rawPeak = 0; for (const v of x) rawPeak = Math.max(rawPeak, Math.abs(v));
   const win = Math.round(RATE * 0.01), n = Math.floor(x.length / win), env = new Float32Array(n);
@@ -282,7 +284,7 @@ async function startRec() {
   recorder.start();
   recording = true;
   $('rec').classList.add('on'); $('rec').querySelector('span').textContent = 'Stop';
-  status('Recording… say the sound, then press Stop (or Space).');
+  status('Recording… wait a beat, say the sound, then press Stop (or Space).');
 }
 function stopRec() { if (recording) { recording = false; recorder.stop(); $('rec').classList.remove('on'); $('rec').querySelector('span').textContent = 'Record'; } }
 
