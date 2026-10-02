@@ -8,3 +8,4 @@
 - Preview locally with `python3 -m http.server 8765` and check in the browser before pushing.
 - No outside servers at runtime: third-party files live in `vendor/` (see vendor/README.md). Don't add CDN links.
 - Each pushed change gets a `CHANGELOG.md` entry; milestones get a git tag (`v2.0`, `v2.1`, …).
+- `versions/` holds frozen playable copies. Never edit them except to give each its own `wordpath-archive-<ver>.*` storage keys. When cutting a milestone, copy the current site into `versions/<ver>/` and add a card to `versions/index.html`.
