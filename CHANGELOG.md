@@ -6,6 +6,8 @@ Each version is tagged in git, and the tags are listed under the repo's Tags on 
 - Test mode: add `?test` to the address to open every level without saving anything, with a test panel (jump to any level or screen, answer right/wrong, set stickers earned, see captions of what's spoken). Address options: `level`, `screen`, `done`, `rounds`, `think`, `mute`.
 - Automatic checks at `tests/`: play every level and open every screen in about 30 seconds, including a check that every icon exists.
 - `TESTING.md`: how to use both, plus a hands-on checklist for voice, screens, layout and trying it with a child.
+- Rhyme time (level 6): each picture now shows its word underneath.
+- Sort levels (3 and 7): the question no longer ends with a separately spoken "?", which some voices read as "question mark".
 
 ## v2.1 — 2026-10-02
 - Playable archive of every version at `versions/` (v1 and v2 are the exact class-repo uploads, with their own save slots so they can't touch the class link's progress).

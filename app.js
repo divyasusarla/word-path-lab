@@ -207,7 +207,7 @@ class App extends Component {
       return [...pre, 'Read the word. Then tap its picture.'];
     }
     const [A, B] = L.bins;
-    return [...pre, { t: r.label, rate: 0.7 }, 700, 'Does it start with', 300, this.snd(A.sound), 400, 'or', 300, this.snd(B.sound), '?'];
+    return [...pre, { t: r.label, rate: 0.7 }, 700, 'Does it start with', 300, this.snd(A.sound), 400, 'or', 300, this.snd(B.sound)];
   }
 
   start(i) {
@@ -328,7 +328,8 @@ class App extends Component {
 
     const matchOptions = isPlay && L.kind === 'match' && r ? r.options.map((o, i) => {
       const right = solved && o.w === r.target.w, bad = wrong.includes(i), c = P[(i * 2 + round) % 5];
-      return { icon: `icon-${o.ic}`, bg: right ? '#2EC4A6' : '#fff', fg: right ? '#fff' : c.sh, sh: right ? '#17977F' : '#E8DCC8',
+      // Rhyme time shows the word under each picture; blend and read levels don't, since the word is the answer
+      return { icon: `icon-${o.ic}`, word: L.mode === 'rhyme' ? o.w : '', bg: right ? '#2EC4A6' : '#fff', fg: right ? '#fff' : c.sh, sh: right ? '#17977F' : '#E8DCC8',
         opacity: bad ? 0.35 : 1, transform: right ? 'scale(1.08) rotate(-2deg)' : 'scale(1)', onClick: () => this.pickMatch(i) };
     }) : [];
 
@@ -501,8 +502,9 @@ class App extends Component {
               <div style="align-self:flex-start;padding:12px 44px 20px;background:#fff;border-radius:36px;font-weight:700;font-size:130px;line-height:1;box-shadow:0 8px 0 #E8DCC8">${v.readWord}</div>`}
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px">
               ${v.matchOptions.map(o => html`
-                <button class="hv-bright" onClick=${o.onClick} aria-label="Picture choice" style=${`height:290px;border:0;border-radius:40px;background:${o.bg};color:${o.fg};opacity:${o.opacity};transform:${o.transform};box-shadow:0 10px 0 ${o.sh};cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .45s cubic-bezier(.34,1.56,.64,1),background .2s,opacity .3s`}>
-                  <i class=${o.icon} style="font-size:160px;line-height:1"></i>
+                <button class="hv-bright" onClick=${o.onClick} aria-label="Picture choice" style=${`height:290px;border:0;border-radius:40px;background:${o.bg};color:${o.fg};opacity:${o.opacity};transform:${o.transform};box-shadow:0 10px 0 ${o.sh};cursor:pointer;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;transition:transform .45s cubic-bezier(.34,1.56,.64,1),background .2s,opacity .3s`}>
+                  <i class=${o.icon} style=${`font-size:${o.word ? 130 : 160}px;line-height:1`}></i>
+                  ${o.word && html`<span style="font-size:48px;font-weight:700;line-height:1;color:#2A2350">${o.word}</span>`}
                 </button>`)}
             </div>
           </div>`}

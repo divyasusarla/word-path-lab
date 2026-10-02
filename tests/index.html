@@ -170,6 +170,29 @@ async function runAll() {
     expect(before === after, 'test mode wrote to saved progress or settings');
   });
   for (let n = 1; n <= 10; n++) await check(`Level ${n}: plays through with a wrong and right answer, then gives its sticker`, () => playLevel(n));
+  await check('Rhyme time (6): each picture has its word underneath', async () => {
+    await load('level=6');
+    const pics = [...doc().querySelectorAll('button[aria-label="Picture choice"]')];
+    expect(pics.length === 3, `found ${pics.length} pictures`);
+    const words = pics.map(b => b.innerText.trim());
+    expect(words.every(w => /^[a-z]+$/.test(w)), `words under pictures: ${JSON.stringify(words)}`);
+    return words.join(', ');
+  });
+  await check('Blend it (4) and Read it (9): no words under pictures (it would give the answer away)', async () => {
+    for (const n of [4, 9]) {
+      await load(`level=${n}`);
+      const words = [...doc().querySelectorAll('button[aria-label="Picture choice"]')].map(b => b.innerText.trim()).filter(Boolean);
+      expect(!words.length, `level ${n} shows words: ${words.join(', ')}`);
+    }
+  });
+  await check('Sort levels (3, 7): the question doesn\'t end with a spoken "?"', async () => {
+    for (const n of [3, 7]) {
+      const w = await load(`level=${n}`);
+      await waitFor(() => w.wp.spoken().length > 3, 2000, 'the question');
+      const bad = w.wp.spoken().filter(t => /^\W+$/.test(t.trim()));
+      expect(!bad.length, `level ${n} speaks punctuation on its own: ${JSON.stringify(bad)}`);
+    }
+  });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
     expect(/Level 3 complete!/.test(text()) && /Fish sticker/.test(text()), 'level complete text wrong');
