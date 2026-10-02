@@ -16,6 +16,10 @@ The tinkering copy of Word Path, an early-reading game (letter sounds, sight wor
 - `versions/` – playable copy of every past version, with an index page
 - `tests/` – automatic checks that play every level (see `TESTING.md`)
 - `TESTING.md` – test mode, automatic checks and the hands-on checklist
+- `sounds.js` – the 69 recorded sounds (43 speech sounds + letter names) and how to say each
+- `audio/` – the recordings (`<id>.wav`) and `manifest.json` listing which exist
+- `tools/record.html` – the recorder; `tools/import_audio.py` – imports its zip into `audio/`
+- `RECORDING.md` – step-by-step recording guide
 
 ## Run locally
 

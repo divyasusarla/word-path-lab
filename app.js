@@ -41,19 +41,22 @@ const D = (() => {
   const LV = [
     { title:'Letter sounds', kind:'pop', mode:'letter', pool:['m','s','t','a','p','i','n','o'], tiles:4, sticker:'star', name:'Star' },
     { title:'Sight words 1', kind:'pop', mode:'word', pool:FRY.slice(0,25), tiles:4, sticker:'rocket', name:'Rocket' },
-    { title:'First sounds', kind:'sort', bins:[{ label:'s', sound:['sssss',.45], anchor:'sun' }, { label:'m', sound:['mmmmm',.45], anchor:'moon' }],
+    { title:'First sounds', kind:'sort', bins:[{ label:'s', sound:['sssss',.45], clip:'s', anchor:'sun' }, { label:'m', sound:['mmmmm',.45], clip:'m', anchor:'moon' }],
       items:[it('snail','snail',0), it('star','star',0), it('scissors','scissors',0), it('sofa','sofa',0), it('milk','milk',1), it('mountain','mountain',1), it('mail','mail',1), it('map','map',1)], sticker:'fish', name:'Fish' },
     { title:'Blend it', kind:'match', mode:'blend', sticker:'bird', name:'Bird' },
     { title:'Sight words 2', kind:'pop', mode:'word', pool:FRY.slice(25,50), tiles:4, sticker:'crown', name:'Crown' },
     { title:'Rhyme time', kind:'match', mode:'rhyme', sticker:'rabbit', name:'Rabbit' },
-    { title:'sh or ch', kind:'sort', bins:[{ label:'sh', sound:['shhhhh',.45], anchor:'ship' }, { label:'ch', sound:['chuh',.8], anchor:'cherry' }],
+    { title:'sh or ch', kind:'sort', bins:[{ label:'sh', sound:['shhhhh',.45], clip:'sh', anchor:'ship' }, { label:'ch', sound:['chuh',.8], clip:'ch', anchor:'cherry' }],
       items:[it('shell','shell',0), it('shirt','shirt',0), it('shield','shield',0), it('church','church',1), it('chair','armchair',1), it('chef','chef-hat',1)], sticker:'turtle', name:'Turtle' },
     { title:'Sight words 3', kind:'pop', mode:'word', pool:FRY.slice(50,100), tiles:5, sticker:'sailboat', name:'Boat' },
     { title:'Read it', kind:'match', mode:'read', sticker:'flower', name:'Flower' },
     { title:'Word boss', kind:'pop', mode:'word', pool:FRY2, tiles:5, sticker:'trophy', name:'Trophy' }
   ].map((l, i) => ({ ...l, n: i + 1 }));
   const POS = [[10,25],[28,31.7],[46,21.7],[64,31.7],[86,25],[86,71.7],[64,78.3],[46,68.3],[28,78.3],[10,71.7]];
-  return { FRY, FRY2, LET, PH, CVC, RHY, LV, POS };
+  // recorded clip ids (see sounds.js) for each letter and phoneme key
+  const LETC = l => ({ a:'a-short', i:'i-short', o:'o-short' })[l] || l;
+  const PHC = p => ({ a:'a-short', e:'e-short', i:'i-short', o:'o-short', u:'u-short', ks:'x' })[p] || p;
+  return { FRY, FRY2, LET, PH, CVC, RHY, LV, POS, LETC, PHC };
 })();
 
 const PAL = [
@@ -67,6 +70,7 @@ const AKEY = 'wordpath-lab.audio';
 
 class App extends Component {
   sid = 0; run = 0; tms = []; voices = []; spoken = [];
+  recorded = new Set(); buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
 
   state = { screen:'map', lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true };
 
@@ -89,6 +93,13 @@ class App extends Component {
 
   componentDidMount() {
     if (TEST) this.initTest();
+    this.loadManifest();
+    // Safari (iPad/iPhone) only allows sound after a tap, so start the audio engine on the first touch or key
+    const unlock = () => {
+      const c = this.audioCtx();
+      if (c && c.state === 'running') { ['pointerdown', 'keydown'].forEach(e => document.removeEventListener(e, unlock, true)); this.preload(); }
+    };
+    ['pointerdown', 'keydown'].forEach(e => document.addEventListener(e, unlock, true));
     const ss = window.speechSynthesis; if (!ss) return;
     const pick = () => { this.voices = ss.getVoices().filter(v => /^en/i.test(v.lang)); this.setState(s => ({ vtick: s.vtick + 1 })); };
     pick(); ss.onvoiceschanged = pick;
@@ -113,6 +124,10 @@ class App extends Component {
       go: screen => { this.stop(); this.setState({ screen, settings:false }); },
       setDone: n => this.setState({ done: Array.from({ length: 10 }, (_, i) => i < n) }),
       spoken: () => this.spoken.map(x => x.t),
+      spokenDetail: () => this.spoken.map(({ t, clip, src }) => ({ t, clip, src })),
+      recorded: () => [...this.recorded],
+      audioState: () => this.actx ? this.actx.state : 'not started',
+      played: () => this.playedClips.slice(),
       clearSpoken: () => { this.spoken = []; }
     };
   }
@@ -139,11 +154,49 @@ class App extends Component {
     return us[0] || vs[0] || null;
   }
 
+  // ---- recorded clips ----
+  async loadManifest() {
+    try {
+      const m = await (await fetch('audio/manifest.json', { cache: 'no-cache' })).json();
+      this.recorded = new Set(m.clips || []);
+    } catch (e) { this.recorded = new Set(); }
+  }
+  audioCtx() {
+    if (!this.actx) {
+      const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
+      this.actx = new C();
+      const b = this.actx.createBuffer(1, 1, 22050), src = this.actx.createBufferSource();  // a silent blip unlocks iOS
+      src.buffer = b; src.connect(this.actx.destination); src.start(0);
+    }
+    if (this.actx.state === 'suspended') this.actx.resume();
+    return this.actx;
+  }
+  preload() { this.recorded.forEach(id => this.clipBuffer(id)); }
+  clipBuffer(id) {
+    if (!id || !this.recorded.has(id)) return null;
+    const c = this.audioCtx(); if (!c) return null;
+    if (!this.buffers[id]) this.buffers[id] = fetch(`audio/${id}.wav`).then(r => r.ok ? r.arrayBuffer() : Promise.reject())
+      .then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no))).catch(() => null);
+    return this.buffers[id];
+  }
+  playClip(buf) {
+    return new Promise(res => {
+      const c = this.actx, src = c.createBufferSource(), g = c.createGain();
+      g.gain.value = this.state.audio.vol;  // same volume setting as the browser voice
+      src.buffer = buf; src.connect(g); g.connect(c.destination);
+      const done = () => { clearTimeout(fb); if (this.curSrc === src) this.curSrc = null; res(); };
+      const fb = setTimeout(done, buf.duration * 1000 + 500);
+      src.onended = done; this.curSrc = src; src.start();
+      if (TEST) this.playedClips.push({ dur: +buf.duration.toFixed(2), state: c.state });
+    });
+  }
+
   wait(ms) { return new Promise(r => { this.tms.push(setTimeout(r, ms)); }); }
   stop() {
     this.run++; this.sid++;
     this.tms.forEach(clearTimeout); this.tms = [];
     if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (this.curSrc) try { this.curSrc.stop(); } catch (e) {}
   }
   utter(o) {
     return new Promise(res => {
@@ -166,17 +219,22 @@ class App extends Component {
       if (id !== this.sid) return false;
       if (typeof p === 'number') { if (!mute) await this.wait(p); continue; }
       const o = typeof p === 'string' ? { t: p } : p;
-      if (TEST) this.caption(o.t);
-      if (mute) await this.wait(0); else await this.utter(o);
+      const rec = o.clip && this.recorded.has(o.clip);
+      if (TEST) this.caption(o.t, o.clip, o.clip ? (rec ? 'recording' : 'voice') : null);
+      if (mute) { await this.wait(0); continue; }
+      const buf = rec ? await this.clipBuffer(o.clip) : null;
+      if (id !== this.sid) return false;
+      if (buf) await this.playClip(buf); else if (ss) await this.utter(o);
     }
     return id === this.sid;
   }
-  caption(t) {
-    this.spoken.push({ t, at: Date.now() });
+  caption(t, clip, src) {
+    this.spoken.push({ t, clip, src, at: Date.now() });
     if (this.spoken.length > 200) this.spoken.shift();
     this.setState(s => ({ ctick: s.ctick + 1 }));
   }
-  snd(pair) { return { t: pair[0], rate: pair[1] }; }
+  // a speech sound: plays the recording if there is one, otherwise the browser voice says the fallback text
+  snd(pair, clip) { return { t: pair[0], rate: pair[1], clip }; }
 
   shuf(a) { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
   cycle(pool, n) { let o = []; while (o.length < n) o = o.concat(this.shuf(pool)); return o.slice(0, n); }
@@ -198,16 +256,16 @@ class App extends Component {
   prompt(L, r, first) {
     const pre = first ? [`Level ${L.n}. ${L.title}.`, 700] : [];
     if (L.kind === 'pop') {
-      if (L.mode === 'letter') { const s = D.LET[r.target]; return [...pre, 'Find the letter that says', 500, this.snd(s), 500, 'like in', { t: s[2], rate: 0.8 }]; }
+      if (L.mode === 'letter') { const s = D.LET[r.target]; return [...pre, 'Find the letter that says', 500, this.snd(s, D.LETC(r.target)), 500, 'like in', { t: s[2], rate: 0.8 }]; }
       return [...pre, 'Pop the word', 400, { t: r.target, rate: 0.7 }];
     }
     if (L.kind === 'match') {
-      if (L.mode === 'blend') return [...pre, 'Listen.', 500, ...r.target.ph.flatMap(p => [this.snd(D.PH[p]), 450]), 400, 'What word is that?'];
+      if (L.mode === 'blend') return [...pre, 'Listen.', 500, ...r.target.ph.flatMap(p => [this.snd(D.PH[p], D.PHC(p)), 450]), 400, 'What word is that?'];
       if (L.mode === 'rhyme') return [...pre, 'Which picture rhymes with', 400, { t: r.target.cue, rate: 0.7 }];
       return [...pre, 'Read the word. Then tap its picture.'];
     }
     const [A, B] = L.bins;
-    return [...pre, { t: r.label, rate: 0.7 }, 700, 'Does it start with', 300, this.snd(A.sound), 400, 'or', 300, this.snd(B.sound)];
+    return [...pre, { t: r.label, rate: 0.7 }, 700, 'Does it start with', 300, this.snd(A.sound, A.clip), 400, 'or', 300, this.snd(B.sound, B.clip)];
   }
 
   start(i) {
@@ -245,7 +303,7 @@ class App extends Component {
     const L = D.LV[lvl], r = rounds[round], o = r.options[i];
     if (o.label === r.target) return this.win([this.praise()]);
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
-    const say = L.mode === 'letter' ? ['That letter says', 300, this.snd(D.LET[o.label])] : ['That word is', 300, { t: o.label, rate: 0.75 }];
+    const say = L.mode === 'letter' ? ['That letter says', 300, this.snd(D.LET[o.label], D.LETC(o.label))] : ['That word is', 300, { t: o.label, rate: 0.75 }];
     this.speak([...say, 600, 'Try again.', 700, ...this.prompt(L, r, false)]);
   }
 
@@ -263,7 +321,7 @@ class App extends Component {
     const L = D.LV[lvl], item = rounds[round];
     if (item.bin === b) {
       this.setState(s => { const sorted = [s.sorted[0].slice(), s.sorted[1].slice()]; sorted[b].push(item); return { sorted, binWrong:null }; });
-      return this.win(['Yes!', 300, `${item.label} starts with`, 300, this.snd(L.bins[b].sound)]);
+      return this.win(['Yes!', 300, `${item.label} starts with`, 300, this.snd(L.bins[b].sound, L.bins[b].clip)]);
     }
     this.setState({ binWrong: b });
     this.speak(['Listen to the first sound.', 500, { t: item.label, rate: 0.6 }, 600, 'Try again.']);
@@ -271,7 +329,7 @@ class App extends Component {
 
   soundOut() {
     const r = this.state.rounds[this.state.round]; if (!r || !r.target.ph) return;
-    this.speak([...r.target.ph.flatMap(p => [this.snd(D.PH[p]), 450]), 300, { t: r.target.w, rate: 0.8 }]);
+    this.speak([...r.target.ph.flatMap(p => [this.snd(D.PH[p], D.PHC(p)), 450]), 300, { t: r.target.w, rate: 0.8 }]);
   }
 
   popField(L) {
@@ -383,7 +441,7 @@ class App extends Component {
       onVoice: e => this.setAudio({ voice: e.target.value }),
       onVol: e => this.setAudio({ vol: parseFloat(e.target.value) }),
       onRate: e => this.setAudio({ rate: parseFloat(e.target.value) }),
-      testVoice: () => this.speak(['Hi! Let\'s play with letters.', 500, 'This letter says', 400, this.snd(D.LET.s)]),
+      testVoice: () => this.speak(['Hi! Let\'s play with letters.', 500, 'This letter says', 400, this.snd(D.LET.s, 's')]),
       resetAll: () => { if (window.confirm('Reset all progress and stickers?')) { const d = Array(10).fill(false); this.save(d); this.setState({ done: d, settings: false }); } }
     };
   }
@@ -416,9 +474,9 @@ class App extends Component {
         </div>
         <div style=${label}>Stickers earned (changes the map and sticker book)</div>
         <div style=${row}>${[0, 1, 3, 5, 9, 10].map(n => html`<button onClick=${() => this.setState({ done: Array.from({ length: 10 }, (_, i) => i < n) })} style=${b + (doneCount === n ? ';' + on : '')}>${n}</button>`)}</div>
-        <div style=${label}>Spoken${T.mute ? ' (muted)' : ''}</div>
+        <div style=${label}>Spoken${T.mute ? ' (muted)' : ''} · 🎙 recording, 🤖 browser voice · ${this.recorded.size} recordings</div>
         <div style="display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:1.35;min-height:20px">
-          ${this.spoken.slice(-6).map((x, k, a) => html`<div style=${k === a.length - 1 ? 'font-weight:600' : 'color:#5C5677'}>“${x.t}”</div>`)}
+          ${this.spoken.slice(-6).map((x, k, a) => html`<div style=${k === a.length - 1 ? 'font-weight:600' : 'color:#5C5677'}>${x.src ? html`<span title=${x.src === 'recording' ? `Recording: audio/${x.clip}.wav` : `No recording yet for "${x.clip}"; browser voice`}>${x.src === 'recording' ? '🎙' : '🤖'} </span>` : ''}“${x.t}”</div>`)}
         </div>
         <div style="font-size:12px;color:#5C5677">Nothing is saved in test mode.</div>
       </div>`;

@@ -10,4 +10,6 @@
 - After pushing, confirm GitHub Pages actually rebuilt (`gh api repos/divyasusarla/word-path-lab/pages/builds/latest`); if it didn't, request one with `gh api -X POST repos/divyasusarla/word-path-lab/pages/builds`.
 - No outside servers at runtime: third-party files live in `vendor/` (see vendor/README.md). Don't add CDN links.
 - Each pushed change gets a `CHANGELOG.md` entry; milestones get a git tag (`v2.0`, `v2.1`, …).
+- Speech sounds: `snd(pair, clipId)` plays `audio/<clipId>.wav` when `audio/manifest.json` lists it, else the browser voice says the fallback text. Every clip id must exist in `sounds.js` (the checks enforce this). New sounds go in `sounds.js` first.
+- Importing recordings: `python3 tools/import_audio.py <zip>` (see RECORDING.md). It rebuilds the manifest; don't hand-edit it. Recordings play through Web Audio, unlocked on the first tap for iOS Safari.
 - `versions/` holds frozen playable copies. Never edit them except to give each its own `wordpath-archive-<ver>.*` storage keys. When cutting a milestone, copy the current site into `versions/<ver>/` and add a card to `versions/index.html`.

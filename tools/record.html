@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word Path recorder</title>
+<link rel="stylesheet" href="../vendor/fredoka/fredoka.css">
+<link rel="stylesheet" href="../vendor/lucide/lucide.css">
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: #FFF7EA; color: #2A2350; font-family: 'Fredoka', system-ui, sans-serif; }
+  button { font-family: inherit; cursor: pointer; }
+  button:focus-visible { outline: 4px solid #7B61FF; outline-offset: 3px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px; }
+  h1 { font-size: 26px; margin: 0; }
+  .progress { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+  .bar { width: 180px; height: 12px; border-radius: 999px; background: #E8DCC8; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: #2EC4A6; transition: width .3s; }
+  .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; padding: 0 24px 40px; max-width: 1200px; margin: 0 auto; }
+  @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } nav { order: 2; } }
+  nav { background: #fff; border-radius: 24px; padding: 12px; max-height: calc(100vh - 100px); overflow-y: auto; position: sticky; top: 12px; align-self: start; }
+  nav h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #5C5677; margin: 12px 8px 6px; }
+  nav .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px; }
+  nav button { min-width: 44px; height: 36px; padding: 0 10px; border: 0; border-radius: 999px; background: #F3EEFF; color: #2A2350; font-size: 15px; font-weight: 600; position: relative; }
+  nav button.done { background: #D5F5EC; }
+  nav button.warn { background: #FFF0C7; }
+  nav button.current { outline: 3px solid #7B61FF; }
+  .card { background: #fff; border-radius: 36px; padding: 32px; box-shadow: 0 8px 0 #E8DCC8; display: flex; flex-direction: column; gap: 20px; }
+  .group { font-size: 15px; font-weight: 600; color: #5940D6; }
+  .group small { display: block; font-weight: 400; color: #5C5677; font-size: 15px; margin-top: 2px; }
+  .sound { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .big { font-size: 120px; font-weight: 700; line-height: 1; min-width: 120px; }
+  .how { font-size: 26px; font-weight: 600; }
+  .example { font-size: 19px; color: #5C5677; margin-top: 6px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn { height: 64px; padding: 0 28px 0 22px; border: 0; border-radius: 999px; font-size: 22px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .btn i { font-size: 26px; line-height: 1; }
+  .rec { background: #F2544A; color: #fff; box-shadow: 0 5px 0 #C83A31; }
+  .rec.on { background: #2A2350; box-shadow: 0 5px 0 #000; }
+  .soft { background: #F3EEFF; color: #2A2350; }
+  .next { background: #FFC23C; color: #2A2350; box-shadow: 0 5px 0 #DB9A0A; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .meter { height: 16px; border-radius: 999px; background: #F1EDF6; overflow: hidden; }
+  .meter > span { display: block; height: 100%; width: 0; background: #2EC4A6; transition: width .05s; }
+  .meter.hot > span { background: #F2544A; }
+  .status { font-size: 18px; min-height: 26px; }
+  .status.warn { color: #9A6400; font-weight: 600; }
+  .status.ok { color: #17977F; font-weight: 600; }
+  .keys { font-size: 14px; color: #5C5677; }
+  kbd { font-family: inherit; background: #F3EEFF; border-radius: 6px; padding: 1px 7px; font-weight: 600; }
+  .side { display: flex; flex-direction: column; gap: 16px; }
+  .panel { background: #fff; border-radius: 24px; padding: 20px 24px; font-size: 16px; line-height: 1.5; }
+  .panel h3 { margin: 0 0 6px; font-size: 18px; }
+  .panel p { margin: 0 0 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .small { height: 44px; padding: 0 18px; font-size: 16px; }
+  .danger { background: #FFE9E7; color: #B0322A; }
+  #setup { max-width: 640px; margin: 40px auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Word Path recorder</h1>
+  <div class="progress"><span id="count">0 / 69 recorded</span><div class="bar"><span id="bar" style="width:0"></span></div></div>
+</header>
+
+<div id="setup" class="card">
+  <div class="how">Before you start</div>
+  <div style="font-size:18px;line-height:1.55">
+    <p>Find a quiet room with soft things around (curtains, a sofa, a rug) to cut echo. Sit about a hand's width from your laptop, with the microphone near the keyboard.</p>
+    <p>Each sound shows how to say it. Record, listen back, and redo it if it's not right. Your recordings are kept in this browser as you go, so you can stop and come back later. When you're done, press <b>Download all</b>.</p>
+    <p>Your browser will ask to use the microphone. Choose <b>Allow</b>. On a Mac, if nothing is heard, check System Settings → Privacy &amp; Security → Microphone and make sure your browser is switched on.</p>
+  </div>
+  <div class="controls"><button class="btn next" id="begin"><i class="icon-mic"></i>Start recording</button></div>
+  <div class="status warn" id="setupMsg"></div>
+</div>
+
+<div class="layout" id="main" hidden>
+  <nav id="nav" aria-label="All sounds"></nav>
+  <div class="side">
+    <section class="card" aria-live="polite">
+      <div class="group" id="group"></div>
+      <div class="sound">
+        <div class="big" id="show"></div>
+        <div>
+          <div class="how" id="how"></div>
+          <div class="example" id="example"></div>
+        </div>
+      </div>
+      <div class="meter" id="meter"><span></span></div>
+      <div class="controls">
+        <button class="btn rec" id="rec"><i class="icon-mic"></i><span>Record</span></button>
+        <button class="btn soft" id="play" disabled><i class="icon-play"></i>Play</button>
+        <button class="btn next" id="next"><span>Next</span><i class="icon-arrow-right"></i></button>
+      </div>
+      <div class="status" id="status"></div>
+      <div class="keys"><kbd>Space</kbd> record / stop · <kbd>P</kbd> play · <kbd>→</kbd> next · <kbd>←</kbd> back</div>
+    </section>
+    <section class="panel">
+      <h3>When you're done</h3>
+      <p>Download every recording as one file. It lands in your Downloads folder; tell Claude it's there.</p>
+      <div class="row">
+        <button class="btn next small" id="download"><i class="icon-download"></i>Download all</button>
+        <button class="btn soft small" id="playAll"><i class="icon-list-music"></i>Play all in this group</button>
+        <button class="btn danger small" id="clearOne">Delete this recording</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script type="module">
+import { SOUNDS, GROUPS } from '../sounds.js';
+
+const RATE = 22050;                 // saved sample rate: plenty for speech, keeps files small
+const $ = id => document.getElementById(id);
+const fmtDur = s => `${s.toFixed(1)}s`;
+let idx = 0, stream = null, actx = null, analyser = null, recorder = null, chunks = [], recording = false, raf = 0, player = null;
+const clips = {};                   // id -> { blob, dur, warn }
+
+// ---- storage (IndexedDB, so recordings survive a reload) ----
+const DB = new Promise(res => {
+  try {
+    const r = indexedDB.open('wordpath-recorder', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('clips');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => res(null);
+  } catch (e) { res(null); }
+});
+async function dbDo(mode, fn) {
+  const db = await DB; if (!db) return null;
+  return new Promise(res => { try { const tx = db.transaction('clips', mode); const r = fn(tx.objectStore('clips')); tx.oncomplete = () => res(r && r.result); tx.onerror = () => res(null); } catch (e) { res(null); } });
+}
+const dbPut = (id, v) => dbDo('readwrite', st => st.put(v, id));
+const dbDel = id => dbDo('readwrite', st => st.delete(id));
+async function dbAll() {
+  const db = await DB; if (!db) return {};
+  return new Promise(res => {
+    const out = {};
+    try {
+      const tx = db.transaction('clips', 'readonly'), cur = tx.objectStore('clips').openCursor();
+      cur.onsuccess = () => { const c = cur.result; if (c) { out[c.key] = c.value; c.continue(); } };
+      tx.oncomplete = () => res(out); tx.onerror = () => res(out);
+    } catch (e) { res(out); }
+  });
+}
+
+// ---- audio processing: mono, 22.05 kHz, trimmed, even volume ----
+async function processBlob(blob, kind) {
+  const decoded = await actx.decodeAudioData(await blob.arrayBuffer());
+  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(decoded.duration * RATE)), RATE);
+  const src = off.createBufferSource(); src.buffer = decoded; src.connect(off.destination); src.start();
+  const x = (await off.startRendering()).getChannelData(0);
+
+  let rawPeak = 0; for (const v of x) rawPeak = Math.max(rawPeak, Math.abs(v));
+  const win = Math.round(RATE * 0.01), n = Math.floor(x.length / win), env = new Float32Array(n);
+  for (let w = 0; w < n; w++) { let e = 0; for (let k = w * win; k < (w + 1) * win; k++) e += x[k] * x[k]; env[w] = Math.sqrt(e / win); }
+  const loud = Math.max(...env, 0), thr = Math.max(loud * 0.06, 0.003);
+  let a = env.findIndex(e => e > thr), b = n - 1 - [...env].reverse().findIndex(e => e > thr);
+  if (a < 0 || loud < 0.01) return { empty: true };
+  a = Math.max(0, a * win - Math.round(RATE * 0.04)); b = Math.min(x.length, (b + 1) * win + Math.round(RATE * 0.1));
+  const y = x.slice(a, b);
+
+  let peak = 0, sum = 0, cnt = 0;
+  for (let w = Math.floor(a / win); w < Math.min(n, Math.ceil(b / win)); w++) if (env[w] > thr) { sum += env[w] * env[w]; cnt++; }
+  for (const v of y) peak = Math.max(peak, Math.abs(v));
+  const rms = Math.sqrt(sum / Math.max(1, cnt));
+  const gain = Math.min(0.15 / rms, 0.89 / peak);
+  const fade = Math.round(RATE * 0.008);
+  for (let i = 0; i < y.length; i++) {
+    const f = Math.min(1, i / fade, (y.length - 1 - i) / fade);
+    y[i] = y[i] * gain * f;
+  }
+  const dur = y.length / RATE;
+  let warn = '';
+  if (rawPeak >= 0.98) warn = 'That was too loud and may sound crackly. Move back from the laptop a little and redo it.';
+  else if (kind === 'hold' && dur < 0.9) warn = 'Try holding the sound longer, for about two seconds.';
+  else if (kind === 'short' && dur > 0.75) warn = 'Keep it short and crisp, with no "uh" at the end.';
+  else if ((kind === 'vowel' || kind === 'name') && dur > 1.8) warn = 'A little shorter would be better.';
+  return { wav: encodeWav(y, RATE), dur, warn };
+}
+
+function encodeWav(samples, rate) {
+  const buf = new ArrayBuffer(44 + samples.length * 2), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); str(8, 'WAVE');
+  str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, 'data'); v.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, samples[i])) * 0x7fff, true);
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+// ---- zip (stored, no compression; WAVs barely compress anyway) ----
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+async function makeZip(files) {
+  const parts = [], central = []; let offset = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const f of files) {
+    const data = new Uint8Array(await f.blob.arrayBuffer()), name = new TextEncoder().encode(f.name), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(10, time, true); h.setUint16(12, date, true);
+    h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(12, time, true); c.setUint16(14, date, true);
+    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, name.length, true); c.setUint32(42, offset, true);
+    parts.push(h.buffer, name, data); central.push(c.buffer, name);
+    offset += 30 + name.length + data.length;
+  }
+  const cdSize = central.reduce((s, p) => s + p.byteLength, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cdSize, true); e.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, e.buffer], { type: 'application/zip' });
+}
+
+// ---- UI ----
+const cur = () => SOUNDS[idx];
+function status(msg, cls = '') { const el = $('status'); el.textContent = msg; el.className = 'status ' + cls; }
+function renderNav() {
+  $('nav').innerHTML = '';
+  for (const g of GROUPS) {
+    const h = document.createElement('h2'); h.textContent = g.title; $('nav').append(h);
+    const box = document.createElement('div'); box.className = 'chips';
+    SOUNDS.forEach((snd, i) => {
+      if (snd.group !== g.key) return;
+      const b = document.createElement('button');
+      b.textContent = snd.show + (snd.id === 'th-this' ? ' (this)' : snd.id === 'th-thin' ? ' (thin)' : snd.id === 'oo-book' ? ' (book)' : snd.id === 'oo-moon' ? ' (moon)' : snd.id.endsWith('-long') ? ' (long)' : '');
+      b.title = snd.example ? `${snd.show} as in ${snd.example}` : snd.how;
+      b.className = (clips[snd.id] ? (clips[snd.id].warn ? 'warn' : 'done') : '') + (i === idx ? ' current' : '');
+      b.onclick = () => go(i);
+      box.append(b);
+    });
+    $('nav').append(box);
+  }
+  const done = SOUNDS.filter(x => clips[x.id]).length;
+  $('count').textContent = `${done} / ${SOUNDS.length} recorded`;
+  $('bar').style.width = `${(100 * done / SOUNDS.length).toFixed(1)}%`;
+}
+function renderCard() {
+  const snd = cur(), g = GROUPS.find(x => x.key === snd.group), c = clips[snd.id];
+  $('group').innerHTML = ''; $('group').append(`${g.title} · ${SOUNDS.filter(x => x.group === g.key).indexOf(snd) + 1} of ${SOUNDS.filter(x => x.group === g.key).length}`);
+  const small = document.createElement('small'); small.textContent = g.note; $('group').append(small);
+  $('show').textContent = snd.show;
+  $('how').textContent = snd.how;
+  $('example').textContent = snd.example ? `as in "${snd.example}"` : '';
+  $('play').disabled = !c;
+  $('clearOne').disabled = !c;
+  if (c) status(c.warn ? c.warn : `Recorded (${fmtDur(c.dur)}). Play it back, or redo it.`, c.warn ? 'warn' : 'ok');
+  else status('Not recorded yet. Press Record, say the sound, then press Stop.');
+  renderNav();
+}
+function go(i) { if (recording) return; idx = (i + SOUNDS.length) % SOUNDS.length; renderCard(); }
+
+function playBlob(blob) {
+  return new Promise(res => {
+    if (player) { player.pause(); URL.revokeObjectURL(player.src); }
+    player = new Audio(URL.createObjectURL(blob));
+    player.onended = player.onerror = () => res();
+    player.play().catch(res);
+  });
+}
+
+function meterLoop() {
+  const data = new Float32Array(analyser.fftSize);
+  const tick = () => {
+    analyser.getFloatTimeDomainData(data);
+    let p = 0; for (const v of data) p = Math.max(p, Math.abs(v));
+    $('meter').firstElementChild.style.width = `${Math.min(100, p * 110)}%`;
+    $('meter').classList.toggle('hot', p > 0.95);
+    raf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+async function startRec() {
+  if (recording || !stream) return;
+  if (player) player.pause();
+  chunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+  recorder.onstop = onStopped;
+  recorder.start();
+  recording = true;
+  $('rec').classList.add('on'); $('rec').querySelector('span').textContent = 'Stop';
+  status('Recording… say the sound, then press Stop (or Space).');
+}
+function stopRec() { if (recording) { recording = false; recorder.stop(); $('rec').classList.remove('on'); $('rec').querySelector('span').textContent = 'Record'; } }
+
+async function onStopped() {
+  const snd = cur();
+  status('Processing…');
+  try {
+    const out = await processBlob(new Blob(chunks, { type: recorder.mimeType }), snd.kind);
+    if (out.empty) { status('I couldn\'t hear anything. Check the microphone and try again.', 'warn'); return; }
+    clips[snd.id] = { blob: out.wav, dur: out.dur, warn: out.warn };
+    await dbPut(snd.id, clips[snd.id]);
+    renderCard();
+    await playBlob(out.wav);
+  } catch (e) {
+    status(`Something went wrong processing that recording (${e.message}). Try again.`, 'warn');
+  }
+}
+
+$('begin').onclick = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  } catch (e) {
+    $('setupMsg').textContent = 'The microphone isn\'t available. Allow microphone access for this page, then try again.';
+    return;
+  }
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = actx.createAnalyser(); analyser.fftSize = 1024;
+  actx.createMediaStreamSource(stream).connect(analyser);
+  meterLoop();
+  $('setup').hidden = true; $('main').hidden = false;
+  const firstMissing = SOUNDS.findIndex(x => !clips[x.id]);
+  go(firstMissing < 0 ? 0 : firstMissing);
+};
+$('rec').onclick = () => recording ? stopRec() : startRec();
+$('play').onclick = () => clips[cur().id] && playBlob(clips[cur().id].blob);
+$('next').onclick = () => go(idx + 1);
+$('clearOne').onclick = async () => {
+  if (!clips[cur().id] || !confirm(`Delete the recording for "${cur().show}"?`)) return;
+  delete clips[cur().id]; await dbDel(cur().id); renderCard();
+};
+$('playAll').onclick = async () => {
+  for (const snd of SOUNDS.filter(x => x.group === cur().group)) if (clips[snd.id]) { idx = SOUNDS.indexOf(snd); renderCard(); await playBlob(clips[snd.id].blob); await new Promise(r => setTimeout(r, 300)); }
+};
+$('download').onclick = async () => {
+  const files = SOUNDS.filter(x => clips[x.id]).map(x => ({ name: `${x.id}.wav`, blob: clips[x.id].blob }));
+  if (!files.length) { status('Nothing recorded yet.', 'warn'); return; }
+  const missing = SOUNDS.length - files.length;
+  if (missing && !confirm(`${missing} sounds aren't recorded yet. Download the ${files.length} you have?`)) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(await makeZip(files));
+  a.download = `word-path-audio-${new Date().toISOString().slice(0, 10)}.zip`;
+  a.click();
+  status(`Downloaded ${files.length} recordings. Tell Claude the file is in your Downloads folder.`, 'ok');
+};
+document.addEventListener('keydown', e => {
+  if ($('main').hidden || e.target.tagName === 'INPUT' || e.metaKey || e.ctrlKey) return;
+  if (e.code === 'Space') { e.preventDefault(); if (e.repeat) return; document.activeElement?.blur(); recording ? stopRec() : startRec(); }
+  else if (e.key === 'ArrowRight') go(idx + 1);
+  else if (e.key === 'ArrowLeft') go(idx - 1);
+  else if (e.key.toLowerCase() === 'p') $('play').click();
+});
+
+// Space on a focused button would also "click" it on key-up; the keydown handler above already acted
+document.addEventListener('keyup', e => { if (e.code === 'Space' && !$('main').hidden) e.preventDefault(); }, true);
+
+// ?selftest exposes the processing steps so they can be checked without a microphone
+if (new URLSearchParams(location.search).has('selftest')) {
+  window.recorderTest = { processBlob, makeZip, encodeWav, init: () => { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } };
+}
+
+Object.assign(clips, await dbAll());
+renderNav();
+window.recorderReady = { sounds: SOUNDS.length, recorded: Object.keys(clips).length };
+</script>
+</body>
+</html>

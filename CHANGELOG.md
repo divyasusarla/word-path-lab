@@ -2,6 +2,12 @@
 
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
+## v2.3 — 2026-10-02
+- Recorder at `tools/record.html` for all 69 clips (43 speech sounds + 26 letter names): record, listen back, redo, with automatic trimming, even volume and notes when a take looks too short, long or loud. Keeps takes in the browser between sessions; downloads them as one zip.
+- The game plays recorded sounds when they exist and falls back to the browser voice otherwise. Works on iPad/iPhone Safari (audio unlocks on the first tap).
+- Test-mode captions mark each sound 🎙 recording or 🤖 browser voice. New checks cover the recording list and the recorder page.
+- `RECORDING.md` step-by-step guide; `tools/import_audio.py` to bring recordings in.
+
 ## v2.2 — 2026-10-02
 - Test mode: add `?test` to the address to open every level without saving anything, with a test panel (jump to any level or screen, answer right/wrong, set stickers earned, see captions of what's spoken). Address options: `level`, `screen`, `done`, `rounds`, `think`, `mute`.
 - Automatic checks at `tests/`: play every level and open every screen in about 30 seconds, including a check that every icon exists.

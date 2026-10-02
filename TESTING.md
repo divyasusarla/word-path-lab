@@ -17,6 +17,7 @@ Add `?run` to the address to start the checks straight away. They cover:
 - **Every level, 1 to 10:** starts and announces itself, gives feedback on a wrong answer, accepts the right answer, moves through every round, and ends on the level complete screen with the right sticker.
 - **Level complete:** Next level starts the following level.
 - **Pictures:** every icon on every screen exists. A typo in an icon name fails the check.
+- **Recordings:** every speech sound a level uses has a slot in the recording list, each one plays from its recording if there is one (otherwise the browser voice), and the recorder page loads with all 69 sounds.
 
 The checks can't hear the voice. They check *what* the game says (the words and their order), not how it sounds.
 
@@ -27,7 +28,7 @@ Add **`?test`** to the address. Every level is open, nothing is saved, and a **T
 - jump to any level, or answer the current round right or wrong
 - open any screen: Map, Stickers, Settings, Level complete
 - set how many stickers have been earned (0, 1, 3, 5, 9 or 10) to see the map and sticker book at each stage
-- see what the game is saying, as captions
+- see what the game is saying, as captions. Speech sounds show 🎙 when they come from a recording and 🤖 when the browser voice is filling in.
 
 You can also set things up straight from the address. Combine options with `&`:
 
@@ -48,11 +49,21 @@ To leave test mode, click **Exit test mode** or remove `?test` from the address.
 
 ## 3. Hands-on checklist (on the device children will use)
 
-Use the normal address, without `?test`, on a Chromebook or the classroom device, with sound on.
+Use the normal address, without `?test`, with sound on. Test on every device you plan to use:
+
+| Device | Browser | Notes |
+|---|---|---|
+| MacBook Air | Chrome | Your main test device |
+| Chromebook (classroom) | Chrome | What children will most likely use |
+| iPad | Safari | Tap once anywhere before sound will play (a Safari rule); the game handles this on your first tap |
+| iPhone | Safari | Turn the silent switch **off**: it mutes the game. The layout is built for bigger screens, so expect crowding on the map |
+
+Each device keeps its own progress, and test mode works on all of them.
 
 **Voice and sounds**
 - [ ] In Settings, pick a voice. On a Chromebook, try "Google US English". Press Test voice.
-- [ ] Letter sounds (level 1): m, s and n are held ("mmm"); t and p are short ("tuh"); vowels are clear.
+- [ ] In test mode, captions show 🎙 (recording) for letter sounds once recordings are added, not 🤖.
+- [ ] Letter sounds (level 1): m, s and n are held ("mmm"); t and p are short and voiceless; vowels are clear.
 - [ ] Blend it (level 4): sounds are separate, with a clear gap, then "What word is that?"
 - [ ] Sort levels (3 and 7): the question ends naturally, without the voice saying "question mark".
 - [ ] Sight words are said slowly and clearly enough to pick out.

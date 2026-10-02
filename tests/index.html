@@ -40,6 +40,8 @@
   </section>
 </main>
 <script type="module">
+import { SOUNDS } from '../sounds.js';
+const usedClips = new Map();   // clip id -> where the game got it ('recording' or 'voice')
 const frame = document.getElementById('game');
 const list = document.getElementById('results');
 const summary = document.getElementById('summary');
@@ -111,12 +113,17 @@ async function playLevel(n) {
   await waitFor(() => wp.spoken().some(t => /You earned the/.test(t)), 2000, 'the sticker message');
   missingIcons().forEach(i => icons.add(i));
   expect(wp.state().done[n - 1], 'level not marked done');
+  const rec = new Set(wp.recorded());
+  for (const x of wp.spokenDetail()) if (x.clip) {
+    expect((x.src === 'recording') === rec.has(x.clip), `sound "${x.clip}" used the ${x.src} but ${rec.has(x.clip) ? 'has' : 'has no'} recording`);
+    usedClips.set(x.clip, x.src);
+  }
   expect(!icons.size, `missing icons: ${[...icons].join(', ')}`);
   return `${s0.kind}${s0.mode ? ' / ' + s0.mode : ''} · targets: ${targets.join(', ')}`;
 }
 
 async function runAll() {
-  runBtn.disabled = true; list.innerHTML = ''; passed = failed = 0;
+  runBtn.disabled = true; list.innerHTML = ''; passed = failed = 0; usedClips.clear();
   summary.className = ''; summary.textContent = 'Running…';
 
   await check('Map: 10 levels, only level 1 open, Next up shows level 1', async () => {
@@ -198,6 +205,24 @@ async function runAll() {
     expect(/Level 3 complete!/.test(text()) && /Fish sticker/.test(text()), 'level complete text wrong');
     [...doc().querySelectorAll('button')].find(b => /Next level/.test(b.innerText)).click();
     await waitFor(() => w.wp.state().screen === 'play' && w.wp.state().level === 4, 2000, 'level 4 to start');
+  });
+
+  await check('Recordings: every speech sound the levels use has a slot in the recording list', async () => {
+    const ids = new Set(SOUNDS.map(x => x.id));
+    expect(ids.size === SOUNDS.length, 'the recording list has duplicate ids');
+    expect(SOUNDS.length === 69, `expected 69 sounds (43 + 26 letter names), found ${SOUNDS.length}`);
+    const unknown = [...usedClips.keys()].filter(id => !ids.has(id));
+    expect(!unknown.length, `the game uses sounds with no recording slot: ${unknown.join(', ')}`);
+    const rec = [...usedClips].filter(([, src]) => src === 'recording').length;
+    return `${usedClips.size} different sounds used by levels 1–10; ${rec} played from recordings, ${usedClips.size - rec} from the browser voice`;
+  });
+  await check('Recorder page: loads with all 69 sounds and every icon', async () => {
+    frame.src = '../tools/record.html';
+    const w = await waitFor(() => frame.contentWindow.recorderReady && frame.contentWindow, 6000, 'the recorder to load');
+    expect(w.recorderReady.sounds === 69, `recorder lists ${w.recorderReady.sounds} sounds`);
+    expect(doc().querySelectorAll('nav button').length === 69, 'not every sound has a button');
+    const m = missingIcons(); expect(!m.length, `missing icons: ${m.join(', ')}`);
+    return `${w.recorderReady.recorded} recorded in this browser`;
   });
 
   summary.className = failed ? 'fail' : 'pass';
