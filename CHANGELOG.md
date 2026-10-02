@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## v2.4 — 2026-10-02
+- Publishing now runs through a GitHub Actions workflow, so every push reaches the site (the built-in publishing skipped some pushes).
 - All 69 recordings added: every speech sound in levels 1–10 now plays from a real recording instead of the browser voice.
 - Import cleans each clip: removes key clicks, quiet lead-ins and long silent tails, and evens out the volume.
 - Recorder fix: ignores the first quarter-second of each take, so the click of the key or button that starts recording isn't kept.

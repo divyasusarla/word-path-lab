@@ -7,7 +7,7 @@
 - Gameplay settings (rounds per level, think time, unlock all) are in `CONFIG` at the top of `app.js`.
 - Preview locally with `python3 -m http.server 8765`. Before every push, run http://127.0.0.1:8765/tests/?run in the browser (all checks must pass; `window.testResult` holds the totals) and look at the change in test mode (`?test`). See TESTING.md.
 - Test mode (`?test`) must never read or write localStorage. Keep `window.wp` and the test panel behind the TEST flag. When adding a level kind or screen, add checks for it in tests/index.html.
-- After pushing, confirm GitHub Pages actually rebuilt (`gh api repos/divyasusarla/word-path-lab/pages/builds/latest`); if it didn't, request one with `gh api -X POST repos/divyasusarla/word-path-lab/pages/builds`.
+- Publishing runs through GitHub Actions (`.github/workflows/pages.yml`) on every push to main. After pushing, confirm the run succeeded: `gh run list --workflow pages.yml --limit 1`; rerun with `gh workflow run pages.yml` if needed.
 - No outside servers at runtime: third-party files live in `vendor/` (see vendor/README.md). Don't add CDN links.
 - Each pushed change gets a `CHANGELOG.md` entry; milestones get a git tag (`v2.0`, `v2.1`, …).
 - Speech sounds: `snd(pair, clipId)` plays `audio/<clipId>.wav` when `audio/manifest.json` lists it, else the browser voice says the fallback text. Every clip id must exist in `sounds.js` (the checks enforce this). New sounds go in `sounds.js` first.
