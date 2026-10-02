@@ -41,6 +41,8 @@
 </main>
 <script type="module">
 import { SOUNDS } from '../sounds.js';
+import { LEVELS, STAGES, STICKERS, coverage, allPictureFiles } from '../content.js';
+const levelOf = type => LEVELS.find(l => l.type === type).n;
 const usedClips = new Map();   // clip id -> where the game got it ('recording' or 'voice')
 const frame = document.getElementById('game');
 const list = document.getElementById('results');
@@ -72,6 +74,9 @@ function missingIcons() {
   });
   return [...bad];
 }
+function brokenPictures() {
+  return [...new Set([...doc().querySelectorAll('img')].filter(im => im.complete && !im.naturalWidth).map(im => im.getAttribute('src')))];
+}
 function report(name, ok, detail = '') {
   ok ? passed++ : failed++;
   const li = document.createElement('li');
@@ -100,6 +105,7 @@ async function playLevel(n) {
     expect(s.target, `round ${r + 1} has no target`);
     targets.push(s.target);
     missingIcons().forEach(i => icons.add(i));
+    brokenPictures().forEach(i => icons.add(i));
     if (r === 0) {
       wp.clearSpoken();
       expect(wp.wrong(), 'could not pick a wrong answer');
@@ -118,45 +124,72 @@ async function playLevel(n) {
     expect((x.src === 'recording') === rec.has(x.clip), `sound "${x.clip}" used the ${x.src} but ${rec.has(x.clip) ? 'has' : 'has no'} recording`);
     usedClips.set(x.clip, x.src);
   }
-  expect(!icons.size, `missing icons: ${[...icons].join(', ')}`);
-  return `${s0.kind}${s0.mode ? ' / ' + s0.mode : ''} · targets: ${targets.join(', ')}`;
+  expect(!icons.size, `missing icons or pictures: ${[...icons].join(', ')}`);
+  return `stage ${s0.stage} · ${s0.type} · targets: ${targets.join(', ')}`;
 }
 
 async function runAll() {
   runBtn.disabled = true; list.innerHTML = ''; passed = failed = 0; usedClips.clear();
   summary.className = ''; summary.textContent = 'Running…';
 
-  await check('Map: 10 levels, only level 1 open, Next up shows level 1', async () => {
-    const w = await load('');
+  await check('Content: every letter and sound is taught, every word has a picture, words only use sounds already taught', async () => {
+    const problems = coverage();
+    expect(!problems.length, problems.join('\n'));
+    return `${LEVELS.length} levels in ${STAGES.length} stages`;
+  });
+  await check('Pictures: every picture file exists', async () => {
+    const files = allPictureFiles(), missing = [];
+    await Promise.all(files.map(async f => { const r = await fetch(`../vendor/noto/${f}`, { method: 'HEAD' }); if (!r.ok) missing.push(f); }));
+    expect(!missing.length, `missing: ${missing.join(', ')}`);
+    return `${files.length} pictures`;
+  });
+  await check('Map: stage 1 shows its levels, only level 1 open, Next up shows level 1', async () => {
+    await load('');
     const nodes = doc().querySelectorAll('button[aria-label^="Level "]');
-    expect(nodes.length === 10, `found ${nodes.length} level buttons`);
+    expect(nodes.length === STAGES[0].count, `found ${nodes.length} level buttons, expected ${STAGES[0].count}`);
     expect(/Next up/.test(text()) && /Level 1: Letter sounds/.test(text()), 'Next up banner wrong');
-    const m = missingIcons(); expect(!m.length, `missing icons: ${m.join(', ')}`);
+    expect(/Stage 1/.test(text()), 'stage title missing');
+    const m = missingIcons().concat(brokenPictures()); expect(!m.length, `missing: ${m.join(', ')}`);
   });
-  await check('Map: with 5 stickers, Next up moves to level 6', async () => {
-    await load('done=5');
-    expect(/Level 6: Rhyme time/.test(text()), 'Next up did not move to level 6');
+  await check('Map: the arrows step through every stage, each with its own levels', async () => {
+    const w = await load('');
+    const seen = [];
+    for (let k = 0; k < STAGES.length; k++) {
+      await waitFor(() => w.wp.state().mapStage === k, 1000, `stage ${k + 1}`);
+      const n = doc().querySelectorAll('button[aria-label^="Level "]').length;
+      expect(n === STAGES[k].count, `stage ${k + 1} shows ${n} levels, expected ${STAGES[k].count}`);
+      seen.push(n);
+      if (k < STAGES.length - 1) doc().querySelector('button[aria-label="Next stage"]').click();
+    }
+    const m = missingIcons().concat(brokenPictures()); expect(!m.length, `missing: ${m.join(', ')}`);
+    return `levels per stage: ${seen.join(', ')}`;
   });
-  await check('Map: with all 10 stickers, finished message and no Play button', async () => {
-    await load('done=10');
+  await check('Map: after finishing stage 1, it opens on stage 2 with its first level next', async () => {
+    const w = await load(`done=${STAGES[0].count}`);
+    expect(w.wp.state().mapStage === 1, 'map did not move to stage 2');
+    expect(text().includes(`Level ${STAGES[1].first + 1}: Letter sounds`), 'Next up did not move to stage 2');
+  });
+  await check('Map: with every level finished, finished message and no Play button', async () => {
+    await load(`done=${LEVELS.length}`);
     expect(/You finished every level!/.test(text()), 'finished message missing');
     expect(![...doc().querySelectorAll('button')].some(b => b.innerText.trim() === 'Play'), 'Play button still showing');
   });
   await check('Map: "Hear it" speaks the next level', async () => {
     const w = await load('done=2');
     doc().querySelector('button[aria-label="Hear it"]').click();
-    await waitFor(() => w.wp.spoken().some(t => /First sounds/.test(t)), 2000, 'the level name to be spoken');
+    await waitFor(() => w.wp.spoken().some(t => t.includes(LEVELS[2].title)), 2000, 'the level name to be spoken');
   });
-  await check('Sticker book: none earned shows 10 locked', async () => {
+  await check('Sticker book: none earned shows every sticker locked', async () => {
     await load('screen=stickers');
-    expect(/My stickers/.test(text()) && /0\/10/.test(text()), 'header or count wrong');
-    expect(doc().querySelectorAll('i.icon-lock').length === 10, 'expected 10 locked stickers');
+    expect(/My stickers/.test(text()) && text().includes(`0/${LEVELS.length}`), 'header or count wrong');
+    expect(doc().querySelectorAll('i.icon-lock').length === LEVELS.length, `expected ${LEVELS.length} locked stickers`);
   });
-  await check('Sticker book: all earned shows every sticker with its name', async () => {
-    await load('screen=stickers&done=10');
-    expect(/10\/10/.test(text()), 'count wrong');
-    for (const name of ['Star', 'Rocket', 'Fish', 'Bird', 'Crown', 'Rabbit', 'Turtle', 'Boat', 'Flower', 'Trophy']) expect(text().includes(name), `missing sticker ${name}`);
-    const m = missingIcons(); expect(!m.length, `missing icons: ${m.join(', ')}`);
+  await check('Sticker book: all earned shows every sticker with its name and picture', async () => {
+    await load(`screen=stickers&done=${LEVELS.length}`);
+    expect(text().includes(`${LEVELS.length}/${LEVELS.length}`), 'count wrong');
+    for (const st of STICKERS) expect(text().includes(st.name), `missing sticker ${st.name}`);
+    await sleep(300);
+    const m = missingIcons().concat(brokenPictures()); expect(!m.length, `missing: ${m.join(', ')}`);
   });
   await check('Settings: opens with voice, volume, speed, test and reset', async () => {
     const w = await load('screen=settings');
@@ -176,24 +209,24 @@ async function runAll() {
     const after = JSON.stringify(Object.keys(w.localStorage).filter(k => k.startsWith('wordpath')).map(k => [k, w.localStorage.getItem(k)]));
     expect(before === after, 'test mode wrote to saved progress or settings');
   });
-  for (let n = 1; n <= 10; n++) await check(`Level ${n}: plays through with a wrong and right answer, then gives its sticker`, () => playLevel(n));
-  await check('Rhyme time (6): each picture has its word underneath', async () => {
-    await load('level=6');
+  for (let n = 1; n <= LEVELS.length; n++) await check(`Level ${n}: plays through with a wrong and right answer, then gives its sticker`, () => playLevel(n));
+  await check('Rhyme time: each picture has its word underneath', async () => {
+    await load(`level=${levelOf('rhyme')}`);
     const pics = [...doc().querySelectorAll('button[aria-label="Picture choice"]')];
     expect(pics.length === 3, `found ${pics.length} pictures`);
     const words = pics.map(b => b.innerText.trim());
     expect(words.every(w => /^[a-z]+$/.test(w)), `words under pictures: ${JSON.stringify(words)}`);
     return words.join(', ');
   });
-  await check('Blend it (4) and Read it (9): no words under pictures (it would give the answer away)', async () => {
-    for (const n of [4, 9]) {
+  await check('Blend it and Read it: no words under pictures (it would give the answer away)', async () => {
+    for (const n of [levelOf('blend'), levelOf('read')]) {
       await load(`level=${n}`);
       const words = [...doc().querySelectorAll('button[aria-label="Picture choice"]')].map(b => b.innerText.trim()).filter(Boolean);
       expect(!words.length, `level ${n} shows words: ${words.join(', ')}`);
     }
   });
-  await check('Sort levels (3, 7): the question doesn\'t end with a spoken "?"', async () => {
-    for (const n of [3, 7]) {
+  await check('Sort levels: the question doesn\'t end with a spoken "?"', async () => {
+    for (const n of LEVELS.filter(l => l.type === 'sort').map(l => l.n)) {
       const w = await load(`level=${n}`);
       await waitFor(() => w.wp.spoken().length > 3, 2000, 'the question');
       const bad = w.wp.spoken().filter(t => /^\W+$/.test(t.trim()));
@@ -202,7 +235,7 @@ async function runAll() {
   });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
-    expect(/Level 3 complete!/.test(text()) && /Fish sticker/.test(text()), 'level complete text wrong');
+    expect(/Level 3 complete!/.test(text()) && text().includes(`${LEVELS[2].sticker.name} sticker`), 'level complete text wrong');
     [...doc().querySelectorAll('button')].find(b => /Next level/.test(b.innerText)).click();
     await waitFor(() => w.wp.state().screen === 'play' && w.wp.state().level === 4, 2000, 'level 4 to start');
   });
@@ -214,7 +247,7 @@ async function runAll() {
     const unknown = [...usedClips.keys()].filter(id => !ids.has(id));
     expect(!unknown.length, `the game uses sounds with no recording slot: ${unknown.join(', ')}`);
     const rec = [...usedClips].filter(([, src]) => src === 'recording').length;
-    return `${usedClips.size} different sounds used by levels 1–10; ${rec} played from recordings, ${usedClips.size - rec} from the browser voice`;
+    return `${usedClips.size} different sounds used across all levels (3 rounds each); ${rec} played from recordings, ${usedClips.size - rec} from the browser voice`;
   });
   await check('Recorder page: loads with all 69 sounds and every icon', async () => {
     frame.src = '../tools/record.html';

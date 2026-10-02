@@ -2,6 +2,16 @@
 
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
+## v3.0 — 2026-10-02
+- Full teaching order: 38 levels in 7 stages (s a t p i n → m d g o c k ck → e u r h b f l → j v w x y z qu → sh ch th ng → magic e → vowel teams). Every stage has letter sounds, sorting, blending, and sight words; stages 1–4 add letter names; reading and rhyming levels are mixed in.
+- All content in `content.js`, with a coverage check: every letter taught and named, every word has a picture, and blending/reading words only use sounds already taught.
+- Pictures are now Noto Emoji (136 pictures, Apache 2.0), covering words the old icons couldn't.
+- One map per stage, with arrows between stages. The sticker book has 38 stickers, grouped by stage.
+- New sound sorts ask "Does it have…?" (short vs long a; ee vs oa) as well as "Does it start with…?".
+- Sight words now cover Fry 1–300, and the missing word "its" is back in the first hundred (it was missing in v1 and v2 too).
+- Progress starts fresh (new levels); the previous 10-level lab version is in the archive as v2.4.
+- Checks: 55 automatic checks, including the content check, every picture, every stage map and all 38 levels.
+
 ## v2.4 — 2026-10-02
 - Publishing now runs through a GitHub Actions workflow, so every push reaches the site (the built-in publishing skipped some pushes).
 - All 69 recordings added: every speech sound in levels 1–10 now plays from a real recording instead of the browser voice.

@@ -1,6 +1,6 @@
 # Word Path (lab)
 
-The tinkering copy of Word Path, an early-reading game (letter sounds, sight words, blending, rhymes) with spoken prompts.
+The tinkering copy of Word Path, an early-reading game with spoken prompts. 38 levels in 7 stages follow a standard phonics teaching order: letter sounds and names, first-sound sorting, blending, reading, rhyming and Fry's first 300 sight words.
 
 - Live: https://divyasusarla.github.io/word-path-lab/
 - All versions: https://divyasusarla.github.io/word-path-lab/versions/
@@ -9,9 +9,10 @@ The tinkering copy of Word Path, an early-reading game (letter sounds, sight wor
 ## Files
 
 - `index.html` – page shell
-- `app.js` – the whole game: level data, speech, gameplay and screens (Preact + htm, no build step)
+- `content.js` – **what children learn**: the stages and levels, sounds, words, pictures, sight words and stickers, plus a coverage check. Edit this to change content.
+- `app.js` – the game: speech, gameplay and screens (Preact + htm, no build step)
 - `styles.css` – base styles, hover states and animations
-- `vendor/` – Preact/htm, icon font and Fredoka font, kept locally so no outside servers are needed
+- `vendor/` – Preact/htm, icon font, Fredoka font and Noto Emoji pictures, kept locally so no outside servers are needed
 - `CHANGELOG.md` – what changed in each version
 - `versions/` – playable copy of every past version, with an index page
 - `tests/` – automatic checks that play every level (see `TESTING.md`)
