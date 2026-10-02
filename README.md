@@ -8,8 +8,10 @@ The tinkering copy of Word Path, an early-reading game (letter sounds, sight wor
 ## Files
 
 - `index.html` – page shell
-- `app.js` – the whole game: level data, speech, gameplay and screens (Preact + htm from a CDN, no build step)
+- `app.js` – the whole game: level data, speech, gameplay and screens (Preact + htm, no build step)
 - `styles.css` – base styles, hover states and animations
+- `vendor/` – Preact/htm, icon font and Fredoka font, kept locally so no outside servers are needed
+- `CHANGELOG.md` – what changed in each version
 
 ## Run locally
 

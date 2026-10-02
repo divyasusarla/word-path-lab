@@ -1,6 +1,6 @@
 // Word Path (lab) — ported from the Claude Design "Word Path v2" file.
-// Preact + htm from a CDN: no build step, edit and reload.
-import { h, html, render, Component } from 'https://unpkg.com/htm@3.1.1/preact/standalone.module.js';
+// Preact + htm, vendored (see vendor/README.md): no build step, edit and reload.
+import { h, html, render, Component } from './vendor/preact-htm.module.js';
 
 // Gameplay settings (were the editor props in Claude Design)
 const CONFIG = {

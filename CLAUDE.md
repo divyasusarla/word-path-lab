@@ -6,3 +6,5 @@
 - Ported from the Claude Design project "Learning game for sight words" (file `Word Path v2.dc.html`). The repo is now the source of truth.
 - Gameplay settings (rounds per level, think time, unlock all) are in `CONFIG` at the top of `app.js`.
 - Preview locally with `python3 -m http.server 8765` and check in the browser before pushing.
+- No outside servers at runtime: third-party files live in `vendor/` (see vendor/README.md). Don't add CDN links.
+- Each pushed change gets a `CHANGELOG.md` entry; milestones get a git tag (`v2.0`, `v2.1`, …).
