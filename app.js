@@ -9,6 +9,22 @@ const CONFIG = {
   unlockAll: false  // teacher mode: every level open
 };
 
+// Test mode: add ?test to the address. Nothing is saved, every level is open, and a test panel shows.
+// Options (combine with &): level=1-10, screen=map|play|done|stickers|settings, done=0-10 (stickers already earned),
+// rounds=N, think=seconds, mute (no voice; spoken lines still show as captions). See TESTING.md.
+const Q = new URLSearchParams(location.search);
+const TEST = Q.has('test');
+const num = (k, lo, hi) => { const n = parseInt(Q.get(k), 10); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : null; };
+const T = TEST ? {
+  level: num('level', 1, 10), screen: Q.get('screen'), done: num('done', 0, 10),
+  rounds: num('rounds', 1, 20), think: Q.has('think') ? Math.max(0, parseFloat(Q.get('think')) || 0) : null, mute: Q.has('mute')
+} : null;
+if (TEST) {
+  CONFIG.unlockAll = true;
+  if (T.rounds) CONFIG.rounds = T.rounds;
+  if (T.think !== null) CONFIG.thinkTime = T.think;
+}
+
 const D = (() => {
   const FRY = "the of and a to in is you that it he was for on are as with his they I at be this have from or one had by words but not what all were we when your can said there use an each which she do how their if will up other about out many then them these so some her would make like him into time has look two more write go see number no way could people my than first water been call who oil now find long down day did get come made may part".split(' ');
   const FRY2 = "over new sound take only little work know place year live me back give most very after thing our just name good sentence man think say great where help through much before line right too mean old any same tell boy follow came want show also around form three small set put end does another well large must big even such because turn here why ask went men read need land different home us move try kind hand picture again change off play spell air away animal house point page letter mother answer found study still learn should America world".split(' ');
@@ -50,29 +66,67 @@ const KEY = 'wordpath-lab.v1';
 const AKEY = 'wordpath-lab.audio';
 
 class App extends Component {
-  sid = 0; run = 0; tms = []; voices = [];
+  sid = 0; run = 0; tms = []; voices = []; spoken = [];
 
-  state = { screen:'map', lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), settings:false, audio:this.loadAudio(), vtick:0 };
+  state = { screen:'map', lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true };
 
+  // In test mode nothing is read from or written to storage
   load() {
+    if (TEST) return Array.from({ length: 10 }, (_, i) => i < (T.done || 0));
     try { const d = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(d) && d.length === 10) return d; } catch (e) {}
     return Array(10).fill(false);
   }
   loadAudio() {
-    try { const a = JSON.parse(localStorage.getItem(AKEY)); if (a) return { voice: a.voice || '', vol: a.vol ?? 0.6, rate: a.rate ?? 0.85 }; } catch (e) {}
+    if (!TEST) try { const a = JSON.parse(localStorage.getItem(AKEY)); if (a) return { voice: a.voice || '', vol: a.vol ?? 0.6, rate: a.rate ?? 0.85 }; } catch (e) {}
     return { voice:'', vol:0.6, rate:0.85 };
   }
-  save(done) { try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {} }
+  save(done) { if (!TEST) try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {} }
   setAudio(patch) {
     const audio = { ...this.state.audio, ...patch };
-    try { localStorage.setItem(AKEY, JSON.stringify(audio)); } catch (e) {}
+    if (!TEST) try { localStorage.setItem(AKEY, JSON.stringify(audio)); } catch (e) {}
     this.setState({ audio });
   }
 
   componentDidMount() {
+    if (TEST) this.initTest();
     const ss = window.speechSynthesis; if (!ss) return;
     const pick = () => { this.voices = ss.getVoices().filter(v => /^en/i.test(v.lang)); this.setState(s => ({ vtick: s.vtick + 1 })); };
     pick(); ss.onvoiceschanged = pick;
+  }
+
+  initTest() {
+    const lv = T.level ? T.level - 1 : 0, sc = T.screen || (T.level ? 'play' : 'map');
+    if (sc === 'play') this.start(lv);
+    else if (sc === 'done') this.setState({ screen:'done', lvl: lv });
+    else if (sc === 'stickers') this.setState({ screen:'stickers' });
+    else if (sc === 'settings') this.setState({ settings:true });
+    // Hook for the automated checks in tests/ and for poking around in the browser console
+    window.wp = {
+      state: () => {
+        const s = this.state, L = D.LV[s.lvl], r = s.rounds[s.round];
+        return { screen: s.screen, level: L.n, kind: L.kind, mode: L.mode, round: s.round, rounds: s.rounds.length, solved: s.solved,
+          target: r ? (r.target?.w ?? r.target ?? r.label) : null, settings: s.settings, done: s.done.slice() };
+      },
+      right: () => this.answer(true),
+      wrong: () => this.answer(false),
+      start: n => this.start(n - 1),
+      go: screen => { this.stop(); this.setState({ screen, settings:false }); },
+      setDone: n => this.setState({ done: Array.from({ length: 10 }, (_, i) => i < n) }),
+      spoken: () => this.spoken.map(x => x.t),
+      clearSpoken: () => { this.spoken = []; }
+    };
+  }
+
+  // Test helper: answer the current round right or wrong, the same way a tap would
+  answer(correct) {
+    const { screen, lvl, rounds, round, wrong } = this.state; if (screen !== 'play') return false;
+    const L = D.LV[lvl], r = rounds[round]; if (!r) return false;
+    if (L.kind === 'sort') return this.pickBin(correct ? r.bin : 1 - r.bin), true;
+    const isRight = o => L.kind === 'pop' ? o.label === r.target : o.w === r.target.w;
+    const i = r.options.findIndex((o, k) => isRight(o) === correct && !wrong.includes(k));
+    if (i < 0) return false;
+    L.kind === 'pop' ? this.pickPop(i) : this.pickMatch(i);
+    return true;
   }
   componentWillUnmount() { this.stop(); }
 
@@ -104,16 +158,23 @@ class App extends Component {
   }
   // parts: strings, {t, rate}, or numbers (pause in ms)
   async speak(parts) {
-    const id = ++this.sid, ss = window.speechSynthesis;
-    if (!ss) return false;
-    ss.cancel();
-    await this.wait(80);
+    const id = ++this.sid, ss = window.speechSynthesis, mute = TEST && T.mute;
+    if (!ss && !mute) return false;
+    if (ss) ss.cancel();
+    await this.wait(mute ? 0 : 80);
     for (const p of parts) {
       if (id !== this.sid) return false;
-      if (typeof p === 'number') { await this.wait(p); continue; }
-      await this.utter(typeof p === 'string' ? { t: p } : p);
+      if (typeof p === 'number') { if (!mute) await this.wait(p); continue; }
+      const o = typeof p === 'string' ? { t: p } : p;
+      if (TEST) this.caption(o.t);
+      if (mute) await this.wait(0); else await this.utter(o);
     }
     return id === this.sid;
+  }
+  caption(t) {
+    this.spoken.push({ t, at: Date.now() });
+    if (this.spoken.length > 200) this.spoken.shift();
+    this.setState(s => ({ ctick: s.ctick + 1 }));
   }
   snd(pair) { return { t: pair[0], rate: pair[1] }; }
 
@@ -326,6 +387,42 @@ class App extends Component {
     };
   }
 
+  testPanel() {
+    const s = this.state;
+    const b = 'height:32px;min-width:32px;padding:0 10px;border:0;border-radius:999px;background:#F3EEFF;color:#2A2350;font-size:14px;font-weight:600;cursor:pointer';
+    const on = 'background:#7B61FF;color:#fff';
+    const row = 'display:flex;flex-wrap:wrap;gap:6px;align-items:center';
+    const label = 'font-size:12px;font-weight:600;color:#5C5677;width:100%;margin-top:4px';
+    const goScreen = screen => { this.stop(); this.setState({ screen, settings:false }); };
+    const toggle = html`<button onClick=${() => this.setState({ panel: !s.panel })} style="height:32px;padding:0 14px;border:0;border-radius:999px;background:#2A2350;color:#FFC23C;font-size:13px;font-weight:700;letter-spacing:.04em;cursor:pointer">TEST MODE ${s.panel ? '▾' : '▸'}</button>`;
+    if (!s.panel) return html`<div style="position:fixed;left:12px;bottom:12px;z-index:20">${toggle}</div>`;
+    const doneCount = s.done.filter(Boolean).length;
+    return html`
+      <div style="position:fixed;left:12px;bottom:12px;z-index:20;width:min(340px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow-y:auto;background:#fff;border-radius:20px;padding:12px;box-shadow:0 6px 24px rgba(42,35,80,.25);display:flex;flex-direction:column;gap:6px;color:#2A2350;font-size:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center">${toggle}<a href=${location.pathname} style="font-size:13px">Exit test mode</a></div>
+        <div style=${label}>Play a level</div>
+        <div style=${row}>${D.LV.map((l, i) => html`<button title=${l.title} onClick=${() => this.start(i)} style=${b + (s.screen === 'play' && s.lvl === i ? ';' + on : '')}>${l.n}</button>`)}</div>
+        ${s.screen === 'play' && html`<div style=${row}>
+          <button onClick=${() => this.answer(true)} style=${b}>✓ Answer right</button>
+          <button onClick=${() => this.answer(false)} style=${b}>✗ Answer wrong</button>
+          <span style="font-size:12px;color:#5C5677">Round ${s.round + 1}/${s.rounds.length}</span></div>`}
+        <div style=${label}>Screens</div>
+        <div style=${row}>
+          <button onClick=${() => goScreen('map')} style=${b + (s.screen === 'map' ? ';' + on : '')}>Map</button>
+          <button onClick=${() => goScreen('stickers')} style=${b + (s.screen === 'stickers' ? ';' + on : '')}>Stickers</button>
+          <button onClick=${() => this.setState({ settings: true })} style=${b + (s.settings ? ';' + on : '')}>Settings</button>
+          <button onClick=${() => goScreen('done')} style=${b + (s.screen === 'done' ? ';' + on : '')}>Level complete</button>
+        </div>
+        <div style=${label}>Stickers earned (changes the map and sticker book)</div>
+        <div style=${row}>${[0, 1, 3, 5, 9, 10].map(n => html`<button onClick=${() => this.setState({ done: Array.from({ length: 10 }, (_, i) => i < n) })} style=${b + (doneCount === n ? ';' + on : '')}>${n}</button>`)}</div>
+        <div style=${label}>Spoken${T.mute ? ' (muted)' : ''}</div>
+        <div style="display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:1.35;min-height:20px">
+          ${this.spoken.slice(-6).map((x, k, a) => html`<div style=${k === a.length - 1 ? 'font-weight:600' : 'color:#5C5677'}>“${x.t}”</div>`)}
+        </div>
+        <div style="font-size:12px;color:#5C5677">Nothing is saved in test mode.</div>
+      </div>`;
+  }
+
   render() {
     const v = this.renderVals();
     const pill = 'display:flex;align-items:center;gap:8px;height:52px;padding:0 20px;border:0;border-radius:999px;background:#fff;color:#2A2350;font-size:19px;font-weight:600;cursor:pointer;box-shadow:0 4px 0 #E8DCC8';
@@ -492,6 +589,7 @@ class App extends Component {
         </div>
       </div>
     </div>`}
+  ${TEST && this.testPanel()}
 </div>`;
   }
 }

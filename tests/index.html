@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word Path checks</title>
+<link rel="stylesheet" href="../vendor/fredoka/fredoka.css">
+<style>
+  body { margin: 0; background: #FFF7EA; color: #2A2350; font-family: 'Fredoka', system-ui, sans-serif; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  h1 { font-size: 32px; margin: 0 0 4px; }
+  .lede { margin: 0 0 16px; color: #5C5677; }
+  #summary { font-size: 20px; font-weight: 700; padding: 12px 16px; border-radius: 16px; background: #fff; margin-bottom: 12px; }
+  #summary.pass { background: #D5F5EC; } #summary.fail { background: #FFE9E7; }
+  button { font-family: inherit; height: 40px; padding: 0 18px; border: 0; border-radius: 999px; background: #7B61FF; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  ol { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; }
+  li { background: #fff; border-radius: 12px; padding: 8px 12px; font-size: 15px; }
+  li .detail { font-size: 13px; color: #5C5677; margin-top: 2px; white-space: pre-wrap; }
+  li.fail { background: #FFE9E7; } li.pass .mark { color: #17977F; } li.fail .mark { color: #B0322A; }
+  .mark { font-weight: 700; margin-right: 6px; }
+  .frame { position: sticky; top: 16px; align-self: start; }
+  iframe { width: 100%; aspect-ratio: 4 / 3; border: 0; border-radius: 16px; background: #fff; box-shadow: 0 6px 0 #E8DCC8; }
+  .frame p { font-size: 13px; color: #5C5677; }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <h1>Word Path checks</h1>
+    <p class="lede">Plays every level and opens every screen in test mode, with the voice muted. Nothing is saved.</p>
+    <div id="summary">Not run yet</div>
+    <button id="run">Run all checks</button>
+    <ol id="results"></ol>
+  </section>
+  <section class="frame">
+    <iframe id="game" title="Game under test"></iframe>
+    <p>The game runs here while the checks play it. These checks can't hear the voice, so use the listening checklist in TESTING.md for that.</p>
+  </section>
+</main>
+<script type="module">
+const frame = document.getElementById('game');
+const list = document.getElementById('results');
+const summary = document.getElementById('summary');
+const runBtn = document.getElementById('run');
+let passed = 0, failed = 0;
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function waitFor(fn, ms = 4000, what = 'condition') {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { try { const v = fn(); if (v) return v; } catch (e) {} await sleep(25); }
+  throw new Error(`Timed out waiting for ${what}`);
+}
+async function load(query) {
+  frame.src = 'about:blank';
+  await sleep(30);
+  frame.src = `../?test&mute&think=0${query ? '&' + query : ''}`;
+  const w = await waitFor(() => frame.contentWindow.wp && frame.contentWindow, 6000, 'the game to load');
+  await sleep(50);
+  return w;
+}
+const doc = () => frame.contentDocument;
+const text = () => doc().body.innerText;
+function missingIcons() {
+  const bad = new Set();
+  doc().querySelectorAll('i[class*="icon-"]').forEach(el => {
+    const c = frame.contentWindow.getComputedStyle(el, '::before').content;
+    if (!c || c === 'none' || c === 'normal' || c === '""') bad.add([...el.classList].find(k => k.startsWith('icon-')));
+  });
+  return [...bad];
+}
+function report(name, ok, detail = '') {
+  ok ? passed++ : failed++;
+  const li = document.createElement('li');
+  li.className = ok ? 'pass' : 'fail';
+  li.innerHTML = `<span class="mark">${ok ? '✓' : '✗'}</span>`;
+  li.append(name);
+  if (detail) { const d = document.createElement('div'); d.className = 'detail'; d.textContent = detail; li.append(d); }
+  list.append(li);
+}
+async function check(name, fn) {
+  try { const detail = await fn(); report(name, true, detail || ''); }
+  catch (e) { report(name, false, e.message); }
+}
+function expect(cond, msg) { if (!cond) throw new Error(msg); }
+
+async function playLevel(n) {
+  const w = await load(`level=${n}&rounds=3`);
+  const wp = w.wp;
+  await waitFor(() => wp.state().screen === 'play', 2000, 'the level to start');
+  const s0 = wp.state();
+  await waitFor(() => wp.spoken().some(t => t.startsWith(`Level ${n}.`)), 2000, `"Level ${n}." to be spoken`);
+  const icons = new Set(), targets = [];
+  for (let r = 0; r < s0.rounds; r++) {
+    const s = wp.state();
+    expect(s.round === r, `expected round ${r + 1}, got ${s.round + 1}`);
+    expect(s.target, `round ${r + 1} has no target`);
+    targets.push(s.target);
+    missingIcons().forEach(i => icons.add(i));
+    if (r === 0) {
+      wp.clearSpoken();
+      expect(wp.wrong(), 'could not pick a wrong answer');
+      await waitFor(() => wp.spoken().some(t => /Try again/.test(t)), 3000, 'wrong-answer feedback');
+      expect(!wp.state().solved, 'a wrong answer was marked as solved');
+    }
+    expect(wp.right(), 'could not pick the right answer');
+    if (r < s0.rounds - 1) await waitFor(() => wp.state().round === r + 1, 4000, `round ${r + 2}`);
+  }
+  await waitFor(() => wp.state().screen === 'done', 4000, 'the level complete screen');
+  await waitFor(() => wp.spoken().some(t => /You earned the/.test(t)), 2000, 'the sticker message');
+  missingIcons().forEach(i => icons.add(i));
+  expect(wp.state().done[n - 1], 'level not marked done');
+  expect(!icons.size, `missing icons: ${[...icons].join(', ')}`);
+  return `${s0.kind}${s0.mode ? ' / ' + s0.mode : ''} · targets: ${targets.join(', ')}`;
+}
+
+async function runAll() {
+  runBtn.disabled = true; list.innerHTML = ''; passed = failed = 0;
+  summary.className = ''; summary.textContent = 'Running…';
+
+  await check('Map: 10 levels, only level 1 open, Next up shows level 1', async () => {
+    const w = await load('');
+    const nodes = doc().querySelectorAll('button[aria-label^="Level "]');
+    expect(nodes.length === 10, `found ${nodes.length} level buttons`);
+    expect(/Next up/.test(text()) && /Level 1: Letter sounds/.test(text()), 'Next up banner wrong');
+    const m = missingIcons(); expect(!m.length, `missing icons: ${m.join(', ')}`);
+  });
+  await check('Map: with 5 stickers, Next up moves to level 6', async () => {
+    await load('done=5');
+    expect(/Level 6: Rhyme time/.test(text()), 'Next up did not move to level 6');
+  });
+  await check('Map: with all 10 stickers, finished message and no Play button', async () => {
+    await load('done=10');
+    expect(/You finished every level!/.test(text()), 'finished message missing');
+    expect(![...doc().querySelectorAll('button')].some(b => b.innerText.trim() === 'Play'), 'Play button still showing');
+  });
+  await check('Map: "Hear it" speaks the next level', async () => {
+    const w = await load('done=2');
+    doc().querySelector('button[aria-label="Hear it"]').click();
+    await waitFor(() => w.wp.spoken().some(t => /First sounds/.test(t)), 2000, 'the level name to be spoken');
+  });
+  await check('Sticker book: none earned shows 10 locked', async () => {
+    await load('screen=stickers');
+    expect(/My stickers/.test(text()) && /0\/10/.test(text()), 'header or count wrong');
+    expect(doc().querySelectorAll('i.icon-lock').length === 10, 'expected 10 locked stickers');
+  });
+  await check('Sticker book: all earned shows every sticker with its name', async () => {
+    await load('screen=stickers&done=10');
+    expect(/10\/10/.test(text()), 'count wrong');
+    for (const name of ['Star', 'Rocket', 'Fish', 'Bird', 'Crown', 'Rabbit', 'Turtle', 'Boat', 'Flower', 'Trophy']) expect(text().includes(name), `missing sticker ${name}`);
+    const m = missingIcons(); expect(!m.length, `missing icons: ${m.join(', ')}`);
+  });
+  await check('Settings: opens with voice, volume, speed, test and reset', async () => {
+    const w = await load('screen=settings');
+    expect(/Grown-up settings/.test(text()), 'settings did not open');
+    expect(doc().querySelector('select'), 'voice list missing');
+    expect(doc().querySelectorAll('input[type=range]').length === 2, 'expected volume and speed sliders');
+    const testBtn = [...doc().querySelectorAll('button')].find(b => /Test voice/.test(b.innerText));
+    testBtn.click();
+    await waitFor(() => w.wp.spoken().some(t => /play with letters/.test(t)), 2000, 'the test voice line');
+  });
+  await check('Settings: speed slider changes the label, and nothing is saved', async () => {
+    const w = await load('screen=settings');
+    const before = JSON.stringify(Object.keys(w.localStorage).filter(k => k.startsWith('wordpath')).map(k => [k, w.localStorage.getItem(k)]));
+    const r = doc().querySelectorAll('input[type=range]')[1];
+    r.value = '0.6'; r.dispatchEvent(new w.Event('input', { bubbles: true }));
+    await waitFor(() => /Talking speed: slow/.test(text()), 1000, 'the speed label to say slow');
+    const after = JSON.stringify(Object.keys(w.localStorage).filter(k => k.startsWith('wordpath')).map(k => [k, w.localStorage.getItem(k)]));
+    expect(before === after, 'test mode wrote to saved progress or settings');
+  });
+  for (let n = 1; n <= 10; n++) await check(`Level ${n}: plays through with a wrong and right answer, then gives its sticker`, () => playLevel(n));
+  await check('Level complete: Next level button goes to the next level', async () => {
+    const w = await load('screen=done&level=3');
+    expect(/Level 3 complete!/.test(text()) && /Fish sticker/.test(text()), 'level complete text wrong');
+    [...doc().querySelectorAll('button')].find(b => /Next level/.test(b.innerText)).click();
+    await waitFor(() => w.wp.state().screen === 'play' && w.wp.state().level === 4, 2000, 'level 4 to start');
+  });
+
+  summary.className = failed ? 'fail' : 'pass';
+  summary.textContent = failed ? `${failed} failed, ${passed} passed` : `All ${passed} checks passed`;
+  runBtn.disabled = false;
+  window.testResult = { passed, failed };
+}
+
+runBtn.onclick = runAll;
+if (new URLSearchParams(location.search).has('run')) runAll();
+</script>
+</body>
+</html>

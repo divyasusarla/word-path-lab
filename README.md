@@ -14,6 +14,8 @@ The tinkering copy of Word Path, an early-reading game (letter sounds, sight wor
 - `vendor/` – Preact/htm, icon font and Fredoka font, kept locally so no outside servers are needed
 - `CHANGELOG.md` – what changed in each version
 - `versions/` – playable copy of every past version, with an index page
+- `tests/` – automatic checks that play every level (see `TESTING.md`)
+- `TESTING.md` – test mode, automatic checks and the hands-on checklist
 
 ## Run locally
 
@@ -21,4 +23,4 @@ The tinkering copy of Word Path, an early-reading game (letter sounds, sight wor
 python3 -m http.server 8765
 ```
 
-then open http://127.0.0.1:8765/. Pushing to `main` publishes to GitHub Pages.
+then open http://127.0.0.1:8765/. Add `?test` to unlock every level without saving (see `TESTING.md`). Pushing to `main` publishes to GitHub Pages.
