@@ -2,6 +2,10 @@
 """Import recordings from the recorder's zip into audio/ and rebuild audio/manifest.json.
 
 Usage: python3 tools/import_audio.py ~/Downloads/word-path-audio-YYYY-MM-DD.zip [--drop-first SECONDS]
+       python3 tools/import_audio.py --encode-all     (re-make every compressed copy)
+
+Each cleaned clip is also saved as audio/<id>.m4a (AAC, 32 kbps: a quarter to a seventh of the WAV size), made
+with macOS's afconvert. The game plays the .m4a and falls back to the .wav, which stays as the master copy.
 
 --drop-first cuts that much from the start of every clip before cleaning. Use 0.2 for recordings made
 before the recorder ignored its first quarter-second (the 2026-10-02 batch), which start with key clicks.
@@ -13,7 +17,7 @@ Clips already in audio/ that aren't in the zip are kept, so recordings can arriv
 The recorder's "Download all" includes every take so far, so audio/sources.json remembers a fingerprint of each
 take imported; a take already imported unchanged is skipped (its earlier clean-up is kept). Re-records import.
 """
-import hashlib, json, re, sys, wave, zipfile
+import hashlib, json, re, shutil, subprocess, sys, wave, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -105,6 +109,29 @@ def clean(path, drop_first=0.0, voiceless=False, whole=False):
         w.writeframes(struct.pack(f'<{len(y)}h', *(int(max(-1, min(1, v)) * 32767) for v in y)))
     return (hi - lo) / r
 
+AAC_BITRATE = 32000
+def encode(cid):
+    """Save audio/<cid>.m4a from the cleaned WAV. Returns False if afconvert (macOS) isn't available."""
+    if not shutil.which('afconvert'): return False
+    subprocess.run(['afconvert', '-f', 'm4af', '-d', 'aac', '-b', str(AAC_BITRATE),
+                    str(AUDIO / f'{cid}.wav'), str(AUDIO / f'{cid}.m4a')], check=True, capture_output=True)
+    return True
+
+def write_manifest(kinds):
+    present = sorted(p.stem for p in AUDIO.glob('*.wav') if kind_of(p.stem, kinds))
+    m4a = [c for c in present if (AUDIO / f'{c}.m4a').exists()]
+    (AUDIO / 'manifest.json').write_text(json.dumps({'clips': present, 'm4a': m4a}, indent=2) + '\n')
+    return present, m4a
+
+def encode_all():
+    kinds = sound_list()
+    present = sorted(p.stem for p in AUDIO.glob('*.wav') if kind_of(p.stem, kinds))
+    if not all(encode(c) for c in present):
+        sys.exit('afconvert not found: compressed copies can only be made on a Mac.')
+    present, m4a = write_manifest(kinds)
+    wav = sum((AUDIO / f'{c}.wav').stat().st_size for c in present); aac = sum((AUDIO / f'{c}.m4a').stat().st_size for c in m4a)
+    print(f'Made {len(m4a)} compressed copies: {aac / 1e6:.1f} MB instead of {wav / 1e6:.1f} MB.')
+
 def check(path, kind):
     with wave.open(str(path)) as w:
         if w.getnchannels() != 1 or w.getsampwidth() != 2:
@@ -138,9 +165,10 @@ def main(zpath, drop_first=0.0):
             (AUDIO / name).write_bytes(data)
             sources[cid] = fp
             clean(AUDIO / name, drop_first, voiceless=cid in VOICELESS, whole=cid not in kinds)
+            if not encode(cid): (AUDIO / f'{cid}.m4a').unlink(missing_ok=True)  # never keep a stale copy
             imported.append(cid)
-    present = sorted(p.stem for p in AUDIO.glob('*.wav') if kind_of(p.stem, kinds))
-    (AUDIO / 'manifest.json').write_text(json.dumps({'clips': present}, indent=2) + '\n')
+    present, m4a = write_manifest(kinds)
+    if len(m4a) < len(present): print(f'Note: {len(present) - len(m4a)} clips have no compressed copy (run --encode-all on a Mac).')
     src_file.write_text(json.dumps(dict(sorted(sources.items())), indent=1) + '\n')
 
     if unchanged: print(f'Skipped {len(unchanged)} takes already imported unchanged.')
@@ -155,6 +183,7 @@ def main(zpath, drop_first=0.0):
 
 if __name__ == '__main__':
     args = sys.argv[1:]
+    if args == ['--encode-all']: encode_all(); sys.exit()
     drop = 0.0
     if '--drop-first' in args:
         i = args.index('--drop-first'); drop = float(args[i + 1]); del args[i:i + 2]

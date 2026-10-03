@@ -56,7 +56,7 @@ const MKEY = 'wordpath-lab.mastery.v1';  // first-try attempts per word and soun
 
 class App extends Component {
   sid = 0; run = 0; tms = []; voices = []; spoken = [];
-  recorded = new Set(); buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
+  recorded = new Set(); compressed = new Set(); clipSources = {}; buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
 
   state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), mastery:this.loadMastery(), answered:false, misses:0, modelled:false, firstTries:[], missed:[], settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
 
@@ -146,6 +146,7 @@ class App extends Component {
       masteredIn: n => masteredIn(LV[n - 1], this.state.mastery),
       played: () => this.playedClips.slice(),
       loadedClips: () => Object.keys(this.buffers),
+      clipSources: () => ({ ...this.clipSources }),  // id -> 'm4a' or 'wav', for clips decoded so far
       // Starts loading recordings as a first tap would (a scripted tap doesn't count as one in Safari)
       preloadNow: () => { this.preloaded = true; this.preload(); },
       // Simulates iOS refusing to start sound (no tap yet, or interrupted), to check the voice fallback
@@ -189,6 +190,7 @@ class App extends Component {
     try {
       const m = await (await fetch('audio/manifest.json', { cache: 'no-cache' })).json();
       this.recorded = new Set(m.clips || []);
+      this.compressed = new Set(m.m4a || []);  // clips with a small .m4a copy (tools/import_audio.py)
     } catch (e) { this.recorded = new Set(); }
     this.setState(s => ({ vtick: s.vtick + 1 }));
   }
@@ -228,8 +230,10 @@ class App extends Component {
   clipBuffer(id) {
     if (!id || !this.recorded.has(id)) return null;
     const c = this.audioCtx(); if (!c) return null;
-    if (!this.buffers[id]) this.buffers[id] = fetch(`audio/${id}.wav`).then(r => r.ok ? r.arrayBuffer() : Promise.reject())
-      .then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no))).catch(() => null);
+    // The small .m4a copy first; the .wav master if there isn't one or this browser can't decode it
+    const load = ext => fetch(`audio/${id}.${ext}`).then(r => r.ok ? r.arrayBuffer() : Promise.reject())
+      .then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no))).then(buf => { this.clipSources[id] = ext; return buf; });
+    if (!this.buffers[id]) this.buffers[id] = (this.compressed.has(id) ? load('m4a').catch(() => load('wav')) : load('wav')).catch(() => null);
     return this.buffers[id];
   }
   playClip(buf) {

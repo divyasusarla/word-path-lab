@@ -70,7 +70,7 @@ Then tell Claude: *"The recordings are in Downloads."*
 
 ## 5. What Claude does next
 
-- Runs `python3 tools/import_audio.py ~/Downloads/word-path-audio-<date>.zip`, which unpacks the clips into `audio/` and updates `audio/manifest.json`. Takes already imported are skipped (`audio/sources.json`), so downloading everything each time is fine; re-recorded ones replace the old
+- Runs `python3 tools/import_audio.py ~/Downloads/word-path-audio-<date>.zip`, which unpacks the clips into `audio/` and updates `audio/manifest.json`. It also makes a small compressed copy of each clip (`.m4a`) for the game to load. Takes already imported are skipped (`audio/sources.json`), so downloading everything each time is fine; re-recorded ones replace the old
 - Flags any clips that look too short, too long or empty
 - Runs the automatic checks (`tests/`) and confirms every level now uses your recordings (🎙 in the test-mode captions)
 - Pushes to the lab site after you've checked it

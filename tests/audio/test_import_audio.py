@@ -2,7 +2,7 @@
 
 Run: python3 -m unittest discover -s tests/audio   (GitHub Actions runs this in the Checks job)
 """
-import io, json, math, struct, sys, tempfile, unittest, wave, zipfile
+import io, json, math, shutil, struct, sys, tempfile, unittest, wave, zipfile
 from contextlib import redirect_stdout
 from pathlib import Path
 
@@ -147,6 +147,20 @@ class ImportAudio(unittest.TestCase):
         self.assertIn('word-long', out); self.assertIn('long for one word', out)
         self.assertIn('short for a held sound', out)
         self.assertIn('long for a line', out)
+
+    @unittest.skipUnless(shutil.which('afconvert'), 'compressed copies are made with macOS afconvert')
+    def test_compressed_copy_is_made_and_listed(self):
+        self.run_import({'word-cat.wav': wav_bytes(silence(0.2) + tone(1.0) + silence(0.2))})
+        small, master = self.audio / 'word-cat.m4a', self.audio / 'word-cat.wav'
+        self.assertTrue(small.exists())
+        self.assertLess(small.stat().st_size, master.stat().st_size / 3)
+        self.assertEqual(json.loads((self.audio / 'manifest.json').read_text())['m4a'], ['word-cat'])
+
+    def test_manifest_lists_only_clips_with_a_compressed_copy(self):
+        self.run_import({'word-cat.wav': wav_bytes(tone(0.5))})
+        m = json.loads((self.audio / 'manifest.json').read_text())
+        self.assertTrue(set(m['m4a']) <= set(m['clips']))
+        for cid in m['m4a']: self.assertTrue((self.audio / f'{cid}.m4a').exists())
 
     def test_every_letter_sound_in_sounds_js_is_known(self):
         kinds = ia.sound_list()

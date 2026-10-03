@@ -487,6 +487,29 @@ async function runAll() {
     frame.src = 'about:blank';
     return `${loaded.size} of ${recorded.length} recordings loaded for level 1`;
   });
+  await check('Sound: recordings play from the small .m4a copies (or the .wav if this browser can\'t decode them)', async () => {
+    const m = await (await fetch('../audio/manifest.json', { cache: 'no-cache' })).json();
+    if (!m.clips.length) return 'no recordings';
+    expect(m.m4a && m.m4a.length === m.clips.length, `${m.m4a?.length ?? 0} of ${m.clips.length} clips have a compressed copy: run tools/import_audio.py --encode-all`);
+    const ctx = new OfflineAudioContext(1, 1, 22050), decode = async url => ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
+    const sample = ['m', 'word-ship', 'say-level-9-blend-it', 'say-try-again'].filter(id => m.clips.includes(id));
+    let aac = true;
+    for (const id of sample) {
+      const wav = await decode(`../audio/${id}.wav`);
+      let small; try { small = await decode(`../audio/${id}.m4a`); } catch (e) { aac = false; continue; }
+      expect(Math.abs(small.duration - wav.duration) < 0.03, `${id}: ${small.duration.toFixed(3)}s compressed vs ${wav.duration.toFixed(3)}s`);
+    }
+    frame.src = 'about:blank'; await sleep(30);
+    frame.src = '../?test&think=0&level=1';
+    const w = await waitFor(() => frame.contentWindow.wp && frame.contentWindow, 6000, 'the game to load');
+    await waitFor(() => w.wp.recorded().length, 4000, 'the recording list');
+    w.wp.preloadNow();
+    await waitFor(() => Object.keys(w.wp.clipSources()).length > 20, 6000, 'recordings to decode');
+    const srcs = Object.values(w.wp.clipSources());
+    expect(srcs.every(x => x === (aac ? 'm4a' : 'wav')), `expected every clip from ${aac ? '.m4a' : '.wav (no AAC here)'}, got ${[...new Set(srcs)].join(', ')}`);
+    frame.src = 'about:blank';
+    return `${srcs.length} clips decoded from .${srcs[0]}${aac ? '' : ' (this browser can\'t decode AAC, so the .wav fallback was used)'}`;
+  });
   await check('Sound: when iOS won\'t start sound, letter sounds fall back to the voice instead of silence', async () => {
     frame.src = 'about:blank'; await sleep(30);
     frame.src = '../?test&think=0&level=1';

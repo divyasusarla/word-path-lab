@@ -11,7 +11,6 @@ Work top to bottom. "Parallel" items are mostly your time and can happen alongsi
 | # | Item | Size | Area | Why here |
 |---|---|---|---|---|
 | 34 | **Show the word after the answer**: after a right answer, show the written word and highlight how it links to the sounds. First sounds: "sock" under the picture with the **s** lit up, said aloud. Letter sounds: the keyword picture and word ("s… sun"). Blend it: the word appears and each letter lights up as its sound plays. Rhyme time: both words with the shared ending highlighted. No new recordings | S–M | Learning | Connects sounds, spellings and meanings (orthographic mapping, Ehri 2014); first child test |
-| 27b | **Smaller audio files**: convert recordings to AAC (.m4a, plays everywhere including iPhone) to cut the 27 MB of WAV to about a fifth; `afconvert` on a Mac can do it in the importer | S | Audio | Faster first load on classroom Wi-Fi |
 | 9 | **Re-record 6 letter sounds** in the recorder's "Letter sounds and names" batch: s and f (background rumble), th (thin) and th (this) (0.3–0.4 s, mostly breath), sh and ng (0.6 s): hold each for about 2 seconds. Then Download all; only these re-imports | S | Audio · parallel | Yours |
 | 3 | **Picture naming review** (part 1 shipped: `tools/pictures.html`; part 2, the decisions, happens during testing: see Research R2): check pictures a child could name differently (tap → "water", cup → "drink", pan → "egg", nap → "sleep", cash → "money", king → "prince"); swap or rename; say a picture's name when it's pressed and held | S | Learning | A misnamed picture makes a right answer look wrong |
 | 35 | **Hint ladder**: a little help first, more if needed. First miss: replay the question more slowly and take away one wrong option. Then a hint per game: the keyword picture for a letter sound, a stretched first sound ("sssock") for sorting, the sounds closer together for Blend it. After two misses: show and say the answer (as now). Several misses in a row: easier next rounds, or suggest the level before | M | Learning | Supporting a child who's stuck (first child test); graded prompting and corrective feedback (LEARNING_DESIGN.md) |
@@ -67,6 +66,7 @@ Details in CHANGELOG.md.
 | 27 | ✅ ~~**One voice for everything**: record ourselves; recorder batches by stage~~ (all 535 words and lines recorded and imported 2026-10-03). Revisit a generated voice at #32 (sentences) | | | Shipped (CHANGELOG) |
 | 31 | ✅ ~~**Tests for the audio tools**: recorder processing and `import_audio.py` with synthetic recordings~~ | | | Shipped (CHANGELOG) |
 | 7c | ✅ ~~**iOS Safari sound reliability**~~ (confirmed on iPhone Safari 2026-10-03, with the new recordings) | | | Shipped (CHANGELOG) |
+| 27b | ✅ ~~**Smaller audio files**~~ (AAC copies: 5.4 MB instead of 27 MB; WAV kept as the master) | | | Shipped (CHANGELOG) |
 
 ## Research
 
