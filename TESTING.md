@@ -7,7 +7,8 @@ There are three layers. Run the first two before every push. Run the third befor
 Two kinds, both run on every pull request:
 
 - **Unit tests** (`tests/unit/engine.test.js`): check the game rules one at a time (rounds, wrong options, unlocking, saved progress, layouts), and prove the content check catches each kind of content mistake by breaking a copy of the content on purpose. They run in Node on GitHub and also appear as "Unit:" lines on the checks page.
-- **Browser checks** (`tests/index.html`): play the real game, every level and screen at four screen sizes. On GitHub they run in **Chrome** (required to pass) and in **WebKit, Safari's engine** (shown on every pull request but not yet required; it can't reproduce iPhone audio rules, only Safari's layout and code differences).
+- **Browser checks** (`tests/index.html`): play the real game, every level and screen at four screen sizes. On GitHub they run in **Chrome** (required to pass) and in **WebKit, Safari's engine** (a failure shows as a red cross; it can't reproduce iPhone audio rules, only Safari's layout and code differences).
+- **Audio tool tests** (`tests/audio/`): check the recording importer with made-up recordings (tones, key clicks, hum): clicks are trimmed, pauses inside words and lines are kept, volume is evened out, rumble is filtered, unknown files are skipped, and batches add to what's already there. Run locally with `python3 -m unittest discover -s tests/audio`. The recorder's own clean-up step is checked on the checks page ("Recorder processing").
 - **Coverage:** the unit-test run on GitHub prints how much of `engine.js` and `content.js` the tests exercise (see the "Unit tests" step in the Checks log).
 
 

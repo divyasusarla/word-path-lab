@@ -3,6 +3,8 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- **Audio tool tests (#31):** 11 tests for the recording importer, run on every pull request, using made-up recordings (tones, key clicks, hum), and a check of the recorder's own clean-up on the checks page. They cover what matters before importing hundreds of clips: clicks trimmed, pauses inside words and lines kept, volume evened, rumble filtered, unknown files skipped, batches adding up.
+- The Safari-engine (WebKit) checks have passed on every run since 2026-10-03, so a failure there now shows as a red cross instead of being hidden.
 - **Recording words and lines:** the recorder (`tools/record.html`) now has every word and line the game says, 534 clips in 7 batches (one per stage, about 60–100 each), as well as the 69 letter sounds. A batch holds everything first needed in that stage. The game plays each recording as soon as it's imported and uses the device voice for the rest, so batches can be recorded in any order alongside other work.
   - Sentences no longer have words baked in: "That is a cat" is now "That one is … cat", "Here it is: said" is "Here it is. … said", so 37 instruction lines cover every round.
   - Each line's recording is named after its exact words, so if a line is reworded later the game uses the device voice for it (never an out-of-date recording) until it's re-recorded.

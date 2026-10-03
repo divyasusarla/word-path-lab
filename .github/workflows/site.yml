@@ -31,6 +31,8 @@ jobs:
           sed -i "s/?v=dev//g" engine.js content.js script.js tests/unit/engine.test.js
           npx --yes c8@10.1.3 --reporter=text --include=engine.js --include=content.js --include=script.js node tests/unit/run.mjs
           git checkout -- engine.js content.js script.js tests/unit/engine.test.js
+      - name: Audio tool tests (import_audio.py with made-up recordings)
+        run: python3 -m unittest discover -s tests/audio -v
       - name: Install Playwright (uses the runner's installed Chrome)
         run: npm install --no-save --no-package-lock playwright@1.48.2
       - name: Serve the site
@@ -45,11 +47,10 @@ jobs:
 
   checks-webkit:
     name: Checks (Safari engine)
-    # Informational for now: shows Safari-engine problems on every pull request without blocking merges.
-    # Once it's reliably green, make it required in branch protection.
+    # Green on every run since 2026-10-03; a failure now shows as a red cross on the pull request.
+    # Merges are blocked by it only once it's added to the required checks in branch protection.
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
