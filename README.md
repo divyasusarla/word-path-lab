@@ -32,6 +32,7 @@ A plain static site with no build step: the browser loads `index.html`, which ru
 | `tests/` | Automatic checks that play every level in the browser (`index.html`), and `run-checks.mjs`, which runs them headlessly on GitHub (see `TESTING.md`) |
 | `tools/record.html` | The recorder for all 69 sounds |
 | `tools/pictures.html` | Review page: every picture with its word, the levels using it, and flags for pictures a child might name differently |
+| `tools/serve.py` | Local development server that disables caching |
 | `tools/import_audio.py` | Brings the recorder's zip into `audio/`, removing clicks and silence and evening out volume |
 | `versions/` | A playable copy of every past version, with an index page |
 | `.github/workflows/site.yml` | Runs the checks on every pull request and push; publishes to GitHub Pages from `main` only if they pass |
@@ -49,7 +50,7 @@ A plain static site with no build step: the browser loads `index.html`, which ru
 **Run it locally**
 
 ```
-python3 -m http.server 8765
+python3 tools/serve.py
 ```
 
 then open http://127.0.0.1:8765/. Add `?test` to open every level without saving anything (see `TESTING.md`).

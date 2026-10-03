@@ -1,7 +1,7 @@
 // Word Path (lab) — ported from the Claude Design "Word Path v2" file.
 // Preact + htm, vendored (see vendor/README.md): no build step, edit and reload.
 import { h, html, render, Component } from './vendor/preact-htm.module.js';
-import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, picSrc, phonemes, coverage, decodableBy, soundSimilarity } from './content.js';
+import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, picSrc, phonemes, coverage, decodableBy, soundSimilarity } from './content.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
 const CONFIG = {
@@ -31,14 +31,23 @@ const LV = LEVELS.map(l => ({ ...l,
   kind: { sounds:'pop', names:'pop', sight:'pop', sort:'sort', blend:'match', read:'match', rhyme:'match' }[l.type],
   mode: { sounds:'sound', names:'name', sight:'word', blend:'blend', read:'read', rhyme:'rhyme' }[l.type] }));
 const stageOf = i => LV[i].stage;
-// Map stop positions for a stage with n levels: a gentle zigzag across the map (percent of width/height)
-const stagePos = n => Array.from({ length: n }, (_, i) => [n === 1 ? 50 : 12 + i * 76 / (n - 1), i % 2 ? 66 : 34]);
-// Smooth path through the stops, in the map's 1000 x 600 drawing space
-const stagePath = pts => {
-  const P = pts.map(([x, y]) => [x * 10, y * 6]);
+// Which layout fits the screen (see styles.css and the "Word Path layouts" design canvas)
+const layoutFor = (w, h) => w < 600 && h >= w ? 'phone' : h < 500 && w > h ? 'phone-landscape' : h > w && w < 1000 ? 'tablet-portrait' : 'wide';
+// Map stop positions for a stage with n levels (percent of the map's width and height).
+// Across in landscape; down in portrait, where every label sits to the right of its stop.
+const stagePos = (n, down, phone) => Array.from({ length: n }, (_, i) => {
+  const t = n === 1 ? 0.5 : i / (n - 1);
+  return down ? [i % 2 ? (phone ? 42 : 40) : (phone ? 22 : 20), 9 + t * 82] : [12 + t * 76, i % 2 ? 66 : 34];
+});
+// Smooth path through the stops, in a 1000 x 1000 drawing space stretched to fit the map
+const stagePath = (pts, down) => {
+  const P = pts.map(([x, y]) => [x * 10, y * 10]);
   if (P.length < 2) return '';
   let d = `M${P[0][0]} ${P[0][1]}`;
-  for (let i = 0; i < P.length - 1; i++) { const [x0, y0] = P[i], [x1, y1] = P[i + 1], mx = (x0 + x1) / 2; d += ` C${mx} ${y0} ${mx} ${y1} ${x1} ${y1}`; }
+  for (let i = 0; i < P.length - 1; i++) {
+    const [x0, y0] = P[i], [x1, y1] = P[i + 1], mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    d += down ? ` C${x0} ${my} ${x1} ${my} ${x1} ${y1}` : ` C${mx} ${y0} ${mx} ${y1} ${x1} ${y1}`;
+  }
   return d;
 };
 // What the browser voice / recording says for a letter sound, letter name, or sound in a word
@@ -59,7 +68,7 @@ class App extends Component {
   sid = 0; run = 0; tms = []; voices = []; spoken = [];
   recorded = new Set(); buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
 
-  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true };
+  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
 
   // In test mode nothing is read from or written to storage
   load() {
@@ -79,6 +88,8 @@ class App extends Component {
   }
 
   componentDidMount() {
+    this.onResize = () => this.setState({ vw: window.innerWidth, vh: window.innerHeight });
+    window.addEventListener('resize', this.onResize);
     if (TEST) this.initTest();
     this.loadManifest();
     // Safari (iPad/iPhone) only allows sound after a tap, so start the audio engine on the first touch or key
@@ -116,6 +127,7 @@ class App extends Component {
       spokenDetail: () => this.spoken.map(({ t, clip, src }) => ({ t, clip, src })),
       recorded: () => [...this.recorded],
       audioState: () => this.actx ? this.actx.state : 'not started',
+      layout: () => layoutFor(this.state.vw, this.state.vh),
       played: () => this.playedClips.slice(),
       clearSpoken: () => { this.spoken = []; }
     };
@@ -132,7 +144,7 @@ class App extends Component {
     L.kind === 'pop' ? this.pickPop(i) : this.pickMatch(i);
     return true;
   }
-  componentWillUnmount() { this.stop(); }
+  componentWillUnmount() { this.stop(); window.removeEventListener('resize', this.onResize); }
 
   // Prefer voices built into the device: online voices (e.g. Chrome's "Google US English" on a Mac) can clip
   // the start of short words. A voice picked in Grown-up settings always wins.
@@ -349,8 +361,12 @@ class App extends Component {
 
   popField(L) {
     const { rounds, round, wrong, solved } = this.state, r = rounds[round]; if (!r) return null;
-    const size = L.mode === 'word' ? 176 : 160;
-    return h('div', { style: { position:'relative', minHeight:440, display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-evenly', gap:24, padding:'32px 16px', overflow:'hidden', borderRadius:40, background:'#D9F0FF' } },
+    const { vw, vh } = this.state, layout = layoutFor(vw, vh), n = r.options.length;
+    const cols = layout === 'phone' || layout === 'tablet-portrait' ? 2 : n;
+    const rows = Math.ceil(n / cols), avail = Math.min(vw, 1160) - (layout === 'phone' ? 32 : layout === 'phone-landscape' ? 32 + 108 : 56);
+    const size = Math.round(Math.max(96, Math.min(L.mode === 'word' ? 230 : 200, avail / cols - 28, (vh - (layout === 'phone' ? 260 : layout === 'phone-landscape' ? 110 : 300)) / rows - 28)));
+    const field = { position:'relative', flex:1, minHeight: layout === 'phone-landscape' ? 0 : 320, display:'grid', gridTemplateColumns:`repeat(${cols}, ${size}px)`, alignContent:'center', justifyContent:'space-evenly', justifyItems:'center', gap:24, padding:'24px 16px', overflow:'hidden', borderRadius: layout === 'phone' ? 32 : 40, background:'#D9F0FF' };
+    return h('div', { style: field },
       r.options.map((o, i) => {
         const right = solved && o.label === r.target, bad = wrong.includes(i), c = PAL[(i + round) % PAL.length];
         const anim = right ? 'wpPop .6s cubic-bezier(.34,1.56,.64,1) forwards'
@@ -371,7 +387,7 @@ class App extends Component {
               width:'100%', height:'100%', borderRadius:'50%', border:'7px solid #fff', cursor: bad ? 'default' : 'pointer',
               background: bad ? '#E6E1EE' : c.bg, color: bad ? '#9A93AE' : c.fg, boxShadow:`0 9px 0 ${bad ? '#CFC8DB' : c.sh}`,
               display:'flex', alignItems:'center', justifyContent:'center',
-              fontFamily:"'Fredoka',system-ui,sans-serif", fontWeight:700, fontSize: L.mode === 'word' ? (o.label.length > 6 ? 30 : 40) : (o.label.length > 2 || L.mode === 'name' ? 64 : 84),
+              fontFamily:"'Fredoka',system-ui,sans-serif", fontWeight:700, fontSize: Math.round(size * (L.mode === 'word' ? (o.label.length > 6 ? 0.17 : 0.23) : (o.label.length > 2 || L.mode === 'name' ? 0.38 : 0.5))),
               animation: anim
             }
           }, L.mode === 'name' ? o.label.toUpperCase() + o.label : showG(o.label)));
@@ -388,12 +404,13 @@ class App extends Component {
 
     // Map: one stage at a time
     const ms = this.mapStage(), st = STAGES[ms];
-    const idxs = LV.map((l, i) => i).filter(i => LV[i].stage === ms), pos = stagePos(idxs.length);
+    const layout = layoutFor(this.state.vw, this.state.vh), down = layout === 'phone' || layout === 'tablet-portrait', phone = layout === 'phone';
+    const idxs = LV.map((l, i) => i).filter(i => LV[i].stage === ms), pos = stagePos(idxs.length, down, phone);
     const nodes = idxs.map((i, k) => {
       const l = LV[i], isDone = done[i], open = this.unlocked(i), cur = i === nextIdx, c = P[i % 5], [x, y] = pos[k];
       return {
         num: l.n, title: l.title, aria: `Level ${l.n}: ${l.title}`, left: x + '%', top: y + '%',
-        size: cur ? '112px' : '92px',
+        size: phone ? (cur ? 92 : 76) : layout === 'phone-landscape' ? (cur ? 84 : 70) : (cur ? 112 : 92),
         icon: isDone ? 'icon-check' : !open ? 'icon-lock' : cur ? 'icon-play' : '',
         img: open && !isDone && !cur ? l.sticker.src : '',
         iconColor: isDone ? '#17977F' : open ? '#5940D6' : '#9A93AE',
@@ -433,12 +450,12 @@ class App extends Component {
       hasNext: nextIdx >= 0,
       heroPlay: () => this.start(nextIdx),
       heroHear: () => this.speak(nextIdx < 0 ? ['You finished every level! Look at your stickers.'] : [`Level ${nextIdx + 1}.`, 300, `${LV[nextIdx].title}.`, 500, 'Press play.']),
-      nodes, mapPath: stagePath(pos),
+      nodes, mapPath: stagePath(pos, down), layout, mapDown: down,
       stageTitle: st.title, stageSounds: st.sounds.split(' ').map(showG).join(' '), stageNum: ms + 1, stageCount: STAGES.length,
       stageDoneCount: idxs.filter(i => done[i]).length, stageLevelCount: idxs.length,
       canPrev: ms > 0, canNext: ms < STAGES.length - 1,
       prevStage: () => this.setState({ mapStage: ms - 1 }), nextStage: () => this.setState({ mapStage: ms + 1 }),
-      levelNum: L.n, levelTitle: L.title,
+      levelNum: L.n, levelTitle: L.title, roundNum: Math.min(round + 1, rounds.length), roundCount: rounds.length,
       progress: rounds.map((_, k) => ({ color: k < round || (k === round && solved) ? '#FFC23C' : '#E6E1EE' })),
       replay: () => r && this.speak(this.prompt(L, r, false)),
       soundOut: () => this.soundOut(),
@@ -491,10 +508,10 @@ class App extends Component {
     const label = 'font-size:12px;font-weight:600;color:#5C5677;width:100%;margin-top:4px';
     const goScreen = screen => { this.stop(); this.setState({ screen, settings:false }); };
     const toggle = html`<button onClick=${() => this.setState({ panel: !s.panel })} style="height:32px;padding:0 14px;border:0;border-radius:999px;background:#2A2350;color:#FFC23C;font-size:13px;font-weight:700;letter-spacing:.04em;cursor:pointer">TEST MODE ${s.panel ? '▾' : '▸'}</button>`;
-    if (!s.panel) return html`<div style="position:fixed;left:12px;bottom:12px;z-index:20">${toggle}</div>`;
+    if (!s.panel) return html`<div style="position:fixed;right:12px;bottom:12px;z-index:20">${toggle}</div>`;
     const doneCount = s.done.filter(Boolean).length;
     return html`
-      <div style="position:fixed;left:12px;bottom:12px;z-index:20;width:min(340px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow-y:auto;background:#fff;border-radius:20px;padding:12px;box-shadow:0 6px 24px rgba(42,35,80,.25);display:flex;flex-direction:column;gap:6px;color:#2A2350;font-size:14px">
+      <div style="position:fixed;right:12px;bottom:12px;z-index:20;width:min(340px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow-y:auto;background:#fff;border-radius:20px;padding:12px;box-shadow:0 6px 24px rgba(42,35,80,.25);display:flex;flex-direction:column;gap:6px;color:#2A2350;font-size:14px">
         <div style="display:flex;justify-content:space-between;align-items:center">${toggle}<a href=${location.pathname} style="font-size:13px">Exit test mode</a></div>
         <div style=${label}>Play a level</div>
         ${STAGES.map((stg, k) => html`<div style=${row}><span style="font-size:12px;font-weight:600;color:#5C5677;width:24px">S${k + 1}</span>${LV.map((l, i) => [l, i]).filter(([l]) => l.stage === k).map(([l, i]) => html`<button title=${l.title} onClick=${() => this.start(i)} style=${b + (s.screen === 'play' && s.lvl === i ? ';' + on : '')}>${l.n}</button>`)}</div>`)}
@@ -528,113 +545,118 @@ class App extends Component {
     const softBtn = 'height:80px;padding:0 30px 0 24px;border:0;border-radius:999px;background:#F3EEFF;color:#2A2350;font-size:24px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:12px';
 
     return html`
-<div style="min-height:100vh;background:#FFF7EA;color:#2A2350;font-family:'Fredoka',system-ui,sans-serif">
-  <header style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 28px">
+<div class=${`app layout-${v.layout}`} style="background:#FFF7EA;color:#2A2350;font-family:'Fredoka',system-ui,sans-serif">
+  ${!v.isPlay && html`<header style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 28px">
     <button onClick=${v.goMap} style="display:flex;align-items:center;gap:12px;background:none;border:0;padding:0;cursor:pointer;color:#2A2350">
-      <span style="width:52px;height:52px;border-radius:50%;background:#FFC23C;display:flex;align-items:center;justify-content:center;box-shadow:0 5px 0 #DB9A0A"><i class="icon-sparkles" style="font-size:28px;line-height:1;color:#2A2350"></i></span>
-      <span style="font-weight:700;font-size:30px">Word Path</span>
+      <span class="hdr-logo" style="width:52px;height:52px;border-radius:50%;background:#FFC23C;display:flex;align-items:center;justify-content:center;box-shadow:0 5px 0 #DB9A0A"><i class="icon-sparkles" style="font-size:28px;line-height:1;color:#2A2350"></i></span>
+      <span class="hdr-text" style="font-weight:700;font-size:30px">Word Path</span>
     </button>
     <div style="display:flex;gap:10px;align-items:center">
-      <button class="hv-tint" onClick=${v.goMap} style=${pill}><i class="icon-map" style="font-size:22px;line-height:1"></i><span>Map</span></button>
-      <button class="hv-tint" onClick=${v.goStickers} style=${pill}><i class="icon-sticker" style="font-size:22px;line-height:1;color:#F2544A"></i><span>${v.stickerCount}/${v.stickerTotal}</span></button>
-      <button class="hv-tint" onClick=${v.openSettings} aria-label="Grown-up settings" style=${roundBtn}><i class="icon-settings" style="font-size:22px;line-height:1"></i></button>
+      <button class="hv-tint hdr-btn" onClick=${v.goMap} style=${pill}><i class="icon-map" style="font-size:22px;line-height:1"></i><span class="map-label">Map</span></button>
+      <button class="hv-tint hdr-btn" onClick=${v.goStickers} style=${pill}><i class="icon-sticker" style="font-size:22px;line-height:1;color:#F2544A"></i><span>${v.stickerCount}/${v.stickerTotal}</span></button>
+      <button class="hv-tint hdr-btn hdr-round" onClick=${v.openSettings} aria-label="Grown-up settings" style=${roundBtn}><i class="icon-settings" style="font-size:22px;line-height:1"></i></button>
     </div>
-  </header>
+  </header>`}
 
-  <main style="max-width:1160px;margin:0 auto;padding:8px 28px 48px">
+  <main>
 
     ${v.isMap && html`
-      <section style="display:flex;flex-direction:column;gap:24px">
-        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:20px;padding:24px 28px;background:#7B61FF;border-radius:36px;color:#fff;box-shadow:0 8px 0 #5940D6">
-          <div>
-            <div style="font-size:18px;font-weight:500;opacity:.9">Next up</div>
-            <div style="font-size:44px;font-weight:700;line-height:1.1;text-wrap:balance">${v.heroTitle}</div>
+      <section class="map-screen">
+        <div class="hero" style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 16px 20px 32px;background:#7B61FF;border-radius:32px;color:#fff;box-shadow:0 7px 0 #5940D6">
+          <div style="min-width:0">
+            <div style="font-size:17px;font-weight:500;opacity:.9">Next up</div>
+            <div class="hero-title" style="font-size:36px;font-weight:700;line-height:1.1;text-wrap:balance">${v.heroTitle}</div>
           </div>
-          <div style="display:flex;gap:12px">
-            <button class="hv-lift" onClick=${v.heroHear} aria-label="Hear it" style="width:84px;height:84px;border:0;border-radius:50%;background:#fff;color:#5940D6;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 #4A33B8"><i class="icon-volume-2" style="font-size:38px;line-height:1"></i></button>
+          <div style="display:flex;gap:12px;flex-shrink:0">
+            <button class="hv-lift hero-hear" onClick=${v.heroHear} aria-label="Hear it" style="width:76px;height:76px;border:0;border-radius:50%;background:#fff;color:#5940D6;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 5px 0 #4A33B8"><i class="icon-volume-2" style="font-size:34px;line-height:1"></i></button>
             ${v.hasNext && html`
-              <button class="hv-lift" onClick=${v.heroPlay} style="height:84px;padding:0 36px 0 28px;border:0;border-radius:999px;background:#FFC23C;color:#2A2350;font-size:32px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 6px 0 #DB9A0A"><i class="icon-play" style="font-size:34px;line-height:1"></i>Play</button>`}
+              <button class="hv-lift hero-play" onClick=${v.heroPlay} style="height:76px;padding:0 34px 0 26px;border:0;border-radius:999px;background:#FFC23C;color:#2A2350;font-size:30px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:0 5px 0 #DB9A0A"><i class="icon-play" style="font-size:30px;line-height:1"></i>Play</button>`}
           </div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-          <button onClick=${v.prevStage} disabled=${!v.canPrev} aria-label="Previous stage" style=${`width:52px;height:52px;border:0;border-radius:50%;background:#fff;color:#2A2350;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #E8DCC8;opacity:${v.canPrev ? 1 : 0.3}`}><i class="icon-chevron-left" style="font-size:26px;line-height:1"></i></button>
+          <button class="stage-btn" onClick=${v.prevStage} disabled=${!v.canPrev} aria-label="Previous stage" style=${`width:52px;height:52px;flex-shrink:0;border:0;border-radius:50%;background:#fff;color:#2A2350;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #E8DCC8;opacity:${v.canPrev ? 1 : 0.3}`}><i class="icon-chevron-left" style="font-size:26px;line-height:1"></i></button>
           <div style="text-align:center">
-            <div style="font-size:26px;font-weight:700">${v.stageTitle} <span style="font-weight:500;color:#5C5677;font-size:18px">of ${v.stageCount}</span></div>
-            <div style="font-size:20px;font-weight:600;color:#5940D6;letter-spacing:.06em">${v.stageSounds} <span style="font-weight:500;color:#5C5677;font-size:16px;letter-spacing:0"> · ${v.stageDoneCount}/${v.stageLevelCount} done</span></div>
+            <div class="stage-name" style="font-size:26px;font-weight:700">${v.stageTitle} <span style="font-weight:500;color:#5C5677;font-size:18px">of ${v.stageCount}</span></div>
+            <div class="stage-sub" style="font-size:20px;font-weight:600;color:#5940D6;letter-spacing:.06em">${v.stageSounds}<span class="stage-done" style="font-weight:500;color:#5C5677;font-size:16px;letter-spacing:0"> · ${v.stageDoneCount}/${v.stageLevelCount} done</span></div>
           </div>
-          <button onClick=${v.nextStage} disabled=${!v.canNext} aria-label="Next stage" style=${`width:52px;height:52px;border:0;border-radius:50%;background:#fff;color:#2A2350;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #E8DCC8;opacity:${v.canNext ? 1 : 0.3}`}><i class="icon-chevron-right" style="font-size:26px;line-height:1"></i></button>
+          <button class="stage-btn" onClick=${v.nextStage} disabled=${!v.canNext} aria-label="Next stage" style=${`width:52px;height:52px;flex-shrink:0;border:0;border-radius:50%;background:#fff;color:#2A2350;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #E8DCC8;opacity:${v.canNext ? 1 : 0.3}`}><i class="icon-chevron-right" style="font-size:26px;line-height:1"></i></button>
         </div>
-        <div style="position:relative;width:100%;aspect-ratio:10/6;min-height:320px;background:#D9F0FF;border-radius:40px;overflow:hidden">
-          <svg viewBox="0 0 1000 600" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
-            <path d=${v.mapPath} fill="none" stroke="#fff" stroke-width="22" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
+        <div class="map-box">
+          <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+            <path d=${v.mapPath} fill="none" stroke="#fff" stroke-width=${v.layout === 'phone' ? 18 : 22} stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
             <path d=${v.mapPath} fill="none" stroke="#B7E1FF" stroke-width="5" stroke-dasharray="2 16" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
           </svg>
           ${v.nodes.map(n => html`
-            <div key=${n.num} style=${`position:absolute;left:${n.left};top:${n.top};transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:8px`}>
-              <button class="hv-grow" onClick=${n.onClick} aria-label=${n.aria} style=${`position:relative;width:${n.size};height:${n.size};border-radius:50%;border:6px solid #fff;background:${n.bg};color:${n.fg};box-shadow:0 7px 0 ${n.sh};cursor:${n.cursor};display:flex;align-items:center;justify-content:center;font-family:inherit;font-size:40px;font-weight:700;transition:transform .2s cubic-bezier(.34,1.56,.64,1)`}>
+            <div key=${n.num} class="map-stop" style=${v.mapDown
+              ? `position:absolute;left:${n.left};top:${n.top};transform:translate(-${n.size / 2}px,-50%);display:flex;flex-direction:row;align-items:center;gap:10px`
+              : `position:absolute;left:${n.left};top:${n.top};transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:8px`}>
+              <button class="hv-grow" onClick=${n.onClick} aria-label=${n.aria} style=${`position:relative;flex-shrink:0;width:${n.size}px;height:${n.size}px;border-radius:50%;border:${n.size > 80 ? 6 : 5}px solid #fff;background:${n.bg};color:${n.fg};box-shadow:0 7px 0 ${n.sh};cursor:${n.cursor};display:flex;align-items:center;justify-content:center;font-family:inherit;font-size:${Math.round(n.size * 0.4)}px;font-weight:700;transition:transform .2s cubic-bezier(.34,1.56,.64,1)`}>
                 <span>${n.num}</span>
-                <span style="position:absolute;right:-10px;bottom:-6px;width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 #E0D6C4">${n.img ? html`<img src=${n.img} alt="" style="width:26px;height:26px" />` : html`<i class=${n.icon} style=${`font-size:22px;line-height:1;color:${n.iconColor}`}></i>`}</span>
+                <span style=${`position:absolute;right:-10px;bottom:-6px;width:${n.size > 80 ? 40 : 34}px;height:${n.size > 80 ? 40 : 34}px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 #E0D6C4`}>${n.img ? html`<img src=${n.img} alt="" style="width:62%;height:62%" />` : html`<i class=${n.icon} style=${`font-size:${n.size > 80 ? 22 : 18}px;line-height:1;color:${n.iconColor}`}></i>`}</span>
               </button>
-              <span style=${`padding:4px 12px;border-radius:999px;background:#fff;font-size:15px;font-weight:600;white-space:nowrap;opacity:${n.opacity}`}>${n.title}</span>
+              <span style=${`padding:3px 12px;border-radius:999px;background:#fff;font-size:${v.layout === 'phone' ? 14 : 15}px;font-weight:600;white-space:nowrap;opacity:${n.opacity}`}>${n.title}</span>
             </div>`)}
         </div>
       </section>`}
 
     ${v.isPlay && html`
-      <section style="display:flex;flex-direction:column;gap:20px">
-        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between">
-          <div style="display:flex;gap:12px;align-items:center">
-            <button onClick=${v.goMap} aria-label="Back to map" style="width:56px;height:56px;border:0;border-radius:50%;background:#fff;color:#2A2350;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #E8DCC8"><i class="icon-arrow-left" style="font-size:26px;line-height:1"></i></button>
-            <div style="font-weight:700;font-size:26px">Level ${v.levelNum} · ${v.levelTitle}</div>
+      <section class="play">
+        <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;padding-top:8px">
+          <div style="display:flex;gap:12px;align-items:center;min-width:0">
+            <button onClick=${v.goMap} aria-label="Back to map" style="width:56px;height:56px;flex-shrink:0;border:0;border-radius:50%;background:#fff;color:#2A2350;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #E8DCC8"><i class="icon-arrow-left" style="font-size:26px;line-height:1"></i></button>
+            <div class="play-title" style="font-weight:700;font-size:26px;line-height:1.15">Level ${v.levelNum} · ${v.levelTitle}</div>
           </div>
-          <div style="display:flex;gap:8px;padding:10px 14px;background:#fff;border-radius:999px">
+          <div class="progress-stars" style="display:flex;gap:6px;padding:10px 14px;background:#fff;border-radius:999px;flex-shrink:0">
             ${v.progress.map(p => html`<i class="icon-star" style=${`font-size:24px;line-height:1;color:${p.color}`}></i>`)}
           </div>
+          <div class="progress-count">${v.roundNum} of ${v.roundCount}</div>
         </div>
 
-        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
-          <button class="press-red" onClick=${v.replay} style="height:76px;padding:0 30px 0 24px;border:0;border-radius:999px;background:#F2544A;color:#fff;font-size:26px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 6px 0 #C83A31"><i class="icon-volume-2" style="font-size:34px;line-height:1"></i>Hear again</button>
-          ${v.isRead && html`
-            <button onClick=${v.soundOut} style="height:76px;padding:0 30px 0 24px;border:0;border-radius:999px;background:#fff;color:#2A2350;font-size:24px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 6px 0 #E8DCC8"><i class="icon-ear" style="font-size:30px;line-height:1"></i>Sound it out</button>`}
-        </div>
-
+        <div class="play-main">
         ${v.isPop && v.popField}
 
         ${v.isMatch && html`
-          <div style="display:flex;flex-direction:column;gap:24px">
+          <div class=${v.isRead ? 'is-read' : ''} style="display:flex;flex-direction:column;gap:20px;flex:1;justify-content:center">
             ${v.isRead && html`
-              <div style="align-self:flex-start;padding:12px 44px 20px;background:#fff;border-radius:36px;font-weight:700;font-size:130px;line-height:1;box-shadow:0 8px 0 #E8DCC8">${v.readWord}</div>`}
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px">
+              <div class="read-word" style="align-self:center;padding:8px 40px 16px;background:#fff;border-radius:36px;font-weight:700;line-height:1;box-shadow:0 8px 0 #E8DCC8">${v.readWord}</div>`}
+            <div class="match-grid">
               ${v.matchOptions.map(o => html`
-                <button class="hv-bright" onClick=${o.onClick} aria-label="Picture choice" style=${`height:290px;border:0;border-radius:40px;background:${o.bg};color:${o.fg};opacity:${o.opacity};transform:${o.transform};box-shadow:0 10px 0 ${o.sh};cursor:pointer;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;transition:transform .45s cubic-bezier(.34,1.56,.64,1),background .2s,opacity .3s`}>
-                  <img src=${o.pic} alt="" style=${`width:${o.word ? 130 : 160}px;height:${o.word ? 130 : 160}px`} />
-                  ${o.word && html`<span style="font-size:48px;font-weight:700;line-height:1;color:#2A2350">${o.word}</span>`}
+                <button class="hv-bright match-card" onClick=${o.onClick} aria-label="Picture choice" style=${`border:0;border-radius:40px;background:${o.bg};color:${o.fg};opacity:${o.opacity};transform:${o.transform};box-shadow:0 10px 0 ${o.sh};cursor:pointer;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;transition:transform .45s cubic-bezier(.34,1.56,.64,1),background .2s,opacity .3s`}>
+                  <img src=${o.pic} alt="" />
+                  ${o.word && html`<span style="font-size:clamp(28px,5vh,48px);font-weight:700;line-height:1;color:#2A2350">${o.word}</span>`}
                 </button>`)}
             </div>
           </div>`}
 
         ${v.isSort && html`
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr) minmax(0,1fr);gap:20px;align-items:stretch;min-height:440px">
+          <div class="sort-grid">
             ${v.bins.map(b => html`
-              <button class="hv-bright2" onClick=${b.onClick} aria-label=${b.aria} style=${`order:${b.order};display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;border:0;border-radius:40px;background:${b.bg};color:#fff;box-shadow:0 10px 0 ${b.sh};cursor:pointer;transform:${b.transform};transition:transform .3s cubic-bezier(.34,1.56,.64,1)`}>
-                <div style="display:flex;align-items:center;gap:16px">
-                  <span style="font-weight:700;font-size:100px;line-height:1">${b.label}</span>
-                  <span style="width:96px;height:96px;border-radius:50%;background:#fff;color:#2A2350;display:flex;align-items:center;justify-content:center">${b.anchor && html`<img src=${b.anchor} alt="" style="width:60px;height:60px" />`}</span>
+              <button class="hv-bright2 bin" onClick=${b.onClick} aria-label=${b.aria} style=${`order:${b.order};display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;border:0;border-radius:40px;background:${b.bg};color:#fff;box-shadow:0 10px 0 ${b.sh};cursor:pointer;transform:${b.transform};transition:transform .3s cubic-bezier(.34,1.56,.64,1)`}>
+                <div class="bin-head" style="display:flex;align-items:center;gap:16px">
+                  <span class="bin-label" style="font-weight:700;font-size:100px;line-height:1">${b.label}</span>
+                  <span class="bin-anchor" style="width:96px;height:96px;flex-shrink:0;border-radius:50%;background:#fff;color:#2A2350;display:flex;align-items:center;justify-content:center">${b.anchor && html`<img src=${b.anchor} alt="" style="width:60px;height:60px" />`}</span>
                 </div>
                 <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;width:100%">
                   ${b.items.map(it => html`
                     <span style="width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,.92);color:#2A2350;display:flex;align-items:center;justify-content:center"><img src=${it.pic} alt="" style="width:44px;height:44px" /></span>`)}
                 </div>
               </button>`)}
-            <div style="order:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px">
-              <div style=${`width:240px;height:240px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 0 #E8DCC8;transform:${v.sortTransform};transition:transform .4s cubic-bezier(.34,1.56,.64,1)`}>
+            <div class="sort-center" style="order:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px">
+              <div class="sort-pic" style=${`width:240px;height:240px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 0 #E8DCC8;transform:${v.sortTransform};transition:transform .4s cubic-bezier(.34,1.56,.64,1)`}>
                 <img src=${v.sortPic} alt="" style="width:150px;height:150px" />
               </div>
-              <div style="display:flex;gap:14px;align-items:center;font-size:22px;font-weight:600">
+              <div class="sort-ask" style="display:flex;gap:14px;align-items:center;font-size:22px;font-weight:600">
                 <i class="icon-arrow-left" style="font-size:30px;line-height:1"></i><span>${v.sortAsk}</span><i class="icon-arrow-right" style="font-size:30px;line-height:1"></i>
               </div>
             </div>
           </div>`}
+        </div>
+
+        <div class="play-bottom">
+          <button class="hear press-red" onClick=${v.replay} aria-label="Hear again"><i class="icon-volume-2"></i><span class="hear-label">Hear again</span></button>
+          ${v.isRead && html`
+            <button class="sound-out" onClick=${v.soundOut} style="height:64px;padding:0 26px 0 20px;border:0;border-radius:999px;background:#fff;color:#2A2350;font-size:22px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:0 5px 0 #E8DCC8;margin-bottom:24px"><i class="icon-ear" style="font-size:28px;line-height:1"></i>Sound it out</button>`}
+        </div>
       </section>`}
 
     ${v.isDone && html`
