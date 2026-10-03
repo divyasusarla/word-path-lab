@@ -1,10 +1,14 @@
 // Runs the browser checks in tests/index.html headlessly and exits non-zero if any fail.
 // Used by GitHub Actions (.github/workflows/site.yml). Locally: serve the site on port 8765, then
 //   npm install --no-save playwright && node tests/run-checks.mjs
-import { chromium } from 'playwright';
+// BROWSER=webkit runs them in Safari's engine instead of Chrome.
+import { chromium, webkit } from 'playwright';
 
 const base = process.env.BASE_URL || 'http://127.0.0.1:8765';
-const browser = await chromium.launch({ channel: process.env.CHROME_CHANNEL || undefined });
+const browser = process.env.BROWSER === 'webkit'
+  ? await webkit.launch()
+  : await chromium.launch({ channel: process.env.CHROME_CHANNEL || undefined });
+console.log(`Running in ${process.env.BROWSER === 'webkit' ? 'WebKit (Safari engine)' : 'Chrome'}`);
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const pageErrors = [];
 page.on('pageerror', e => pageErrors.push(e.message));
