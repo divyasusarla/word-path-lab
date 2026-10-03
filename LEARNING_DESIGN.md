@@ -51,15 +51,17 @@ Grade labels are rough: children move through these at different ages. **Placeme
 ## Where content comes from
 
 - **Our own work:** word lists, pictures and sentences are chosen for Word Path. No material from commercial programmes (for example UFLI Foundations, Fundations, Jolly Phonics): their word lists, passages, slides, lesson structures and names aren't used.
-- **The teaching order** is a sequence of ideas, modelled on the UK Department for Education and Skills' *Letters and Sounds* (2007) phases, and consistent with the principles above. Alignment with programmes schools use (such as UFLI) is a research item (#5b).
+- **The teaching order** is a sequence of ideas, modelled on the UK Department for Education and Skills' *Letters and Sounds* (2007) phases, and consistent with the principles above. Alignment with programmes schools use (such as UFLI) is a research item (R3).
 - **Sight words:** Fry's first 300 (Fry, 1980). For a product, review against the Dolch list or public word-frequency data (see FUTURE.md).
 - **Pictures:** Noto Emoji (Apache 2.0). **Fonts and icons:** Fredoka (SIL OFL), Lucide (ISC).
 - **Speech sounds:** recorded by the project author.
 
 ## Open research questions
 
-1. **Programme alignment (#5b):** how much would matching a school's sequence (e.g. UFLI) help children, and what's allowed without using its materials?
-2. **Picture naming (#3):** which pictures do children actually name as intended? Answer by watching children, not only by review.
+Tracked as R1–R7 in BACKLOG.md. Summary:
+
+1. **Programme alignment (R3):** how much would matching a school's sequence (e.g. UFLI) help children, and what's allowed without using its materials?
+2. **Picture naming (R2):** which pictures do children actually name as intended? Answer by watching children, not only by review.
 3. **Mastery threshold:** is "3 first-try correct of the last 4, over 2 days" right for this age? Compare with published practice.
 4. **Session length:** how many rounds hold attention for a 5-year-old vs an 8-year-old?
 5. **Group mode:** what does teacher-led use need that individual play doesn't (choral responses, pacing, a pause button)?

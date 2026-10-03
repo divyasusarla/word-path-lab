@@ -8,15 +8,14 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 
 | # | Item | Size | Area | Why here |
 |---|---|---|---|---|
-| 1 | **Automatic checks on every pull request and push**: headless Chrome in GitHub Actions runs `tests/`; a pull request shows pass/fail before you merge, and the site only publishes if every check passes | M | Testing | Every later change runs through it; makes reviewing pull requests meaningful |
-| 2 | **Wrong options that force full blending**: in Blend it and Read it, wrong pictures share sounds with the answer (cat / cap / can; cat / hat / bat) | S | Learning | Biggest learning gain for the least work |
-| 3 | **Picture naming review**: check pictures a child could name differently (tap → "water", cup → "drink", pan → "egg", nap → "sleep", cash → "money", king → "prince"); swap or rename; say a picture's name when it's pressed and held | S | Learning | A misnamed picture makes a right answer look wrong |
-| 4 | **"Sound it out" stops giving the answer away**: say the sounds only, not the whole word | S | Learning | Otherwise Read it can be done by listening |
-| 5 | **Learning design document** (`LEARNING_DESIGN.md`): research basis (What Works Clearinghouse K–3 guide, National Reading Panel, Ehri's phases, Scarborough's rope), developmental bands for K / grade 1 / grade 2, rules for where content comes from | S–M | Learning · parallel | Grounds every learning decision below; shapes the band restructure |
-| 5b | **Research: aligning with school phonics programmes** (e.g. UFLI): how sequences differ, what alignment would help children, and what's allowed without using a programme's materials; findings go in `LEARNING_DESIGN.md` and FUTURE.md | S | Learning · research | Informs the band restructure (#14) |
-| 6 | **About and credits page**: research sources and asset licences (Noto Emoji, Fredoka, Lucide, Preact) in the game | S | Product | Clean attribution from the start |
-| 7 | **Layout for tablet, phone and desktop, landscape and portrait**: design pass first (map and play screens, both orientations) for your approval, then build; includes the iOS Safari sound reliability fix | M | Product | Works on every device children might use |
-| 8 | **Interim voice fix**: prefer on-device voices over the online Google voice; say the word in the same utterance as the prompt | S | Audio | Fixes level 2's clipped words until #27 |
+| 1 | ✅ ~~**Automatic checks on every pull request and push**: headless Chrome in GitHub Actions runs `tests/`; a pull request shows pass/fail before you merge, and the site only publishes if every check passes~~ | | | Shipped (CHANGELOG) |
+| 2 | ✅ ~~**Wrong options that force full blending**: in Blend it and Read it, wrong pictures share sounds with the answer (cat / cap / can; cat / hat / bat)~~ | | | Shipped (CHANGELOG) |
+| 3 | **Picture naming review** (part 1 shipped: `tools/pictures.html`; part 2, the decisions, happens during testing: see Research R2): check pictures a child could name differently (tap → "water", cup → "drink", pan → "egg", nap → "sleep", cash → "money", king → "prince"); swap or rename; say a picture's name when it's pressed and held | S | Learning | A misnamed picture makes a right answer look wrong |
+| 4 | ✅ ~~**"Sound it out" stops giving the answer away**: say the sounds only, not the whole word~~ | | | Shipped (CHANGELOG) |
+| 5 | ✅ ~~**Learning design document** (`LEARNING_DESIGN.md`): research basis (What Works Clearinghouse K–3 guide, National Reading Panel, Ehri's phases, Scarborough's rope), developmental bands for K / grade 1 / grade 2, rules for where content comes from~~ | | | Shipped (CHANGELOG) |
+| 6 | ✅ ~~**About and credits page**: research sources and asset licences (Noto Emoji, Fredoka, Lucide, Preact) in the game~~ | | | Shipped (CHANGELOG) |
+| 7 | **Layout for tablet, phone and desktop, landscape and portrait**: design pass first, in Claude Design (map and play screens, both orientations) for your approval, then build; includes the iOS Safari sound reliability fix | M | Product | Works on every device children might use |
+| 8 | ✅ ~~**Interim voice fix**: prefer on-device voices over the online Google voice; say the word in the same utterance as the prompt~~ | | | Shipped (CHANGELOG) |
 | 9 | **Rumble filter on import**, plus **re-record s, th (thin), f** (optionally sh, ng, th (this) held longer) | S | Audio · parallel | th (thin) is used in stage 5 |
 | 10 | **Move game logic into its own module, with unit tests**: building rounds, choosing wrong options, unlocking; tests that `coverage()` catches broken content | M | Testing | Groundwork for mastery tracking |
 | 11 | **Store progress by level id, not position** | S | Engineering | Before mastery data builds up, and before the band restructure moves levels |
@@ -43,6 +42,20 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 31 | **Tests for the audio tools**: recorder processing and `import_audio.py` with synthetic recordings | S | Testing | Low risk today |
 | 32 | **Decodable sentences**: short sentences from taught sounds and heart words, then pick the picture | L | Learning | The step from words to reading text |
 | 33 | **Adaptive difficulty**: adjust rounds, wrong options and review from mastery | L | Learning | Builds on everything above |
+
+## Research
+
+Questions to answer before or alongside the learning items. Findings go into LEARNING_DESIGN.md.
+
+| # | Question | How | Informs |
+|---|---|---|---|
+| R1 | **Literature review**: a structured review of (a) foundational reading instruction for ages 5–8, (b) evidence on digital and game-based phonics practice (what works and what doesn't in apps), (c) design for young children (feedback, rewards, attention, accessibility). Output: a summary with verified citations in LEARNING_DESIGN.md | Desk research: practice guides, meta-analyses and systematic reviews first; verify every citation | Everything; especially #12–#16, #22–#26 |
+| R2 | **Picture naming**: which pictures do children name as intended? Decide on the 10 flagged as likely misnamed and 11 worth a look (`tools/pictures.html`) | During testing: ask children to name pictures; note mismatches | #3 part 2 |
+| R3 | **Programme alignment**: how much would matching a school's sequence (e.g. UFLI) help children, and what's allowed without using its materials? | Desk research; compare published sequences; check terms | #14 bands |
+| R4 | **Mastery threshold**: is "3 first-try correct of the last 4, over 2 days" right for ages 5–8? | Literature (R1) and published practice | #12, #13 |
+| R5 | **Session length**: how many rounds hold attention for a 5-year-old vs an 8-year-old? | Literature (R1) and observation during testing | Rounds per level, #33 |
+| R6 | **Group mode needs**: what does teacher-led use need that individual play doesn't (choral answers, pacing, pause)? | Talk to teachers; observe a group session | #22 |
+| R7 | **Sight-word list**: Fry vs Dolch vs a list from public word-frequency data, for learning value and licensing | Desk research | #15, #25, FUTURE.md |
 
 ## Ongoing
 
