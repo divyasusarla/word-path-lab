@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- Second layout pass, following the approved designs: level complete (sticker as the hero, one clear next step, Stickers and Map secondary; stacked with full-width buttons on phones), sticker book (a grid per stage with a count, 6 across on tablets, 4 in tablet portrait, 3 on phones), grown-up settings (grouped into Sound and Play, Reset set apart at the bottom; a two-column card on tablets, full screen on phones), and About (a readable single column). Layout checks now cover these screens at all four sizes.
 - `main` is protected: pull requests required, Checks must pass, no force-push or deletion (admins included).
 - Checks also run in WebKit (Safari's engine) on every pull request, as an informational job for now; the unit-test run reports coverage of `engine.js` and `content.js`.
 - New docs: `DECISIONS.md` (14 decisions, why, and when to revisit) and `ARCHITECTURE.md` (how a round works, state and storage). FUTURE.md gains "Build step and TypeScript".

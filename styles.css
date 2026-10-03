@@ -128,3 +128,60 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 4px s
 /* the answer, shown after repeated misses */
 @keyframes wpGlow { from { transform: scale(1) } to { transform: scale(1.06) } }
 .shown { outline: 8px solid #FFC23C !important; outline-offset: 2px; animation: wpGlow 1s ease-in-out infinite alternate; }
+
+/* ---- Second layout pass: level complete, sticker book, settings, About ---- */
+.done-card { display: flex; align-items: center; gap: 56px; padding: 56px; background: #fff; border-radius: 48px; box-shadow: 0 10px 0 #E8DCC8; margin: auto 0; }
+.done-sticker { width: 280px; height: 280px; }
+.done-body { display: flex; flex-direction: column; gap: 26px; flex: 1; min-width: 0; }
+.done-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.done-primary { height: 76px; padding: 0 34px 0 26px; border: 0; border-radius: 999px; background: #FFC23C; color: #2A2350; font-family: inherit; font-size: 26px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 6px 0 #DB9A0A; }
+.done-primary i { font-size: 28px; line-height: 1; }
+.done-secondary { display: flex; flex-wrap: wrap; gap: 12px; }
+.done-secondary button { height: 64px; padding: 0 24px 0 20px; border: 0; border-radius: 999px; background: #F3EEFF; color: #2A2350; font-family: inherit; font-size: 20px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.done-secondary i { font-size: 24px; line-height: 1; }
+.layout-tablet-portrait .done-card, .layout-phone .done-card { flex-direction: column; text-align: center; gap: 24px; padding: 32px 20px; }
+.layout-phone .done-card { flex: 1; border-radius: 36px; }
+.layout-phone .done-sticker { width: 190px; height: 190px; }
+.layout-phone .done-title { font-size: 32px !important; }
+.layout-phone .done-actions, .layout-tablet-portrait .done-actions { flex-direction: column; align-items: stretch; }
+.layout-phone .done-secondary { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+.layout-phone .done-secondary button { padding: 0 12px; font-size: 18px; }
+.layout-phone-landscape .done-card { padding: 20px 28px; gap: 28px; }
+.layout-phone-landscape .done-sticker { width: 150px; height: 150px; }
+.layout-phone-landscape .done-title { font-size: 30px !important; }
+.layout-phone-landscape .done-primary { height: 60px; font-size: 22px; }
+.layout-phone-landscape .done-secondary button { height: 52px; font-size: 17px; }
+
+.sticker-book { display: flex; flex-direction: column; gap: 28px; padding: 32px 36px; background: #fff; border-radius: 40px; box-shadow: 0 8px 0 #E8DCC8; }
+.sticker-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 18px 12px; justify-items: center; }
+.sticker-disc { width: 104px; height: 104px; }
+.sticker-disc img { width: 58%; height: 58%; }
+.sticker-disc i { font-size: 38px; line-height: 1; }
+.layout-tablet-portrait .sticker-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.layout-phone .sticker-book { padding: 20px 16px; border-radius: 32px; gap: 24px; }
+.layout-phone .sticker-title { font-size: 30px !important; }
+.layout-phone .sticker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.layout-phone .sticker-disc { width: 86px; height: 86px; }
+
+.settings-backdrop { position: fixed; inset: 0; background: rgba(42,35,80,.45); display: flex; align-items: flex-start; justify-content: center; padding: 24px; z-index: 10; overflow-y: auto; }
+.settings-card { width: 100%; max-width: 820px; margin: auto 0; background: #fff; border-radius: 36px; padding: 32px 36px; display: flex; flex-direction: column; gap: 24px; box-sizing: border-box; }
+.settings-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px; }
+.settings-group { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.settings-heading { font-size: 14px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #5940D6; }
+.settings-field { display: flex; flex-direction: column; gap: 8px; font-size: 18px; font-weight: 600; }
+.settings-field select { height: 52px; padding: 0 14px; border: 3px solid #E8DCC8; border-radius: 16px; font-family: inherit; font-size: 17px; color: #2A2350; background: #fff; max-width: 100%; }
+.settings-field input[type=range] { accent-color: #7B61FF; }
+.settings-hint { font-size: 14px; font-weight: 400; color: #5C5677; }
+.settings-test { align-self: flex-start; height: 56px; padding: 0 24px 0 18px; border: 0; border-radius: 999px; background: #7B61FF; color: #fff; font-family: inherit; font-size: 18px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+.settings-test i { font-size: 22px; line-height: 1; }
+.settings-link { display: flex; justify-content: space-between; align-items: center; height: 56px; padding: 0 18px; border: 0; border-radius: 16px; background: #F3EEFF; color: #2A2350; font-family: inherit; font-size: 18px; font-weight: 600; cursor: pointer; }
+.settings-link i { font-size: 22px; line-height: 1; }
+.settings-danger { border-top: 2px solid #F1EDF6; padding-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.settings-danger button { align-self: flex-start; height: 52px; padding: 0 22px; border: 2px solid #F2B8B3; border-radius: 999px; background: #fff; color: #B0322A; font-family: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+.layout-tablet-portrait .settings-groups, .layout-phone .settings-groups { grid-template-columns: 1fr; gap: 26px; }
+.layout-phone .settings-backdrop { padding: 0; background: #fff; }
+.layout-phone .settings-card { max-width: none; min-height: 100%; border-radius: 0; padding: 20px 20px 28px; margin: 0; }
+.layout-phone-landscape .settings-backdrop { padding: 12px; }
+
+.about-card { display: flex; flex-direction: column; gap: 20px; padding: 36px; background: #fff; border-radius: 40px; box-shadow: 0 8px 0 #E8DCC8; font-size: 18px; line-height: 1.55; max-width: 70ch; margin: 0 auto; }
+.layout-phone .about-card { padding: 22px 18px; border-radius: 32px; font-size: 17px; }
