@@ -3,6 +3,8 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- Coverage: each play picks never-seen words and sounds first, then ones still being learned (least recently practised first), then mastered ones, so playing a level a few times works through its whole list (for example, all 50 sight words in a 50-word level in 9 plays) instead of random picks.
+- Cumulative review: from the second level of each kind onwards, 2 of every 8 rounds review items from earlier levels of the same kind (letter sounds, letter names, sight words, decodable words), choosing words the child is still learning first, then mastered ones not seen for longest. Sort and rhyme levels don't review.
 - Guessing no longer wins a round: after two misses (one in a sort, which has only two bins), the game shows the answer with a glowing outline, says it ("Here it is: said. Tap it."), and the child taps it. That round counts as not right first time.
 - "Practise again": if fewer than half the first taps in a level were right, the level complete screen offers Practise again first (Next level is still there, and the sticker is still given).
 - Praise says what was right ("Yes! That says sh.", "Yes! said.", "cat!") instead of generic "Great job!", and announces newly mastered items ("You know that one now!").

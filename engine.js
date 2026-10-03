@@ -73,21 +73,66 @@ export function nearOptions(w, stage, rng = Math.random) {
   return decodableBy(stage).filter(x => x !== w)
     .map(x => [x, soundSimilarity(w, x) + rng() * 0.6]).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([x]) => x);
 }
-// The rounds for one play of a level
-export function buildRounds(L, count, rng = Math.random) {
+// ---- Choosing what a play practises (coverage and cumulative review) ------------------------------
+const lastDay = (atts = []) => atts.length ? atts[atts.length - 1].day : '';
+// Order items so a level works through its whole list over a few plays: never-seen items first (shuffled), then
+// ones still being learned (least recently practised first), then mastered ones. Keeps one mastered item when
+// there are enough rounds, so known items still come back now and then.
+export function pickTargets(items, keyOf, count, mastery = {}, rng = Math.random, rule = MASTERY_RULE) {
+  if (!items.length || count <= 0) return [];
+  const unseen = [], learning = [], known = [];
+  for (const it of shuffle(items, rng)) {
+    const atts = mastery[keyOf(it)];
+    (!atts || !atts.length ? unseen : isMastered(atts, rule) ? known : learning).push(it);
+  }
+  learning.sort((a, b) => lastDay(mastery[keyOf(a)]).localeCompare(lastDay(mastery[keyOf(b)])));
+  known.sort((a, b) => lastDay(mastery[keyOf(a)]).localeCompare(lastDay(mastery[keyOf(b)])));
+  const keepKnown = known.length && count >= 6 && unseen.length + learning.length >= count ? 1 : 0;
+  const order = [...unseen, ...learning].slice(0, count - keepKnown).concat(known.slice(0, keepKnown));
+  const rest = [...unseen, ...learning, ...known].filter(x => !order.includes(x));
+  const out = order.concat(rest).slice(0, count);
+  while (out.length < count) out.push(...shuffle(items, rng).slice(0, count - out.length));  // short lists repeat
+  return out;
+}
+// Items from earlier levels of the same kind that a later level can review (letter sounds, names, sight words,
+// and decodable words for Blend it / Read it). Sorting and rhyme levels don't review.
+export function reviewItems(L) {
+  const earlier = LV.filter(l => l.n < L.n);
+  if (L.kind === 'pop') return [...new Set(earlier.filter(l => l.type === L.type).flatMap(l => l.pool))].filter(x => !L.pool.includes(x));
+  if (L.mode === 'blend' || L.mode === 'read') return [...new Set(earlier.filter(l => l.mode === 'blend' || l.mode === 'read').flatMap(l => l.words))].filter(w => !L.words.includes(w));
+  return [];
+}
+// How many of a play's rounds review earlier items: 2 of 8 when there's anything earlier to review
+export const reviewCount = (L, count) => reviewItems(L).length ? Math.min(2, Math.floor(count / 4)) : 0;
+// Review picks: items still being learned first (they need it most), then mastered ones not seen for longest,
+// then earlier items never practised
+export function pickReview(L, n, mastery = {}, rng = Math.random, rule = MASTERY_RULE) {
+  const keyOf = x => L.kind === 'pop' ? `${{ sound: 'sound', name: 'name', word: 'word' }[L.mode]}:${x}` : `${L.mode}:${x}`;
+  const pool = shuffle(reviewItems(L), rng), learning = [], known = [], unseen = [];
+  for (const it of pool) { const a = mastery[keyOf(it)]; (!a || !a.length ? unseen : isMastered(a, rule) ? known : learning).push(it); }
+  known.sort((a, b) => lastDay(mastery[keyOf(a)]).localeCompare(lastDay(mastery[keyOf(b)])));
+  return [...learning, ...known, ...unseen].slice(0, n);
+}
+
+// The rounds for one play of a level. mastery (optional) steers which items come up; review rounds are marked
+export function buildRounds(L, count, rng = Math.random, mastery = {}) {
+  if (L.kind === 'sort') return shuffle(L.items, rng);  // sort: every picture once
+  if (L.mode === 'rhyme') return cycle(L.pairs, count, rng).map(t => ({ target: t, options: shuffle([t, ...shuffle(L.pairs.filter(x => x.w !== t.w), rng).slice(0, 2)], rng) }));
+  const nReview = reviewCount(L, count);
+  const own = L.kind === 'pop' ? L.pool : L.words;
+  const keyOf = x => L.kind === 'pop' ? `${{ sound: 'sound', name: 'name', word: 'word' }[L.mode]}:${x}` : `${L.mode}:${x}`;
+  const picks = [...pickTargets(own, keyOf, count - nReview, mastery, rng).map(t => ({ t, review: false })),
+    ...pickReview(L, nReview, mastery, rng).map(t => ({ t, review: true }))];
+  const order = shuffle(picks, rng);
   if (L.kind === 'pop') {
     const tiles = Math.min(L.tiles || 4, L.pool.length);
-    return cycle(L.pool, count, rng).map(t => ({
-      target: t,
+    return order.map(({ t, review }) => ({
+      target: t, review,
       options: shuffle([t, ...shuffle(L.pool.filter(x => x !== t), rng).slice(0, tiles - 1)], rng)
         .map(label => ({ label, bob: (rng() * 1.5).toFixed(2), dur: (2.6 + rng()).toFixed(2) }))
     }));
   }
-  if (L.kind === 'match') {
-    if (L.mode === 'rhyme') return cycle(L.pairs, count, rng).map(t => ({ target: t, options: shuffle([t, ...shuffle(L.pairs.filter(x => x.w !== t.w), rng).slice(0, 2)], rng) }));
-    return cycle(L.words, count, rng).map(w => ({ target: { w }, options: shuffle([{ w }, ...nearOptions(w, L.stage, rng).map(x => ({ w: x }))], rng) }));
-  }
-  return shuffle(L.items, rng);  // sort: every picture once
+  return order.map(({ t: w, review }) => ({ target: { w }, review, options: shuffle([{ w }, ...nearOptions(w, L.stage, rng).map(x => ({ w: x }))], rng) }));
 }
 // Is this option the right answer for the round?
 export function isRight(L, r, option) {

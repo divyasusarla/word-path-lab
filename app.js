@@ -109,7 +109,7 @@ class App extends Component {
       state: () => {
         const s = this.state, L = LV[s.lvl], r = s.rounds[s.round];
         return { screen: s.screen, level: L.n, stage: L.stage + 1, type: L.type, kind: L.kind, mode: L.mode, ask: L.ask, round: s.round, rounds: s.rounds.length, solved: s.solved,
-          target: r ? (r.target?.w ?? r.target ?? r.w) : null, modelled: s.modelled, misses: s.misses, firstTries: s.firstTries.slice(), options: r && r.options ? r.options.map(o => o.w ?? o.label) : null, mapStage: this.mapStage(), settings: s.settings, done: s.done.slice() };
+          target: r ? (r.target?.w ?? r.target ?? r.w) : null, review: !!(r && r.review), modelled: s.modelled, misses: s.misses, firstTries: s.firstTries.slice(), options: r && r.options ? r.options.map(o => o.w ?? o.label) : null, mapStage: this.mapStage(), settings: s.settings, done: s.done.slice() };
       },
       right: () => this.answer(true),
       wrong: () => this.answer(false),
@@ -237,7 +237,7 @@ class App extends Component {
   snd(pair, clip) { return { t: pair[0], rate: pair[1], clip }; }
 
   unlocked(i) { return unlocked(i, this.state.done, CONFIG.unlockAll); }
-  build(L) { return buildRounds(L, CONFIG.rounds); }
+  build(L) { return buildRounds(L, CONFIG.rounds, Math.random, this.state.mastery); }
   prompt(L, r, first) { return speechFor(L, r, first); }
   mapStage() { return mapStageFor(this.state.done, this.state.mapStage); }
 
