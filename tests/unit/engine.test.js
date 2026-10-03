@@ -4,7 +4,7 @@
 import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuffle, unlocked, nextLevel,
   stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2, prompt, soundOutParts,
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
-  modelAfter, modelParts, praiseParts, shouldPractiseAgain } from '../../engine.js?v=dev';
+  modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 
 const ok = (cond, msg) => { if (!cond) throw new Error(msg); };
@@ -150,10 +150,13 @@ export const tests = [
     eq(JSON.stringify(st), before, 'old store untouched');
     ok(after['blend:cat'].at(-1).day === 'd99', 'new attempt added');
   }],
-  ['mastery: every round has a key, and it is one of its level\'s items', () => {
+  ['mastery: every round has a key: one of its level\'s items, or (review rounds) an earlier level\'s', () => {
     for (const L of LV) {
-      const items = new Set(levelItems(L));
-      for (const r of buildRounds(L, 6, seeded(L.n))) ok(items.has(itemKey(L, r)), `level ${L.n}: ${itemKey(L, r)} not in its items`);
+      const items = new Set(levelItems(L)), review = new Set(reviewItems(L));
+      for (const r of buildRounds(L, 8, seeded(L.n))) {
+        if (r.review) ok(review.has(r.target.w ?? r.target), `level ${L.n}: review item ${itemKey(L, r)} isn't from an earlier level`);
+        else ok(items.has(itemKey(L, r)), `level ${L.n}: ${itemKey(L, r)} not in its items`);
+      }
     }
   }],
   ['mastery: keys say what was practised', () => {
@@ -170,6 +173,49 @@ export const tests = [
     eq(masteredIn(L, st), [`blend:${w1}`], 'mastered');
   }],
   ['today() gives a calendar date', () => ok(/^\d{4}-\d{2}-\d{2}$/.test(today()), today())],
+
+  // ---- coverage and review
+  ['coverage: never-seen items come first, so repeated plays work through the whole list', () => {
+    const L = LV.find(l => l.type === 'sight' && l.pool.length >= 40);
+    let st = {}, seen = new Set(), plays = 0;
+    while (seen.size < L.pool.length && plays < 20) {
+      for (const r of buildRounds(L, 8, seeded(100 + plays), st)) if (!r.review) { seen.add(r.target); st = recordAttempt(st, `word:${r.target}`, true, 'd1'); }
+      plays++;
+    }
+    const own = 8 - reviewCount(L, 8);
+    eq(plays, Math.ceil(L.pool.length / own), `plays to see all ${L.pool.length} words (${own} new per play)`);
+  }],
+  ['coverage: still-learning items come before mastered ones', () => {
+    const items = ['a', 'b', 'c', 'd'], key = x => `word:${x}`;
+    let st = {};
+    for (const day of ['d1', 'd1', 'd2']) st = recordAttempt(st, 'word:a', true, day);   // a mastered
+    st = recordAttempt(st, 'word:b', false, 'd1'); st = recordAttempt(st, 'word:c', false, 'd1'); st = recordAttempt(st, 'word:d', false, 'd1');
+    ok(!pickTargets(items, key, 3, st, seeded(2)).includes('a'), 'mastered item picked while others still need practice');
+  }],
+  ['coverage: short lists still fill every round', () => {
+    eq(pickTargets(['x', 'y'], x => x, 5, {}, seeded(1)).length, 5, 'rounds');
+  }],
+  ['review: later levels mix in 2 of 8 rounds from earlier levels; the first level of a kind has none', () => {
+    eq(reviewCount(LV.find(l => l.type === 'sounds'), 8), 0, 'first letter-sounds level');
+    const later = LV.filter(l => l.type === 'sounds')[2];
+    eq(reviewCount(later, 8), 2, 'third letter-sounds level');
+    eq(buildRounds(later, 8, seeded(3)).filter(r => r.review).length, 2, 'review rounds in a play');
+    eq(reviewCount(LV.find(l => l.type === 'sort'), 8), 0, 'sorts don\'t review');
+  }],
+  ['review: picks words the child is still learning first', () => {
+    const L = LV.filter(l => l.type === 'blend')[2], earlier = reviewItems(L);
+    let st = {}; st = recordAttempt(st, `blend:${earlier[0]}`, false, 'd1');
+    ok(buildRounds(L, 8, seeded(7), st).some(r => r.review && r.target.w === earlier[0]), `"${earlier[0]}" (still learning) wasn't reviewed`);
+  }],
+  ['review: review words are decodable at the current stage, with valid options', () => {
+    for (const L of LV.filter(l => l.mode === 'blend' || l.mode === 'read')) {
+      const pool = decodableBy(L.stage);
+      for (const r of buildRounds(L, 8, seeded(L.n)).filter(r => r.review)) {
+        ok(pool.includes(r.target.w), `level ${L.n}: review word "${r.target.w}" not decodable`);
+        eq(new Set(r.options.map(o => o.w)).size, 3, `level ${L.n} options`);
+      }
+    }
+  }],
 
   // ---- feedback
   ['feedback: answer shown after 2 misses, or 1 in a sort', () => {
