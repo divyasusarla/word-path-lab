@@ -4,6 +4,7 @@ Each version is tagged in git, and the tags are listed under the repo's Tags on 
 
 ## Unreleased
 - Checks run automatically on every pull request and push (GitHub Actions, headless Chrome); the site only publishes from `main` when every check passes. Replaces the publish-only workflow.
+- Voice: prefers voices built into the device over online ones (which can clip short words), and says sight words in the same sentence as the prompt ("Pop the word: said.") instead of on their own. A voice chosen in settings still wins.
 - About and credits screen (from Grown-up settings): what the game covers, the research behind it, a no-affiliation note, asset licences, and a privacy note.
 - `LEARNING_DESIGN.md`: the research basis (12 principles with sources), proposed K / grade 1 / grade 2 bands, content rules and open research questions.
 - Picture review page at `tools/pictures.html`: every picture with its word and levels, flagging ones a child might name differently.
