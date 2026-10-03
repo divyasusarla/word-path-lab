@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- **Grown-up gate (#18):** the Settings button now asks "Grown-ups only: What is 6 × 13?" with a big number pad. A wrong answer gives a new sum, so guessing doesn't pay; once answered, Settings opens straight away until the page is reloaded. The teacher report (#19) will sit behind it too.
 - **Letter mix-ups as wrong options (#17):** once both letters are taught, a letter's usual mix-up is always one of the wrong tiles: m/n (from level 6), b/d and short e/i (from level 12), p/q (letter names, level 19). Earlier levels count, so "b" in stage 3 is paired with the "d" taught in stage 2. In Blend it and Read it, words one mix-up apart (pin / pen) now count as closest, so they're offered together.
 - **Recording words and lines:** the recorder (`tools/record.html`) now has every word and line the game says, 534 clips in 7 batches (one per stage, about 60–100 each), as well as the 69 letter sounds. A batch holds everything first needed in that stage. The game plays each recording as soon as it's imported and uses the device voice for the rest, so batches can be recorded in any order alongside other work.
   - Sentences no longer have words baked in: "That is a cat" is now "That one is … cat", "Here it is: said" is "Here it is. … said", so 37 instruction lines cover every round.

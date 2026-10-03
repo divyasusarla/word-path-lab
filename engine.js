@@ -278,6 +278,15 @@ export const heroParts = nextIdx => nextIdx < 0 ? ['You finished every level! Lo
 // Suggest practising a level again when fewer than half the first taps were right
 export const shouldPractiseAgain = firstTries => firstTries.length > 0 && firstTries.filter(Boolean).length / firstTries.length < 0.5;
 
+// ---- Grown-up gate ------------------------------------------------------------------------------
+// Settings (and later the teacher report) sit behind a sum most 5–8-year-olds can't do yet but adults can in
+// seconds: a single digit times a teen (3 × 12 to 9 × 19). See DECISIONS.md.
+export function gateQuestion(rng = Math.random) {
+  const a = 3 + Math.floor(rng() * 7), b = 12 + Math.floor(rng() * 8);
+  return { a, b, answer: a * b };
+}
+export const gateOk = (q, typed) => typed !== '' && Number(typed) === q.answer;
+
 // ---- Session length ------------------------------------------------------------------------------
 // About 15 minutes a session suits ages 5–8 (LEARNING_DESIGN.md, R5). After that, the level complete screen
 // suggests a break. 0 turns it off.

@@ -5,7 +5,7 @@ import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage } from './content.js?v=dev'
 import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
-  sayId, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
+  sayId, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED, gateQuestion, gateOk,
   SESSION_CHOICES, sessionOver } from './engine.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
@@ -108,6 +108,7 @@ class App extends Component {
     else if (sc === 'done') this.setState({ screen:'done', lvl: lv });
     else if (sc === 'stickers') this.setState({ screen:'stickers' });
     else if (sc === 'settings') this.setState({ settings:true });
+    else if (sc === 'gate') this.openSettings();
     else if (sc === 'about') this.setState({ screen:'about' });
     // Hook for the automated checks in tests/ and for poking around in the browser console
     window.wp = {
@@ -132,6 +133,7 @@ class App extends Component {
       played: () => this.playedClips.slice(),
       // Simulates iOS refusing to start sound (no tap yet, or interrupted), to check the voice fallback
       blockAudio: () => { this.audioBlocked = true; return 'blocked'; },
+      gate: () => this.state.gate && { answer: this.state.gate.q.answer, typed: this.state.gate.typed, wrong: this.state.gate.wrong },
       replay: () => { const L = LV[this.state.lvl], r = this.state.rounds[this.state.round]; if (r) this.speak(this.prompt(L, r, false)); },
       clearSpoken: () => { this.spoken = []; }
     };
@@ -256,6 +258,22 @@ class App extends Component {
   }
   // a speech sound: plays the recording if there is one, otherwise the browser voice says the fallback text
   snd(pair, clip) { return { t: pair[0], rate: pair[1], clip }; }
+
+  // Grown-up gate: a sum before Settings opens; once answered it stays open until the page reloads
+  openSettings() {
+    if (this.grownUp) return this.setState({ settings: true });
+    this.setState({ gate: { q: gateQuestion(), typed: '', wrong: false } });
+  }
+  // Each key builds on the latest state, so quick taps never drop a digit
+  gateKey(k) {
+    this.setState(({ gate: g }) => {
+      if (!g) return null;
+      if (k === 'del') return { gate: { ...g, typed: g.typed.slice(0, -1) } };
+      if (k !== 'ok') return g.typed.length < 3 ? { gate: { ...g, typed: g.typed + k, wrong: false } } : null;
+      if (gateOk(g.q, g.typed)) { this.grownUp = true; return { gate: null, settings: true }; }
+      return { gate: { q: gateQuestion(), typed: '', wrong: true } };  // a new sum, so guessing doesn't pay
+    });
+  }
 
   unlocked(i) { return unlocked(i, this.state.done, CONFIG.unlockAll); }
   build(L) { return buildRounds(L, CONFIG.rounds, Math.random, this.state.mastery); }
@@ -482,7 +500,10 @@ class App extends Component {
         })
       })),
       isSettings: this.state.settings,
-      openSettings: () => this.setState({ settings: true }),
+      openSettings: () => this.openSettings(),
+      gate: this.state.gate,
+      gateKey: k => this.gateKey(k),
+      closeGate: () => this.setState({ gate: null }),
       closeSettings: () => this.setState({ settings: false }),
       voiceOpts, voiceName: audio.voice,
       vol: audio.vol, volPct: Math.round(audio.vol * 100) + '%',
@@ -737,6 +758,24 @@ class App extends Component {
           </div>`)}
       </section>`}
   </main>
+
+  ${v.gate && html`
+    <div class="settings-backdrop gate-backdrop">
+      <div class="settings-card gate-card" role="dialog" aria-label="Grown-ups only">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div style="font-size:clamp(24px,5vw,30px);font-weight:700">Grown-ups only</div>
+          <button onClick=${v.closeGate} aria-label="Close" style="width:48px;height:48px;flex-shrink:0;border:0;border-radius:50%;background:#F3EEFF;color:#2A2350;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="icon-x" style="font-size:24px;line-height:1"></i></button>
+        </div>
+        <div class="gate-question">What is ${v.gate.q.a} × ${v.gate.q.b}?</div>
+        <div class="gate-answer" aria-live="polite">${v.gate.typed || '\u00a0'}</div>
+        <div class="gate-note">${v.gate.wrong ? 'Not quite. Try this one.' : 'Type the answer to open settings.'}</div>
+        <div class="gate-pad">
+          ${['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'].map(k => html`
+            <button class=${k === 'ok' ? 'gate-ok' : ''} onClick=${() => v.gateKey(k)} aria-label=${k === 'del' ? 'Delete' : k === 'ok' ? 'Enter' : k}>
+              ${k === 'del' ? html`<i class="icon-delete"></i>` : k === 'ok' ? html`<i class="icon-check"></i>` : k}</button>`)}
+        </div>
+      </div>
+    </div>`}
 
   ${v.isSettings && html`
     <div class="settings-backdrop">

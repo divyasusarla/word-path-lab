@@ -204,6 +204,26 @@ async function runAll() {
     testBtn.click();
     await waitFor(() => w.wp.spoken().some(t => /play with letters/.test(t)), 2000, 'the test voice line');
   });
+  await check('Grown-up gate: Settings needs a sum; a wrong answer gives a new sum; once right, it stays open', async () => {
+    const w = await load('');
+    const settingsBtn = () => doc().querySelector('[aria-label="Grown-up settings"]');
+    const press = keys => { for (const k of keys) doc().querySelector(`.gate-pad [aria-label="${k}"]`).click(); };
+    settingsBtn().click();
+    await waitFor(() => w.wp.gate(), 1000, 'the gate');
+    expect(!w.wp.state().settings && /Grown-ups only/.test(text()), 'settings opened without the gate');
+    const first = w.wp.gate().answer, wrong = String(first + 1);
+    press([...wrong, 'Enter']);
+    await waitFor(() => w.wp.gate()?.wrong, 1000, 'the wrong-answer note');
+    expect(!w.wp.state().settings && /Not quite/.test(text()), 'a wrong answer should not open settings');
+    press([...String(w.wp.gate().answer).slice(0, 1), 'Delete', ...String(w.wp.gate().answer), 'Enter']);
+    await waitFor(() => w.wp.state().settings, 1000, 'settings to open');
+    expect(!w.wp.gate(), 'the gate should close');
+    doc().querySelector('.settings-card [aria-label="Close"]').click();
+    await waitFor(() => !w.wp.state().settings, 1000, 'settings to close');
+    settingsBtn().click();
+    await waitFor(() => w.wp.state().settings, 1000, 'settings to open again without the gate');
+    return `first sum's answer ${first}`;
+  });
   await check('About and credits: opens from settings and credits the research and every asset licence', async () => {
     const w = await load('screen=settings');
     [...doc().querySelectorAll('button')].find(b => /About and credits/.test(b.innerText)).click();
@@ -289,7 +309,7 @@ async function runAll() {
     frame.style.width = `${wd}px`; frame.style.height = `${ht}px`; frame.style.aspectRatio = 'auto';
     try {
       const issues = [];
-      for (const q of ['done=8', 'level=1', 'level=3', 'level=9', 'level=10', 'level=11', 'level=30', 'screen=done&level=9', 'screen=stickers&done=14', 'screen=settings', 'screen=about']) {
+      for (const q of ['done=8', 'level=1', 'level=3', 'level=9', 'level=10', 'level=11', 'level=30', 'screen=done&level=9', 'screen=stickers&done=14', 'screen=settings', 'screen=gate', 'screen=about']) {
         const scrolls = /stickers|settings|about/.test(q);   // long pages may scroll down, never sideways
         const w = await load(q);
         // measure where things end up, not mid-animation (bubbles fly in from below; hidden tabs pause animations)
