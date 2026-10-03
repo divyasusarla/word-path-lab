@@ -134,13 +134,16 @@ class App extends Component {
   }
   componentWillUnmount() { this.stop(); }
 
+  // Prefer voices built into the device: online voices (e.g. Chrome's "Google US English" on a Mac) can clip
+  // the start of short words. A voice picked in Grown-up settings always wins.
   bestVoice() {
     const vs = this.voices, chosen = vs.find(v => v.name === this.state.audio.voice);
     if (chosen) return chosen;
     const us = vs.filter(v => /en[-_]US/i.test(v.lang));
-    const prefs = [/Ana.*Natural/i, /Jenny.*Natural/i, /Aria.*Natural/i, /Natural/i, /Google US English/i, /Samantha/i];
-    for (const p of prefs) { const v = us.find(x => p.test(x.name)) || vs.find(x => p.test(x.name)); if (v) return v; }
-    return us[0] || vs[0] || null;
+    const local = us.filter(v => v.localService), online = us.filter(v => !v.localService);
+    const prefs = [/Samantha/i, /Ava/i, /Allison/i, /Zoe/i, /Natural/i, /Google US English/i];
+    for (const group of [local, online, vs]) for (const p of prefs) { const v = group.find(x => p.test(x.name)); if (v) return v; }
+    return local[0] || us[0] || vs[0] || null;
   }
 
   // ---- recorded clips ----
@@ -257,7 +260,7 @@ class App extends Component {
     if (L.kind === 'pop') {
       if (L.mode === 'sound') { const gr = GRAPHEMES[r.target]; return [...pre, r.target.length > 1 ? 'Find the letters that say' : 'Find the letter that says', 500, gsnd(r.target), 500, 'like in', { t: gr.ex, rate: 0.8 }]; }
       if (L.mode === 'name') return [...pre, 'Find the letter', 400, nsnd(r.target)];
-      return [...pre, 'Pop the word', 400, { t: r.target, rate: 0.7 }];
+      return [...pre, { t: `Pop the word: ${r.target}.`, rate: 0.85 }];
     }
     if (L.kind === 'match') {
       if (L.mode === 'blend') return [...pre, 'Listen.', 500, ...phonemes(r.target.w).flatMap(p => [gsnd(p), 450]), 400, 'What word is that?'];
@@ -314,7 +317,7 @@ class App extends Component {
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
     const say = L.mode === 'sound' ? ['That one says', 300, gsnd(o.label)]
       : L.mode === 'name' ? ['That letter is', 300, nsnd(o.label)]
-      : ['That word is', 300, { t: o.label, rate: 0.75 }];
+      : [{ t: `That word is: ${o.label}.`, rate: 0.85 }];
     this.speak([...say, 600, 'Try again.', 700, ...this.prompt(L, r, false)]);
   }
 
