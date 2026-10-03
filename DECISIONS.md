@@ -87,3 +87,8 @@ Why Word Path is built the way it is. Each entry: the decision, why, what else w
 - **Why:** the first child test showed device voices are hard to understand on short words. Keeping words out of lines keeps the script to about 37 lines plus one clip per word (534 in all). Naming a clip after its text means a reworded line can never play a stale recording; the device voice covers it until it's re-recorded.
 - **Limits:** splicing a line and a word sounds slightly less natural than one recording. Decodable sentences (#32) can't be spliced that way, which would push past 1,000 clips.
 - **Revisit:** at #32, or when designing the bands (#14): count new words per band and consider a generated voice.
+
+### 18. Grown-up gate: a sum, not a long press (2026-10-03)
+- **Decision:** Settings opens after answering a single digit times a teen (3 × 12 to 9 × 19) on an on-screen number pad. A wrong answer gives a new sum. Passing it lasts until the page reloads.
+- **Why:** children find long-press gates by accident or by copying grown-ups. Ages 5–8 rarely know two-digit products, while adults answer in seconds. A number pad avoids the device keyboard covering the screen. Not reading-based, since 7–8-year-olds can read.
+- **Revisit:** if testers find it too hard or children get past it (checklist item), or if the game goes into an app store with its own gate rules.

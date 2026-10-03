@@ -186,3 +186,17 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 4px s
 
 .about-card { display: flex; flex-direction: column; gap: 20px; padding: 36px; background: #fff; border-radius: 40px; box-shadow: 0 8px 0 #E8DCC8; font-size: 18px; line-height: 1.55; max-width: 70ch; margin: 0 auto; }
 .layout-phone .about-card { padding: 22px 18px; border-radius: 32px; font-size: 17px; }
+
+/* grown-up gate (a sum before Settings): after the settings rules so it can narrow the card */
+.gate-card { max-width: 420px; align-items: center; gap: 16px; }
+.gate-card > div:first-child { align-self: stretch; }
+.gate-question { font-size: clamp(28px, 6vw, 36px); font-weight: 700; }
+.gate-answer { min-width: 160px; padding: 10px 20px; border-radius: 20px; background: #F3EEFF; font-size: 34px; font-weight: 700; text-align: center; }
+.gate-note { font-size: 16px; color: #5C5677; }
+.gate-pad { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
+.gate-pad button { height: 64px; border: 0; border-radius: 20px; background: #F3EEFF; color: #2A2350; font: inherit; font-size: 28px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.gate-pad button i { font-size: 26px; line-height: 1; }
+.gate-pad .gate-ok { background: #2EC4A6; color: #fff; }
+.layout-phone-landscape .gate-card { flex-direction: row; flex-wrap: wrap; justify-content: center; max-width: 760px; padding: 16px 20px; }
+.layout-phone-landscape .gate-pad { grid-template-columns: repeat(6, 64px); }
+.layout-phone-landscape .gate-pad button { height: 52px; }

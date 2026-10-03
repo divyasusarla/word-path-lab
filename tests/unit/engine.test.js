@@ -6,7 +6,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
-  sayId, wordId, slug, mixUpFor, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
+  sayId, wordId, slug, mixUpFor, gateQuestion, gateOk, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, FRY, CONFUSIONS, confusedWith, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
@@ -78,6 +78,17 @@ export const tests = [
         if (pool.some(x => x !== w && shares(x))) ok(near.some(shares), `"${w}" got ${near.join(', ')}`);
       }
     }
+  }],
+
+  // ---- grown-up gate (#18)
+  ['gate: a single digit times a teen, checked exactly', () => {
+    const rng = seeded(11);
+    for (let i = 0; i < 200; i++) {
+      const q = gateQuestion(rng);
+      ok(q.a >= 3 && q.a <= 9 && q.b >= 12 && q.b <= 19 && q.answer === q.a * q.b, `odd sum ${q.a} × ${q.b} = ${q.answer}`);
+    }
+    const q = { a: 6, b: 13, answer: 78 };
+    ok(gateOk(q, '78'), 'right answer'); ok(!gateOk(q, '87'), 'wrong answer'); ok(!gateOk(q, ''), 'empty');
   }],
 
   // ---- letter mix-ups (#17)
