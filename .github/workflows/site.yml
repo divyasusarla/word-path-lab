@@ -1,0 +1,59 @@
+# Runs the checks in tests/ on every pull request and push to main.
+# On main, the site is published to GitHub Pages only if every check passes.
+name: Checks and publish
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright (uses the runner's installed Chrome)
+        run: npm install --no-save --no-package-lock playwright@1.48.2
+      - name: Serve the site
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /dev/null 2>&1 &
+          for i in $(seq 1 20); do curl -sf http://127.0.0.1:8765/ > /dev/null && exit 0; sleep 0.5; done
+          echo "Server didn't start"; exit 1
+      - name: Run the checks
+        run: node tests/run-checks.mjs
+        env:
+          CHROME_CHANNEL: chrome
+
+  publish:
+    name: Publish
+    needs: checks
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

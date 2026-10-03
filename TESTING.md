@@ -4,6 +4,8 @@ There are three layers. Run the first two before every push. Run the third befor
 
 ## 1. Automatic checks (about 30 seconds)
 
+**These run by themselves** on every pull request and every merge to `main` (GitHub Actions, headless Chrome). A pull request shows a green tick or red cross next to **Checks**; click **Details** to see each result. The site only publishes if every check passes. You can still run them yourself in a browser:
+
 Open **`tests/`** in a browser and press **Run all checks**:
 
 - Local: http://127.0.0.1:8765/tests/ (start the local server first with `python3 -m http.server 8765`)
