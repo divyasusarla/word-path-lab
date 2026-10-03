@@ -287,7 +287,8 @@ async function runAll() {
     frame.style.width = `${wd}px`; frame.style.height = `${ht}px`; frame.style.aspectRatio = 'auto';
     try {
       const issues = [];
-      for (const q of ['done=8', 'level=1', 'level=3', 'level=9', 'level=10', 'level=11', 'level=30']) {
+      for (const q of ['done=8', 'level=1', 'level=3', 'level=9', 'level=10', 'level=11', 'level=30', 'screen=done&level=9', 'screen=stickers&done=14', 'screen=settings', 'screen=about']) {
+        const scrolls = /stickers|settings|about/.test(q);   // long pages may scroll down, never sideways
         const w = await load(q);
         // measure where things end up, not mid-animation (bubbles fly in from below; hidden tabs pause animations)
         const still = doc().createElement('style'); still.textContent = '*, *::before, *::after { animation: none !important; transition: none !important; }';
@@ -296,7 +297,9 @@ async function runAll() {
         if (w.wp.layout() !== name) issues.push(`${q}: layout ${w.wp.layout()}`);
         const de = doc().documentElement;
         if (de.scrollWidth > wd + 1) issues.push(`${q}: scrolls sideways (${de.scrollWidth}px wide)`);
-        if (de.scrollHeight > ht + 2) issues.push(`${q}: scrolls down (${de.scrollHeight}px tall)`);
+        if (!scrolls && de.scrollHeight > ht + 2) issues.push(`${q}: scrolls down (${de.scrollHeight}px tall)`);
+        const wide = [...doc().querySelectorAll('main *, .settings-card *')].find(el => el.getBoundingClientRect().right > wd + 1);
+        if (wide) issues.push(`${q}: something sticks out on the right (${wide.tagName.toLowerCase()} "${(wide.innerText || '').trim().slice(0, 20)}")`);
         const box = doc().querySelector('.map-box');
         if (box) {
           const b = box.getBoundingClientRect();
@@ -304,7 +307,7 @@ async function runAll() {
         }
         const hear = doc().querySelector('.hear');
         if (hear) { const r = hear.getBoundingClientRect(); if (r.bottom > ht || r.right > wd || r.left < 0) issues.push(`${q}: Hear again is off screen`); }
-        const small = [...doc().querySelectorAll('main button')].filter(el => { const r = el.getBoundingClientRect(); return r.width && (r.width < 40 || r.height < 40); });
+        const small = [...doc().querySelectorAll('main button, .settings-card button')].filter(el => { const r = el.getBoundingClientRect(); return r.width && (r.width < 40 || r.height < 40); });
         if (small.length) issues.push(`${q}: ${small.length} buttons smaller than 40px`);
         const answers = [...doc().querySelectorAll('.play-main button')].filter(el => el.getBoundingClientRect().width);
         const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;

@@ -417,8 +417,8 @@ class App extends Component {
     })) : [];
 
     const dl = LV[lvl], dc = P[lvl % 5];
-    const doneSticker = screen === 'done' ? h('div', { key: 'st' + lvl, style: { width:260, height:260, flexShrink:0, borderRadius:'50%', border:'10px solid #fff', background:dc.bg, boxShadow:`0 10px 0 ${dc.sh}`, display:'flex', alignItems:'center', justifyContent:'center', animation:'wpSticker .8s cubic-bezier(.34,1.56,.64,1) both' } },
-      h('img', { src: dl.sticker.src, alt: '', style: { width:150, height:150 } })) : null;
+    const doneSticker = screen === 'done' ? h('div', { key: 'st' + lvl, className: 'done-sticker', style: { flexShrink:0, borderRadius:'50%', border:'10px solid #fff', background:dc.bg, boxShadow:`0 10px 0 ${dc.sh}`, display:'flex', alignItems:'center', justifyContent:'center', animation:'wpSticker .8s cubic-bezier(.34,1.56,.64,1) both' } },
+      h('img', { src: dl.sticker.src, alt: '', style: { width:'56%', height:'56%' } })) : null;
     const stageDone = stageComplete(dl.stage, done);
 
     const voiceOpts = [{ name:'', label:'Automatic (best available)' }].concat(this.voices.map(v => ({ name: v.name, label: `${v.name} (${v.lang})` })));
@@ -465,6 +465,7 @@ class App extends Component {
       playAgain: () => this.start(lvl),
       stickerGroups: STAGES.map((stg, k) => ({
         title: `${stg.title}: ${stg.sounds.split(' ').map(showG).join(' ')}`,
+        doneCount: LV.filter((l, i) => l.stage === k && done[i]).length,
         items: LV.map((l, i) => [l, i]).filter(([l]) => l.stage === k).map(([l, i]) => {
           const c = P[i % 5];
           return { name: done[i] ? l.sticker.name : `Level ${l.n}`, src: done[i] ? l.sticker.src : '', rot: `${[-5, 4, -2, 6, -4][i % 5]}deg`,
@@ -652,30 +653,32 @@ class App extends Component {
       </section>`}
 
     ${v.isDone && html`
-      <section style="display:flex;flex-wrap:wrap;align-items:center;gap:48px;padding:48px;background:#fff;border-radius:48px;box-shadow:0 10px 0 #E8DCC8">
+      <section class="done-card">
         ${v.doneSticker}
-        <div style="display:flex;flex-direction:column;gap:28px;flex:1;min-width:280px">
+        <div class="done-body">
           <div>
             <div style="font-size:22px;font-weight:600;color:#5940D6">Level ${v.levelNum} complete!</div>
-            <div style="font-size:60px;font-weight:700;line-height:1.05">You got the ${v.doneName} sticker</div>
-            ${v.doneStage && html`<div style="font-size:28px;font-weight:700;color:#17977F;margin-top:8px">${v.doneStage}</div>`}
+            <div class="done-title" style="font-size:58px;font-weight:700;line-height:1.05">You got the ${v.doneName} sticker</div>
+            ${v.doneStage && html`<div style="font-size:26px;font-weight:700;color:#17977F;margin-top:8px">${v.doneStage}</div>`}
             ${v.restTime && html`<div class="rest-time" style="font-size:24px;font-weight:700;color:#5940D6;margin-top:10px">Great work today! Time for a break.</div>`}
             ${v.doneKnown && html`<div class="done-known" style="font-size:20px;font-weight:600;color:#5C5677;margin-top:8px">${v.doneKnown}</div>`}
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:12px">
-            ${v.practiseAgain && html`
-              <button onClick=${v.playAgain} style="height:80px;padding:0 36px 0 28px;border:0;border-radius:999px;background:#FFC23C;color:#2A2350;font-size:28px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 6px 0 #DB9A0A"><i class="icon-rotate-ccw" style="font-size:30px;line-height:1"></i>Practise again</button>`}
-            ${v.hasNextAfter && html`
-              <button onClick=${v.playNext} style=${v.practiseAgain ? softBtn : 'height:80px;padding:0 36px 0 28px;border:0;border-radius:999px;background:#FFC23C;color:#2A2350;font-size:28px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 6px 0 #DB9A0A'}><i class="icon-play" style="font-size:30px;line-height:1"></i>Next level</button>`}
-            <button onClick=${v.goStickers} style=${softBtn}><i class="icon-sticker" style="font-size:28px;line-height:1"></i>Stickers</button>
-            <button onClick=${v.goMap} style=${softBtn}><i class="icon-map" style="font-size:28px;line-height:1"></i>Map</button>
+          <div class="done-actions">
+            ${v.practiseAgain
+              ? html`<button class="done-primary" onClick=${v.playAgain}><i class="icon-rotate-ccw"></i>Practise again</button>`
+              : v.hasNextAfter && html`<button class="done-primary" onClick=${v.playNext}><i class="icon-play"></i>Next level</button>`}
+            <div class="done-secondary">
+              ${v.practiseAgain && v.hasNextAfter && html`<button onClick=${v.playNext}><i class="icon-play"></i>Next level</button>`}
+              <button onClick=${v.goStickers}><i class="icon-sticker"></i>Stickers</button>
+              <button onClick=${v.goMap}><i class="icon-map"></i>Map</button>
+            </div>
           </div>
         </div>
       </section>`}
 
     ${v.isAbout && html`
-      <section style="display:flex;flex-direction:column;gap:20px;padding:36px;background:#fff;border-radius:48px;box-shadow:0 10px 0 #E8DCC8;font-size:18px;line-height:1.55;max-width:860px">
-        <div style="font-size:44px;font-weight:700;line-height:1.1">About Word Path</div>
+      <section class="about-card">
+        <div style="font-size:clamp(30px,6vw,44px);font-weight:700;line-height:1.1">About Word Path</div>
         <p style="margin:0">Word Path is a free early-reading game for children learning to read words, roughly from kindergarten to grade 2. It practises <b>word recognition</b>: letter sounds and names, hearing sounds in words, blending sounds into words, and common sight words, in a planned order. It doesn't teach vocabulary or comprehension, which come from books, conversation and teaching.</p>
         <div>
           <div style="font-size:24px;font-weight:700;margin-bottom:6px">Research behind it</div>
@@ -704,19 +707,22 @@ class App extends Component {
       </section>`}
 
     ${v.isStickers && html`
-      <section style="display:flex;flex-direction:column;gap:28px;padding:36px;background:#fff;border-radius:48px;box-shadow:0 10px 0 #E8DCC8">
+      <section class="sticker-book">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
-          <div style="font-size:48px;font-weight:700">My stickers</div>
-          <div style="padding:8px 20px;border-radius:999px;background:#FFC23C;font-size:28px;font-weight:700">${v.stickerCount}/${v.stickerTotal}</div>
+          <div class="sticker-title" style="font-size:44px;font-weight:700">My stickers</div>
+          <div style="padding:8px 20px;border-radius:999px;background:#FFC23C;font-size:clamp(18px,4vw,26px);font-weight:700;white-space:nowrap">${v.stickerCount}/${v.stickerTotal}</div>
         </div>
         ${v.stickerGroups.map(g => html`
           <div style="display:flex;flex-direction:column;gap:12px">
-            <div style="font-size:20px;font-weight:700;color:#5940D6">${g.title}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:20px 24px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+              <div style="font-size:20px;font-weight:700;color:#5940D6">${g.title}</div>
+              <div style="font-size:15px;font-weight:600;color:#5C5677;white-space:nowrap">${g.doneCount} of ${g.items.length}</div>
+            </div>
+            <div class="sticker-grid">
               ${g.items.map(s => html`
-                <div class="sticker" style=${`display:flex;flex-direction:column;align-items:center;gap:8px;transform:rotate(${s.rot})`}>
-                  <div style=${`width:104px;height:104px;border-radius:50%;border:6px solid #fff;background:${s.bg};color:${s.fg};box-shadow:0 5px 0 ${s.sh};display:flex;align-items:center;justify-content:center`}>${s.src ? html`<img src=${s.src} alt="" style="width:60px;height:60px" />` : html`<i class="icon-lock" style="font-size:40px;line-height:1"></i>`}</div>
-                  <span style="font-size:16px;font-weight:600">${s.name}</span>
+                <div class="sticker" style=${`display:flex;flex-direction:column;align-items:center;gap:6px;transform:rotate(${s.rot})`}>
+                  <div class="sticker-disc" style=${`border-radius:50%;border:6px solid #fff;background:${s.bg};color:${s.fg};box-shadow:0 5px 0 ${s.sh};display:flex;align-items:center;justify-content:center`}>${s.src ? html`<img src=${s.src} alt="" />` : html`<i class="icon-lock"></i>`}</div>
+                  <span style="font-size:15px;font-weight:600;text-align:center">${s.name}</span>
                 </div>`)}
             </div>
           </div>`)}
@@ -724,34 +730,43 @@ class App extends Component {
   </main>
 
   ${v.isSettings && html`
-    <div style="position:fixed;inset:0;background:rgba(42,35,80,.45);display:flex;align-items:flex-start;justify-content:center;padding:24px;z-index:10;overflow-y:auto">
-      <div style="width:100%;max-width:520px;margin:auto 0;background:#fff;border-radius:36px;padding:32px;display:flex;flex-direction:column;gap:24px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:30px;font-weight:700">Grown-up settings</div>
-          <button onClick=${v.closeSettings} aria-label="Close" style="width:48px;height:48px;border:0;border-radius:50%;background:#F3EEFF;color:#2A2350;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="icon-x" style="font-size:24px;line-height:1"></i></button>
+    <div class="settings-backdrop">
+      <div class="settings-card" role="dialog" aria-label="Grown-up settings">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div style="font-size:clamp(24px,5vw,30px);font-weight:700">Grown-up settings</div>
+          <button onClick=${v.closeSettings} aria-label="Close" style="width:48px;height:48px;flex-shrink:0;border:0;border-radius:50%;background:#F3EEFF;color:#2A2350;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class="icon-x" style="font-size:24px;line-height:1"></i></button>
         </div>
-        <label style="display:flex;flex-direction:column;gap:8px;font-size:18px;font-weight:600">Voice
-          <select value=${v.voiceName} onChange=${v.onVoice} style="height:52px;padding:0 14px;border:3px solid #E8DCC8;border-radius:16px;font-family:inherit;font-size:17px;color:#2A2350;background:#fff">
-            ${v.voiceOpts.map(o => html`<option value=${o.name}>${o.label}</option>`)}
-          </select>
-          <span style="font-size:14px;font-weight:400;color:#5C5677">Best on Chromebook: "Google US English". In Edge, choose a "Natural" voice such as Ana or Jenny.</span>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:8px;font-size:18px;font-weight:600"><span>Volume: ${v.volPct}</span>
-          <input type="range" min="0.2" max="1" step="0.05" value=${v.vol} onInput=${v.onVol} style="accent-color:#7B61FF" />
-        </label>
-        <label style="display:flex;flex-direction:column;gap:8px;font-size:18px;font-weight:600"><span>Talking speed: ${v.rateLabel}</span>
-          <input type="range" min="0.6" max="1.1" step="0.05" value=${v.rate} onInput=${v.onRate} style="accent-color:#7B61FF" />
-        </label>
-        <label style="display:flex;flex-direction:column;gap:8px;font-size:18px;font-weight:600">Suggest a break after
-          <select value=${String(v.sessionMins)} onChange=${v.onSession} style="height:52px;padding:0 14px;border:3px solid #E8DCC8;border-radius:16px;font-family:inherit;font-size:17px;color:#2A2350;background:#fff">
-            ${v.sessionOpts.map(o => html`<option value=${o.value}>${o.label}</option>`)}
-          </select>
-          <span style="font-size:14px;font-weight:400;color:#5C5677">About 15 minutes suits most 5–8 year olds. The game never stops a child; it just suggests a break at the end of a level.</span>
-        </label>
-        <div style="display:flex;flex-wrap:wrap;gap:12px">
-          <button onClick=${v.testVoice} style="height:56px;padding:0 24px 0 18px;border:0;border-radius:999px;background:#7B61FF;color:#fff;font-size:19px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px"><i class="icon-volume-2" style="font-size:22px;line-height:1"></i>Test voice</button>
-          <button onClick=${v.resetAll} style="height:56px;padding:0 22px;border:0;border-radius:999px;background:#FFE9E7;color:#B0322A;font-size:17px;font-weight:600;cursor:pointer">Reset progress</button>
-          <button onClick=${v.openAbout} style="height:56px;padding:0 22px;border:0;border-radius:999px;background:#F3EEFF;color:#2A2350;font-size:17px;font-weight:600;cursor:pointer">About and credits</button>
+        <div class="settings-groups">
+          <div class="settings-group">
+            <div class="settings-heading">Sound</div>
+            <label class="settings-field">Voice
+              <select value=${v.voiceName} onChange=${v.onVoice}>
+                ${v.voiceOpts.map(o => html`<option value=${o.name}>${o.label}</option>`)}
+              </select>
+              <span class="settings-hint">Letter sounds use your recordings; the voice reads everything else. On a Chromebook try "Google US English"; in Edge, a "Natural" voice.</span>
+            </label>
+            <label class="settings-field"><span>Volume: ${v.volPct}</span>
+              <input type="range" min="0.2" max="1" step="0.05" value=${v.vol} onInput=${v.onVol} />
+            </label>
+            <label class="settings-field"><span>Talking speed: ${v.rateLabel}</span>
+              <input type="range" min="0.6" max="1.1" step="0.05" value=${v.rate} onInput=${v.onRate} />
+            </label>
+            <button class="settings-test" onClick=${v.testVoice}><i class="icon-volume-2"></i>Test voice</button>
+          </div>
+          <div class="settings-group">
+            <div class="settings-heading">Play</div>
+            <label class="settings-field">Suggest a break after
+              <select value=${String(v.sessionMins)} onChange=${v.onSession}>
+                ${v.sessionOpts.map(o => html`<option value=${o.value}>${o.label}</option>`)}
+              </select>
+              <span class="settings-hint">About 15 minutes suits most 5–8 year olds. The game never stops a child; it suggests a break at the end of a level.</span>
+            </label>
+            <button class="settings-link" onClick=${v.openAbout}>About and credits<i class="icon-chevron-right"></i></button>
+          </div>
+        </div>
+        <div class="settings-danger">
+          <button onClick=${v.resetAll}>Reset all progress…</button>
+          <span class="settings-hint">Clears stickers, finished levels and known words on this device. Asks to confirm first.</span>
         </div>
       </div>
     </div>`}
