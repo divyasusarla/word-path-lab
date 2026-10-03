@@ -243,30 +243,43 @@ export const isHeart = w => heartParts(w).some(p => p.tricky);
 // The taught sounds in the regular letters (longest spelling first; a vowel, one letter and a final e is a split
 // sound like a_e). null if a regular letter isn't a taught sound.
 const SPELLINGS = Object.keys(GRAPHEMES).filter(g => !g.includes('_')).sort((a, b) => b.length - a.length);
-export function heartSounds(w) {
+// heartTokens gives each sound with the letter positions it covers.
+export function heartTokens(w) {
   const L = heartParts(w).flatMap(p => [...p.t.toLowerCase()].map(c => ({ c, tricky: p.tricky })));
   const out = [], used = new Set();
   for (let i = 0; i < L.length; i++) {
     if (used.has(i) || L[i].tricky) continue;
     const mid = L[i + 1], e = L[i + 2];
-    if ('aiou'.includes(L[i].c) && mid && !'aeiou'.includes(mid.c) && e && e.c === 'e' && !e.tricky && i + 2 === L.length - 1) { out.push(`${L[i].c}_e`); used.add(i + 2); continue; }
+    if ('aiou'.includes(L[i].c) && mid && !'aeiou'.includes(mid.c) && e && e.c === 'e' && !e.tricky && i + 2 === L.length - 1) { out.push({ g: `${L[i].c}_e`, at: [i, i + 2] }); used.add(i + 2); continue; }
     const stop = L.findIndex((x, k) => k > i && x.tricky), text = L.slice(i, stop < 0 ? L.length : stop).map(x => x.c).join('');
     const g = SPELLINGS.find(sp => text.startsWith(sp));
     if (!g || g.length > 1 && [...Array(g.length - 1)].some((_, k) => used.has(i + k + 1))) return null;
-    out.push(g); for (let k = 1; k < g.length; k++) used.add(i + k);
+    out.push({ g, at: [...Array(g.length).keys()].map(k => i + k) }); for (let k = 1; k < g.length; k++) used.add(i + k);
   }
   return out;
+}
+export const heartSounds = w => { const t = heartTokens(w); return t && t.map(x => x.g); };
+// The word as shown in a level of a given stage: tricky letters, plus any sound not taught yet by that stage
+// (an early heart word like "the" in stage 1 shows all its letters as tricky until "th" is taught)
+export function heartPartsAt(w, stage) {
+  const tokens = heartTokens(w) || [], later = new Set(tokens.filter(t => (soundStage(t.g) ?? 99) > stage).flatMap(t => t.at));
+  const letters = heartParts(w).flatMap(p => [...p.t].map(c => ({ c, tricky: p.tricky })));
+  letters.forEach((x, i) => { if (later.has(i)) x.tricky = true; });
+  return letters.reduce((parts, x) => { const last = parts.at(-1); if (last && last.tricky === x.tricky) last.t += x.c; else parts.push({ t: x.c, tricky: x.tricky }); return parts; }, []);
 }
 // The stage that teaches a sight word's regular sounds (0 when every letter is tricky); -1 if it doesn't parse
 export const heartStage = w => { const s = heartSounds(w); return !s ? -1 : s.length ? Math.max(...s.map(g => soundStage(g) ?? 99)) : 0; };
 // Word pop levels: each stage's level gets the sight words whose regular sounds are taught by then, most common
 // first, up to 25 words in the first two stages and 50 after; the last level (Word boss) takes everything left.
-// A word can also come no more than one level before its place in the frequency list (so a rare word that happens
+// The most common words come early (EARLY_SIGHT). A word can also come no more than one level before its place in the frequency list (so a rare word that happens
 // to be all tricky letters, like "people", doesn't land in Word pop 1).
 export const SIGHT_CAP = [25, 25, 50, 50, 50, 50];
 const BAND_END = SIGHT_CAP.reduce((a, c) => [...a, (a.at(-1) || 0) + c], []);   // 25, 50, 100, 150, …
 export const frequencyLevel = w => { const r = FRY.indexOf(w); const k = BAND_END.findIndex(e => r < e); return k < 0 ? BAND_END.length : k; };
-export const sightStage = w => Math.max(heartStage(w), frequencyLevel(w) - 1);
+// The most common words come early as heart words, even before their regular sounds are taught (their untaught
+// letters show as tricky until then): children meet "the", "you" and "was" in almost every sentence.
+export const EARLY_SIGHT = { the: 0, you: 0, was: 0, said: 0, he: 0, we: 0, my: 0, she: 1, they: 1, are: 1, for: 1, have: 1, what: 1, be: 1 };
+export const sightStage = w => EARLY_SIGHT[w] ?? Math.max(heartStage(w), frequencyLevel(w) - 1);
 {
   const left = [...FRY], levels = LEVELS.filter(l => l.type === 'sight');
   levels.forEach((l, k) => {

@@ -1,7 +1,7 @@
 // Word Path (lab) — ported from the Claude Design "Word Path v2" file.
 // Preact + htm, vendored (see vendor/README.md): no build step, edit and reload.
 import { h, html, render, Component } from './vendor/preact-htm.module.js';
-import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage, heartParts } from './content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage, heartPartsAt } from './content.js?v=dev';
 import { LV, shuffle, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
@@ -461,7 +461,7 @@ class App extends Component {
         }) : [];
         return h('div', { key: `${round}-${i}`, style: { position:'relative', width:size, height:size, animation:`wpIn 1.1s cubic-bezier(.22,1,.36,1) ${(i * 0.14).toFixed(2)}s both`, pointerEvents: gone ? 'none' : 'auto' } },
           right && h('span', { style: { position:'absolute', inset:0, borderRadius:'50%', border:`8px solid ${c.bg}`, animation:'wpRing .6s ease-out forwards' } }),
-          L.mode === 'word' && !right && heartParts(o.label).some(p => p.tricky) && h('span', { className: 'heart-badge', 'aria-hidden': 'true', style: { opacity: bad || gone ? 0.3 : 1 } }, '♥'),
+          L.mode === 'word' && !right && heartPartsAt(o.label, L.stage).some(p => p.tricky) && h('span', { className: 'heart-badge', 'aria-hidden': 'true', style: { opacity: bad || gone ? 0.3 : 1 } }, '♥'),
           ...sparks,
           h('button', {
             key: bad ? 'bad' : 'ok',
@@ -476,7 +476,7 @@ class App extends Component {
               animation: anim
             }
           }, L.mode === 'name' ? o.label.toUpperCase() + o.label
-            : L.mode === 'word' ? h('span', null, heartParts(o.label).map((p, k) => p.tricky ? h('span', { key: k, className: 'tricky' }, p.t) : p.t))  // tricky letters underlined
+            : L.mode === 'word' ? h('span', null, heartPartsAt(o.label, L.stage).map((p, k) => p.tricky ? h('span', { key: k, className: 'tricky' }, p.t) : p.t))  // tricky letters underlined
             : showG(o.label)));
       }));
   }

@@ -1,6 +1,6 @@
 // Word Path game rules, kept free of screen code so they can be unit-tested (tests/unit/).
 // app.js draws the screens and plays the audio; everything it decides comes from here.
-import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, PICS, PICTURE_FLAGS, WORDS, phonemes, soundSimilarity, confusedWith, heartParts } from './content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, PICS, PICTURE_FLAGS, WORDS, phonemes, soundSimilarity, confusedWith, heartPartsAt } from './content.js?v=dev';
 
 // Every level from content.js, plus the screen kind (pop / match / sort) and mode the game uses
 export const LV = LEVELS.map(l => ({ ...l,
@@ -99,7 +99,7 @@ export function revealFor(L, r) {
   if (L.kind === 'sort') return { pic: null, words: [marked(r.w, L.bins[r.bin], L.ask === 'has' ? 'any' : 'start')] };
   if (L.kind === 'pop') {
     // sight words: the tricky letters lit, with a heart (#25)
-    if (L.mode === 'word') return { pic: null, words: [heartParts(r.target).map(p => ({ t: p.t, on: p.tricky, k: null, heart: p.tricky }))] };
+    if (L.mode === 'word') return { pic: null, words: [heartPartsAt(r.target, L.stage).map(p => ({ t: p.t, on: p.tricky, k: null, heart: p.tricky }))] };
     if (L.mode !== 'sound') return null;
     const ex = GRAPHEMES[r.target].ex;
     return { pic: PICS[ex] ? ex : null, words: [marked(ex, r.target, 'any')] };
