@@ -382,6 +382,17 @@ async function runAll() {
     expect(btns.includes('Next level'), 'Next level should still be offered');
     await waitFor(() => w.wp.spoken().some(t => /practise this one again/.test(t)), 2000, 'the spoken suggestion');
   });
+  await check('Session: after the chosen time, level complete suggests a break', async () => {
+    const n = LEVELS.find(l => l.type === 'blend').n;
+    const w = await load(`level=${n}&rounds=1&session=0.001`);
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    await sleep(120); w.wp.right();
+    await waitFor(() => w.wp.state().screen === 'done', 4000, 'level complete');
+    expect(/Time for a break/.test(text()), 'no break message on screen');
+    await waitFor(() => w.wp.spoken().some(t => /Time for a break/.test(t)), 2000, 'the spoken suggestion');
+    const w2 = await load('screen=settings');
+    expect(/Suggest a break after/.test(text()), 'no session setting in Settings');
+  });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
     expect(/Level 3 complete!/.test(text()) && text().includes(`${LEVELS[2].sticker.name} sticker`), 'level complete text wrong');

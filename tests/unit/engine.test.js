@@ -4,7 +4,8 @@
 import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuffle, unlocked, nextLevel,
   stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2, prompt, soundOutParts,
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
-  modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount } from '../../engine.js?v=dev';
+  modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
+  SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 
 const ok = (cond, msg) => { if (!cond) throw new Error(msg); };
@@ -215,6 +216,15 @@ export const tests = [
         eq(new Set(r.options.map(o => o.w)).size, 3, `level ${L.n} options`);
       }
     }
+  }],
+
+  // ---- session length
+  ['session: a break is suggested once the chosen minutes have passed; 0 turns it off', () => {
+    ok(SESSION_CHOICES.includes(15), '15 minutes is a choice');
+    ok(!sessionOver(0, 14 * 60000, 15), '14 of 15 minutes');
+    ok(sessionOver(0, 15 * 60000, 15), '15 of 15 minutes');
+    ok(!sessionOver(0, 60 * 60000, 0), 'off');
+    ok(!sessionOver(null, 99 * 60000, 15), 'no session started');
   }],
 
   // ---- feedback
