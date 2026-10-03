@@ -70,3 +70,14 @@ Why Word Path is built the way it is. Each entry: the decision, why, what else w
 ### 14. File versions stamped at publish time (2026-10-03)
 - **Decision:** first-party files are referenced with `?v=dev`, replaced by the commit id when publishing.
 - **Why:** GitHub Pages lets browsers cache files for up to 10 minutes; without stamping, new code could run with old styles.
+
+### 15. Catherine (Australian English) as the default voice (2026-10-03)
+- **Decision:** when no voice is chosen in Settings, use Catherine (en-AU, built into Apple devices) if the device has it, then built-in US English voices.
+- **Why:** in testing with a child she was the clearest of the voices tried. The letter-sound recordings are US English, so the accent differs between recorded sounds and spoken words; that was judged acceptable.
+- **Limits:** a website can't install a voice, so Chromebooks and Windows fall back to their own voices. The same voice on every device needs pre-made audio (#27).
+- **Revisit:** when #27 ships, or when the game moves to a US-English-only voice.
+
+### 16. Short levels: every item once, then bonus rounds from this play's misses (2026-10-03)
+- **Decision:** levels keep 8 rounds. When a level has fewer items, each comes up once, then the rest are labelled bonus rounds and bring back what was missed in this play (else still being learned), never the item just played.
+- **Why:** random repeats made children think a letter had been skipped. Fewer rounds would feel too short. Bringing back a missed item soon is the cheapest form of the spaced, corrective practice in LEARNING_DESIGN.md.
+- **Revisit:** with #14 (bands), which may change level sizes.

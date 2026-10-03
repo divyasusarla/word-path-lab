@@ -4,7 +4,7 @@ import { h, html, render, Component } from './vendor/preact-htm.module.js';
 import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage } from './content.js?v=dev';
 import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
-  itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain,
+  itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
   SESSION_CHOICES, sessionOver } from './engine.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
@@ -45,7 +45,7 @@ class App extends Component {
   sid = 0; run = 0; tms = []; voices = []; spoken = [];
   recorded = new Set(); buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
 
-  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), mastery:this.loadMastery(), answered:false, misses:0, modelled:false, firstTries:[], settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
+  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), mastery:this.loadMastery(), answered:false, misses:0, modelled:false, firstTries:[], missed:[], settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
 
   // In test mode nothing is read from or written to storage
   load() {
@@ -74,7 +74,8 @@ class App extends Component {
     const mastery = recordAttempt(this.state.mastery, key, ok, TEST && Q.get('day') ? Q.get('day') : today());
     this.justMastered = ok && !before && isMastered(mastery[key]);
     if (!TEST) try { localStorage.setItem(MKEY, JSON.stringify(mastery)); } catch (e) {}
-    this.setState(s => ({ mastery, answered: true, firstTries: s.firstTries.concat(!!ok) }));
+    const target = r.target?.w ?? r.target ?? r.w;  // missed items come back in bonus rounds
+    this.setState(s => ({ mastery, answered: true, firstTries: s.firstTries.concat(!!ok), missed: ok ? s.missed : s.missed.concat(target) }));
   }
   save(done) { if (!TEST) try { localStorage.setItem(KEY, JSON.stringify(idsFromDone(done))); } catch (e) {} }
   setAudio(patch) {
@@ -112,7 +113,7 @@ class App extends Component {
       state: () => {
         const s = this.state, L = LV[s.lvl], r = s.rounds[s.round];
         return { screen: s.screen, level: L.n, stage: L.stage + 1, type: L.type, kind: L.kind, mode: L.mode, ask: L.ask, round: s.round, rounds: s.rounds.length, solved: s.solved,
-          target: r ? (r.target?.w ?? r.target ?? r.w) : null, review: !!(r && r.review), modelled: s.modelled, misses: s.misses, firstTries: s.firstTries.slice(), options: r && r.options ? r.options.map(o => o.w ?? o.label) : null, mapStage: this.mapStage(), settings: s.settings, done: s.done.slice() };
+          target: r ? (r.target?.w ?? r.target ?? r.w) : null, review: !!(r && r.review), bonus: !!(r && r.bonus), missed: s.missed.slice(), modelled: s.modelled, misses: s.misses, firstTries: s.firstTries.slice(), options: r && r.options ? r.options.map(o => o.w ?? o.label) : null, mapStage: this.mapStage(), settings: s.settings, done: s.done.slice() };
       },
       right: () => this.answer(true),
       wrong: () => this.answer(false),
@@ -147,11 +148,14 @@ class App extends Component {
   }
   componentWillUnmount() { this.stop(); window.removeEventListener('resize', this.onResize); document.removeEventListener('visibilitychange', this.onVisible); }
 
-  // Prefer voices built into the device: online voices (e.g. Chrome's "Google US English" on a Mac) can clip
+  // Catherine (Australian English, on Apple devices) first: in testing she was the clearest on short words (see
+  // DECISIONS.md). Then other built-in voices: online voices (e.g. Chrome's "Google US English" on a Mac) can clip
   // the start of short words. A voice picked in Grown-up settings always wins.
   bestVoice() {
     const vs = this.voices, chosen = vs.find(v => v.name === this.state.audio.voice);
     if (chosen) return chosen;
+    const preferred = vs.find(v => /^Catherine/i.test(v.name) && /en[-_]AU/i.test(v.lang)) || vs.find(v => /^Catherine/i.test(v.name));
+    if (preferred) return preferred;
     const us = vs.filter(v => /en[-_]US/i.test(v.lang));
     const local = us.filter(v => v.localService), online = us.filter(v => !v.localService);
     const prefs = [/Samantha/i, /Ava/i, /Allison/i, /Zoe/i, /Natural/i, /Google US English/i];
@@ -254,7 +258,7 @@ class App extends Component {
 
   unlocked(i) { return unlocked(i, this.state.done, CONFIG.unlockAll); }
   build(L) { return buildRounds(L, CONFIG.rounds, Math.random, this.state.mastery); }
-  prompt(L, r, first) { return speechFor(L, r, first); }
+  prompt(L, r, first, n = this.state.round) { return speechFor(L, r, first, n); }
   mapStage() { return mapStageFor(this.state.done, this.state.mapStage); }
 
   start(i) {
@@ -263,7 +267,7 @@ class App extends Component {
     if (!this.unlocked(i)) { this.speak(['That level is locked. Finish the one before it.']); return; }
     this.stop();
     const L = LV[i], rounds = this.build(L);
-    this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false, misses:0, modelled:false, firstTries:[] });
+    this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false, misses:0, modelled:false, firstTries:[], missed:[] });
     this.speak(this.prompt(L, rounds[0], true));
   }
 
@@ -280,8 +284,15 @@ class App extends Component {
         ...(rest ? [500, 'Great work today! Time for a break.'] : again ? [500, 'Let\'s practise this one again.'] : [])]);
       return;
     }
-    this.setState({ round: round + 1, wrong:[], solved:false, binWrong:null, answered:false, misses:0, modelled:false });
-    this.speak(this.prompt(L, rounds[round + 1], false));
+    // A bonus round is filled now, from what was missed in this play
+    let upcoming = rounds[round + 1], list = rounds;
+    if (upcoming.bonus) {
+      const prev = rounds[round].target?.w ?? rounds[round].target;
+      upcoming = bonusRound(L, this.state.missed, prev, this.state.mastery);
+      list = rounds.slice(); list[round + 1] = upcoming;
+    }
+    this.setState({ round: round + 1, rounds: list, wrong:[], solved:false, binWrong:null, answered:false, misses:0, modelled:false });
+    this.speak([...(upcoming.bonus && !rounds[round].bonus ? ['Bonus round!', 500] : []), ...this.prompt(L, upcoming, false, round + 1)]);
   }
 
   // Count a miss; after enough misses, show and say the answer instead of letting guessing win
@@ -290,7 +301,7 @@ class App extends Component {
     this.setState({ misses, modelled: this.state.modelled || model });
     this.speak(model ? [...said, 600, ...modelParts(L, r)] : [...said, 600, 'Try again.', 700, ...this.prompt(L, r, false)]);
   }
-  praise(L, r) { return praiseParts(L, r, { modelled: this.state.modelled, mastered: this.justMastered }); }
+  praise(L, r) { return praiseParts(L, r, { modelled: this.state.modelled, mastered: this.justMastered, n: this.state.round }); }
 
   async win(say) {
     const run = this.run;
@@ -437,7 +448,7 @@ class App extends Component {
       stageDoneCount: idxs.filter(i => done[i]).length, stageLevelCount: idxs.length,
       canPrev: ms > 0, canNext: ms < STAGES.length - 1,
       prevStage: () => this.setState({ mapStage: ms - 1 }), nextStage: () => this.setState({ mapStage: ms + 1 }),
-      levelNum: L.n, levelTitle: L.title, roundNum: Math.min(round + 1, rounds.length), roundCount: rounds.length,
+      levelNum: L.n, levelTitle: L.title, roundNum: Math.min(round + 1, rounds.length), roundCount: rounds.length, isBonus: !!(r && r.bonus),
       progress: rounds.map((_, k) => ({ color: k < round || (k === round && solved) ? '#FFC23C' : '#E6E1EE' })),
       replay: () => r && this.speak(this.prompt(L, r, false)),
       soundOut: () => this.soundOut(),
@@ -602,7 +613,7 @@ class App extends Component {
           <div class="progress-stars" style="display:flex;gap:6px;padding:10px 14px;background:#fff;border-radius:999px;flex-shrink:0">
             ${v.progress.map(p => html`<i class="icon-star" style=${`font-size:24px;line-height:1;color:${p.color}`}></i>`)}
           </div>
-          <div class="progress-count">${v.roundNum} of ${v.roundCount}</div>
+          <div class=${v.isBonus ? 'progress-count bonus' : 'progress-count'}>${v.isBonus ? '⭐ Bonus round' : `${v.roundNum} of ${v.roundCount}`}</div>
         </div>
 
         <div class="play-main">

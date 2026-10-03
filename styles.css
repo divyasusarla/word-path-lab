@@ -69,6 +69,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 4px s
 .layout-phone .progress-stars, .layout-phone-landscape .progress-stars { display: none !important; }
 .progress-count { display: none; white-space: nowrap; flex-shrink: 0; padding: 6px 12px; background: #fff; border-radius: 999px; font-size: 15px; font-weight: 600; }
 .layout-phone .progress-count, .layout-phone-landscape .progress-count { display: block; }
+.progress-count.bonus { display: block; background: #FFC23C; color: #2A2350; }  /* bonus rounds are labelled at every size */
 
 /* picture choices */
 .match-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
