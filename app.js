@@ -129,7 +129,7 @@ class App extends Component {
       masteredIn: n => masteredIn(LV[n - 1], this.state.mastery),
       played: () => this.playedClips.slice(),
       // Simulates iOS refusing to start sound (no tap yet, or interrupted), to check the voice fallback
-      blockAudio: async () => { const c = this.audioCtx(); if (!c) return 'no audio'; c.resume = () => Promise.resolve(); await c.suspend(); return c.state; },
+      blockAudio: () => { this.audioBlocked = true; return 'blocked'; },
       replay: () => { const L = LV[this.state.lvl], r = this.state.rounds[this.state.round]; if (r) this.speak(this.prompt(L, r, false)); },
       clearSpoken: () => { this.spoken = []; }
     };
@@ -182,6 +182,7 @@ class App extends Component {
   // Returns false if it still isn't, so the caller can use the browser voice instead of playing into silence.
   async audioReady() {
     const c = this.audioCtx(); if (!c) return false;
+    if (TEST && this.audioBlocked) return false;  // test hook: behave as if iOS refused to start sound
     for (let i = 0; i < 8 && c.state !== 'running'; i++) { c.resume().catch(() => {}); await new Promise(r => setTimeout(r, 75)); }
     return c.state === 'running';
   }

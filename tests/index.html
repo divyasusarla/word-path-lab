@@ -410,7 +410,7 @@ async function runAll() {
     frame.src = '../?test&think=0&level=1';
     const w = await waitFor(() => frame.contentWindow.wp && frame.contentWindow, 6000, 'the game to load');
     await waitFor(() => w.wp.spokenDetail().some(x => x.clip), 8000, 'the first speech sound');
-    expect(await w.wp.blockAudio() === 'suspended', 'could not simulate stopped sound');
+    expect(w.wp.blockAudio() === 'blocked', 'could not simulate stopped sound');
     w.wp.clearSpoken(); const before = w.wp.played().length;
     w.wp.replay();
     await waitFor(() => w.wp.spokenDetail().some(x => x.clip), 8000, 'the sound after blocking');
