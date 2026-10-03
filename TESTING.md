@@ -39,7 +39,7 @@ Add **`?test`** to the address. Every level is open, nothing is saved, and a **T
 - open any screen: Map, Stickers, Settings, Level complete
 - set how many levels are finished, stage by stage, to see the map and sticker book at each point
 - see the content check: green when every letter and sound is covered in order
-- see what the game is saying, as captions. Speech sounds show 🎙 when they come from a recording and 🤖 when the browser voice is filling in.
+- see what the game is saying, as captions. Speech sounds show 🎙 when they come from a recording, 🤖 when there's no recording, and ⚠️ when a recording was skipped because sound wasn't running (the voice said it instead). The panel also shows the sound engine's state. On an iPhone, ⚠️ after the first tap means sound didn't start: tell Claude.
 
 You can also set things up straight from the address. Combine options with `&`:
 
