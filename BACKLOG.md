@@ -29,7 +29,7 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 14b | **Consonant blends as a teaching step**: st, sp, sn, fr, tr, cl, -nd, -mp… with sorting, blending and reading levels; today some words (snake, star, spoon, tree) use blends that were never taught | M | Learning | Gap found in LEARNING_DESIGN.md; part of band B |
 | 15 | ✅ ~~**Sight words: full coverage**: rotate through every word in a level across plays, bringing missed words back~~ | | | Shipped (CHANGELOG) |
 | 16 | ✅ ~~**Cumulative review**: mix earlier sounds and words into later levels, weighted to ones not yet mastered~~ | | | Shipped (CHANGELOG) |
-| 17 | **Letter confusions as wrong options**: b/d, p/q, m/n, short e/i, once both are taught | S | Learning | Targets the most common mix-ups |
+| 17 | ✅ ~~**Letter confusions as wrong options**: b/d, p/q, m/n, short e/i, once both are taught~~ | | | Shipped (CHANGELOG) |
 | 18 | **Grown-up gate on Settings**: hold for 3 seconds, or a simple sum | S | Product | Needed before the teacher report |
 | 19 | **Teacher report**: behind the gate; accuracy by level, mastered and struggling words, printable page | M | Product | Needs #12 and #18 |
 | 20 | **Export / import progress**: a file or code to move a child between devices or collect a class's results | M | Product | Pairs with #19 |
