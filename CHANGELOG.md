@@ -4,6 +4,7 @@ Each version is tagged in git, and the tags are listed under the repo's Tags on 
 
 ## Unreleased
 - Checks run automatically on every pull request and push (GitHub Actions, headless Chrome); the site only publishes from `main` when every check passes. Replaces the publish-only workflow.
+- Blend it and Read it: wrong pictures now sound like the answer (cat → cap, can, hat), chosen from every word the child can decode by that stage, so the first sound alone isn't enough. New checks enforce it.
 
 ## v3.0 — 2026-10-02
 - Full teaching order: 38 levels in 7 stages (s a t p i n → m d g o c k ck → e u r h b f l → j v w x y z qu → sh ch th ng → magic e → vowel teams). Every stage has letter sounds, sorting, blending, and sight words; stages 1–4 add letter names; reading and rhyming levels are mixed in.
