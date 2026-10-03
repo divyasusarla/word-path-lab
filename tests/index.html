@@ -288,6 +288,15 @@ async function runAll() {
     const rec = [...usedClips].filter(([, src]) => src === 'recording').length;
     return `${usedClips.size} different sounds used across all levels (3 rounds each); ${rec} played from recordings, ${usedClips.size - rec} from the browser voice`;
   });
+  await check('Picture review page: shows every picture', async () => {
+    frame.src = '../tools/pictures.html';
+    const w = await waitFor(() => frame.contentWindow.picturesReady && frame.contentWindow, 6000, 'the picture page to load');
+    const cards = doc().querySelectorAll('.card').length;
+    expect(cards === w.picturesReady.pictures, `${cards} cards for ${w.picturesReady.pictures} pictures`);
+    await sleep(500);
+    const broken = brokenPictures(); expect(!broken.length, `broken pictures: ${broken.join(', ')}`);
+    return `${w.picturesReady.pictures} pictures, ${w.picturesReady.high} flagged likely misnamed, ${w.picturesReady.mild} worth a look`;
+  });
   await check('Recorder page: loads with all 69 sounds and every icon', async () => {
     frame.src = '../tools/record.html';
     const w = await waitFor(() => frame.contentWindow.recorderReady && frame.contentWindow, 6000, 'the recorder to load');
