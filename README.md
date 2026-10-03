@@ -28,11 +28,11 @@ A plain static site with no build step: the browser loads `index.html`, which ru
 | `styles.css` | Base styles, hover states and animations |
 | `audio/` | The recordings (`<id>.wav`) and `manifest.json`, which lists those that exist |
 | `vendor/` | Third-party files kept locally so nothing loads from outside servers: Preact/htm, icon font, Fredoka font, Noto Emoji pictures (see `vendor/README.md`) |
-| `tests/` | Automatic checks that play every level in the browser (see `TESTING.md`) |
+| `tests/` | Automatic checks that play every level in the browser (`index.html`), and `run-checks.mjs`, which runs them headlessly on GitHub (see `TESTING.md`) |
 | `tools/record.html` | The recorder for all 69 sounds |
 | `tools/import_audio.py` | Brings the recorder's zip into `audio/`, removing clicks and silence and evening out volume |
 | `versions/` | A playable copy of every past version, with an index page |
-| `.github/workflows/pages.yml` | Publishes the site to GitHub Pages on every push to `main` |
+| `.github/workflows/site.yml` | Runs the checks on every pull request and push; publishes to GitHub Pages from `main` only if they pass |
 | `README.md` | This file |
 | `CHANGELOG.md` | What changed in each version |
 | `BACKLOG.md` | Planned work and ideas |
@@ -55,4 +55,4 @@ then open http://127.0.0.1:8765/. Add `?test` to open every level without saving
 
 **Add or redo recordings**: follow `RECORDING.md`, then run `python3 tools/import_audio.py ~/Downloads/word-path-audio-<date>.zip`.
 
-**Publish**: each change goes on its own branch and pull request. After review, merging into `main` publishes through GitHub Actions in about a minute. Add a `CHANGELOG.md` entry; tag milestones (`git tag -a v3.1`) and copy them into `versions/`.
+**Publish**: each change goes on its own branch and pull request. The checks run automatically and show on the pull request. After review, merging into `main` runs them again and publishes through GitHub Actions if they pass (about 3 minutes). Add a `CHANGELOG.md` entry; tag milestones (`git tag -a v3.1`) and copy them into `versions/`.
