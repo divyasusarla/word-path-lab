@@ -258,6 +258,20 @@ async function runAll() {
     }
     return notes.join(' · ');
   });
+  await check('Read it: "Sound it out" says the sounds, not the word', async () => {
+    const n = LEVELS.find(l => l.type === 'read').n;
+    const w = await load(`level=${n}`);
+    await waitFor(() => w.wp.spoken().length > 0, 2000, 'the first prompt');
+    const target = w.wp.state().target;
+    w.wp.clearSpoken();
+    [...doc().querySelectorAll('button')].find(b => /Sound it out/.test(b.innerText)).click();
+    await waitFor(() => w.wp.spokenDetail().length >= phonemes(target).length, 2000, 'the sounds');
+    await sleep(100);
+    const said = w.wp.spokenDetail();
+    expect(said.every(x => x.clip), `said something other than sounds: ${said.filter(x => !x.clip).map(x => x.t).join(', ')}`);
+    expect(said.length === phonemes(target).length, `expected ${phonemes(target).length} sounds for "${target}", got ${said.length}`);
+    return `${target}: ${said.map(x => x.clip).join(' · ')}`;
+  });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
     expect(/Level 3 complete!/.test(text()) && text().includes(`${LEVELS[2].sticker.name} sticker`), 'level complete text wrong');

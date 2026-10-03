@@ -337,9 +337,10 @@ class App extends Component {
     this.speak([L.ask === 'has' ? 'Listen to the middle sound.' : 'Listen to the first sound.', 500, { t: item.w, rate: 0.6 }, 600, 'Try again.']);
   }
 
+  // Says each sound in the word, slowly, but not the word itself: the child does the blending
   soundOut() {
     const r = this.state.rounds[this.state.round]; if (!r || !r.target?.w) return;
-    this.speak([...phonemes(r.target.w).flatMap(p => [gsnd(p), 450]), 300, { t: r.target.w, rate: 0.8 }]);
+    this.speak(phonemes(r.target.w).flatMap(p => [gsnd(p), 600]).slice(0, -1));
   }
 
   popField(L) {
