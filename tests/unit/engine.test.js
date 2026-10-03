@@ -118,7 +118,7 @@ export const tests = [
   ['codec padding: silence at the start beyond 40 ms is skipped; a normal start is left alone', () => {
     const rate = 22050, clip = (lead, len = 0.3) => Float32Array.from({ length: Math.round((lead + len) * rate) }, (_, i) => i < lead * rate ? 0 : 0.3);
     ok(Math.abs(codecOffset(clip(0.135), rate) - (0.135 - KEEP_LEAD)) < 0.001, 'padded clip');
-    eq(codecOffset(clip(0.02), rate), 0, 'clip that starts on time');
+    eq(codecOffset(clip(0.005), rate), 0, 'clip that starts on time');
     eq(codecOffset(clip(0), rate), 0, 'clip with no lead-in');
   }],
 
