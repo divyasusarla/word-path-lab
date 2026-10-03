@@ -64,6 +64,53 @@ export function prompt(L, r, first, n = 0) {
   return [...pre, word(r.w, 0.7), 700, L.ask === 'has' ? 'Does it have' : 'Does it start with', 300, gsnd(A), 400, 'or', 300, gsnd(B)];
 }
 
+// ---- Showing the word after the answer (#34) ---------------------------------------------------
+// How a word's letters line up with its sounds: cake → c (c) · a (a_e) · k (k) · e (a_e). k is the sound's index.
+// WORDS lists sounds, not spellings, so a few sounds can be spelled another way (rose: z spelled s). null if it
+// doesn't line up (the word is then shown without highlighting).
+const SPELLED = { z: ['s'], k: ['c', 'ck'], c: ['k', 'ck'] };
+export function spell(w) {
+  const ph = phonemes(w); if (!ph.length) return null;
+  const segs = []; let i = 0, split = null;
+  for (let k = 0; k < ph.length; k++) {
+    const g = ph[k];
+    if (g.includes('_')) { if (w[i] !== g[0]) return null; segs.push({ t: g[0], g, k }); i++; split = { g, k }; continue; }
+    const s = [g, ...(SPELLED[g] || [])].find(o => w.startsWith(o, i));
+    if (!s) return null;
+    segs.push({ t: s, g, k }); i += s.length;
+  }
+  if (split && w.slice(i) === 'e') { segs.push({ t: 'e', g: split.g, k: split.k }); i++; }
+  return i === w.length ? segs : null;
+}
+// A word as letter groups, with the ones to light up. on(seg) decides; words without a spelling line-up fall back
+// to matching the sound's letters in the text (first letters for "starts with", anywhere for "has")
+function marked(w, g, where) {
+  const sp = spell(w);
+  if (sp) return sp.map(x => ({ t: x.t, k: x.k, on: g != null && x.g === g && (where === 'any' || x.k === 0) }));
+  if (g && g.includes('_')) {  // magic e: the vowel, a consonant or two, and the final e (wh-a-l-e)
+    const m = w.match(new RegExp(`^(.*)(${g[0]})([^aeiou]+)(e)$`));
+    if (m) return [{ t: m[1], on: false }, { t: m[2], on: true }, { t: m[3], on: false }, { t: m[4], on: true }].filter(x => x.t).map(x => ({ ...x, k: null }));
+  }
+  const at = g && !g.includes('_') ? (where === 'any' ? w.indexOf(g) : w.startsWith(g) ? 0 : -1) : -1;
+  return at < 0 ? [{ t: w, k: null, on: false }] : [{ t: w.slice(0, at), k: null, on: false }, { t: g, k: null, on: true }, { t: w.slice(at + g.length), k: null, on: false }].filter(x => x.t);
+}
+// What to show once a round is answered right: { pic, words: [[{t, on, k}]] }, or null for nothing extra
+export function revealFor(L, r) {
+  if (L.kind === 'sort') return { pic: null, words: [marked(r.w, L.bins[r.bin], L.ask === 'has' ? 'any' : 'start')] };
+  if (L.kind === 'pop') {
+    if (L.mode !== 'sound') return null;
+    const ex = GRAPHEMES[r.target].ex;
+    return { pic: PICS[ex] ? ex : null, words: [marked(ex, r.target, 'any')] };
+  }
+  if (L.mode === 'rhyme') {
+    const a = r.target.cue, b = r.target.w;
+    let n = 0; while (n < Math.min(a.length, b.length) && a[a.length - 1 - n] === b[b.length - 1 - n]) n++;
+    const split = w => [{ t: w.slice(0, w.length - n), on: false, k: null }, { t: w.slice(w.length - n), on: true, k: null }].filter(x => x.t);
+    return { pic: null, words: [split(a), split(b)] };
+  }
+  return { pic: null, words: [marked(r.target.w, null)] };  // blend / read: letters light up with the sounds (cue)
+}
+
 // "Sound it out": each sound in the word, slowly, without the word itself (the child does the blending)
 export const soundOutParts = w => phonemes(w).flatMap(p => [gsnd(p), 600]).slice(0, -1);
 
@@ -294,7 +341,10 @@ export function praiseParts(L, r, { modelled = false, mastered = false, n = 0 } 
     return ['Yes!', 300, slowWord(r.target), ...extra];
   }
   if (L.mode === 'rhyme') return ['Yes!', 300, word(r.target.cue), 300, word(r.target.w), ...extra];
-  return ['Yes!', 300, word(r.target.w), ...extra];
+  // Blend it / Read it: in the first rounds, each sound again as its letters light up (cue), then the whole word
+  const w = r.target.w, whole = { ...word(w), cue: 'all' };
+  if (short) return ['Yes!', 300, whole, ...extra];
+  return ['Yes!', 300, ...phonemes(w).flatMap((p, k) => [{ ...gsnd(p), cue: k }, 250]), 150, whole, ...extra];
 }
 // What's said after a wrong tap, before "Try again" or the answer. option: the tile, picture word, or bin tapped
 export function missParts(L, r, option) {

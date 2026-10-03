@@ -545,6 +545,32 @@ async function runAll() {
       expect(text().includes(`${q}…`), `level ${L.n}: says "${q}", screen doesn't`);
     }
   });
+  await check('Show the word after the answer: the word appears with the right letters lit, on every screen size', async () => {
+    const notes = [];
+    const cases = [[LEVELS.find(l => l.type === 'sort').n, (s, rv) => rv.on.length === 1 && rv.text.startsWith(rv.on[0])],
+      [LEVELS.find(l => l.type === 'sounds').n, (s, rv) => rv.on.length === 1],
+      [LEVELS.find(l => l.type === 'blend').n, (s, rv) => rv.text === s.target && rv.on.join('') === s.target],
+      [LEVELS.find(l => l.type === 'rhyme').n, (s, rv) => rv.on.length === 2],
+      [LEVELS.find(l => l.type === 'sight').n, (s, rv) => rv === null]];
+    try {
+      for (const [name, wd, ht] of SIZES) {
+        frame.style.width = `${wd}px`; frame.style.height = `${ht}px`; frame.style.aspectRatio = 'auto';
+        for (const [n, good] of cases) {
+          frame.src = 'about:blank'; await sleep(30);
+          frame.src = `../?test&mute&think=3&level=${n}`;   // a pause after the answer, so the word stays up
+          const w = await waitFor(() => frame.contentWindow.wp && frame.contentWindow, 6000, 'the game to load');
+          await waitFor(() => w.wp.state().screen === 'play', 2000, `level ${n}`);
+          const s = w.wp.state(); w.wp.right();
+          const rv = n === cases[4][0] ? (await sleep(300), w.wp.reveal()) : await waitFor(() => { const x = w.wp.reveal(); return x && (n !== cases[2][0] || x.on.join('') === s.target) && x; }, 3000, `the word in level ${n}`);
+          expect(good(s, rv), `${name}, level ${n} (${s.target}): ${JSON.stringify(rv)}`);
+          const el = doc().querySelector('.reveal');
+          if (el) { const b = el.getBoundingClientRect(); expect(b.left >= 0 && b.right <= wd + 1 && b.top >= 0 && b.bottom <= ht + 1, `${name}, level ${n}: the word card is off screen`); }
+          if (name === 'wide' && rv) notes.push(`${n}: ${rv.text} [${rv.on.join(' ')}]`);
+        }
+      }
+    } finally { frame.style.width = ''; frame.style.height = ''; frame.style.aspectRatio = ''; }
+    return notes.join(' · ');
+  });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
     expect(/You did it!/.test(text()) && text().includes(`You earned the ${LEVELS[2].sticker.name} sticker!`), 'level complete text wrong');
