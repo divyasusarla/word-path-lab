@@ -136,12 +136,37 @@ export const STAGES = [
 export const LEVELS = STAGES.flatMap((st, si) => st.levels.map(l => ({ ...l, stage: si }))).map((l, i) => ({ ...l, n: i + 1, sticker: STICKERS[i] }));
 STAGES.forEach((st, si) => { st.first = LEVELS.findIndex(l => l.stage === si); st.count = st.levels.length; });
 
+// ---- When each sound is taught, and which words a child can decode by then -----------------------
+// Stage (0-based) where each sound is first taught in a letter-sounds level
+export const TAUGHT_BY = {};
+LEVELS.forEach(l => { if (l.type === 'sounds') l.pool.forEach(gr => { if (!(gr in TAUGHT_BY)) TAUGHT_BY[gr] = l.stage; }); });
+// A helper spelling (ll) counts as taught once the sound it shares a recording with is taught
+export const soundStage = gr => {
+  if (!GRAPHEMES[gr]) return undefined;
+  if (!GRAPHEMES[gr].helper) return TAUGHT_BY[gr];
+  const base = Object.entries(GRAPHEMES).find(([k, v]) => !v.helper && v.clip === GRAPHEMES[gr].clip);
+  return base ? TAUGHT_BY[base[0]] : undefined;
+};
+// Words with a picture whose sounds are all taught by the given stage
+export const decodableBy = stage => Object.keys(WORDS).filter(w => PICS[w] && phonemes(w).every(gr => soundStage(gr) !== undefined && soundStage(gr) <= stage));
+
+// How alike two words sound, for choosing wrong options in Blend it and Read it. Higher = more alike.
+// Sharing the first or last sound means a child can't pick the answer from that sound alone.
+export function soundSimilarity(a, b) {
+  const A = phonemes(a), B = phonemes(b);
+  let s = 0;
+  if (A[0] === B[0]) s += 3;
+  if (A[A.length - 1] === B[B.length - 1]) s += 2;
+  if (A.length === B.length) s += 1;
+  s += A.filter(x => B.includes(x)).length * 0.5;
+  return s;
+}
+
 // ---- Coverage check: run by tests/ and shown in test mode ----------------------------------------
 // Returns a list of problems (empty when everything is covered and in order).
 export function coverage() {
   const problems = [];
-  const taughtBy = {};   // grapheme -> stage it's first taught in
-  LEVELS.forEach(l => { if (l.type === 'sounds') l.pool.forEach(gr => { if (!(gr in taughtBy)) taughtBy[gr] = l.stage; }); });
+  const taughtBy = TAUGHT_BY;
   const named = new Set(LEVELS.filter(l => l.type === 'names').flatMap(l => l.pool));
 
   for (const ch of 'abcdefghijklmnopqrstuvwxyz') {
@@ -153,7 +178,6 @@ export function coverage() {
     if (!info.helper && !(gr in taughtBy)) problems.push(`Sound "${gr}" is never taught in a letter-sounds level`);
   }
   if (LEVELS.length !== STICKERS.length) problems.push(`${LEVELS.length} levels but ${STICKERS.length} stickers`);
-  const helperStage = gr => { const base = Object.entries(GRAPHEMES).find(([k, v]) => !v.helper && v.clip === GRAPHEMES[gr].clip); return base ? taughtBy[base[0]] : undefined; };
 
   for (const l of LEVELS) {
     const where = `Level ${l.n} (${l.title})`;
@@ -166,7 +190,7 @@ export function coverage() {
         if (!ph.length) { problems.push(`${where}: "${w}" has no sounds listed in WORDS`); continue; }
         for (const gr of ph) {
           if (!GRAPHEMES[gr]) { problems.push(`${where}: "${w}" uses unknown sound "${gr}"`); continue; }
-          const st = GRAPHEMES[gr].helper ? helperStage(gr) : taughtBy[gr];
+          const st = soundStage(gr);
           if (st === undefined || st > l.stage) problems.push(`${where}: "${w}" uses "${gr}", which isn't taught until ${st === undefined ? 'never' : 'stage ' + (st + 1)}`);
         }
       }

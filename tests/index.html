@@ -41,7 +41,7 @@
 </main>
 <script type="module">
 import { SOUNDS } from '../sounds.js';
-import { LEVELS, STAGES, STICKERS, coverage, allPictureFiles } from '../content.js';
+import { LEVELS, STAGES, STICKERS, coverage, allPictureFiles, decodableBy, phonemes, soundSimilarity } from '../content.js';
 const levelOf = type => LEVELS.find(l => l.type === type).n;
 const usedClips = new Map();   // clip id -> where the game got it ('recording' or 'voice')
 const frame = document.getElementById('game');
@@ -232,6 +232,31 @@ async function runAll() {
       const bad = w.wp.spoken().filter(t => /^\W+$/.test(t.trim()));
       expect(!bad.length, `level ${n} speaks punctuation on its own: ${JSON.stringify(bad)}`);
     }
+  });
+  await check('Wrong options: similar-sounding words score higher (cat → cap above dog)', async () => {
+    expect(soundSimilarity('cat', 'cap') > soundSimilarity('cat', 'dog'), 'cap should be closer to cat than dog is');
+    expect(soundSimilarity('cat', 'can') > soundSimilarity('cat', 'pin'), 'can should be closer to cat than pin is');
+    expect(soundSimilarity('ship', 'shell') > soundSimilarity('ship', 'ring'), 'shell should be closer to ship than ring is');
+  });
+  await check('Blend it and Read it: wrong options share the first or last sound with the answer whenever possible', async () => {
+    const shares = (a, b) => { const A = phonemes(a), B = phonemes(b); return A[0] === B[0] || A[A.length - 1] === B[B.length - 1]; };
+    const notes = [];
+    for (const L of LEVELS.filter(l => l.type === 'blend' || l.type === 'read')) {
+      const w = await load(`level=${L.n}&rounds=8`);
+      const pool = decodableBy(L.stage);
+      for (let r = 0; r < 8; r++) {
+        const s = w.wp.state();
+        const wrongs = s.options.filter(o => o !== s.target);
+        expect(wrongs.length === 2, `level ${L.n}: expected 2 wrong options, got ${wrongs.length}`);
+        for (const o of wrongs) expect(pool.includes(o), `level ${L.n}: "${o}" uses sounds not yet taught`);
+        const possible = pool.some(x => x !== s.target && shares(s.target, x));
+        if (possible) expect(wrongs.some(o => shares(s.target, o)), `level ${L.n}: "${s.target}" got ${wrongs.join(', ')}, which share no first or last sound`);
+        if (r === 0) notes.push(`${L.n}: ${s.target} → ${wrongs.join(', ')}`);
+        w.wp.right();
+        if (r < 7) await waitFor(() => w.wp.state().round === r + 1, 4000, `round ${r + 2} of level ${L.n}`);
+      }
+    }
+    return notes.join(' · ');
   });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');

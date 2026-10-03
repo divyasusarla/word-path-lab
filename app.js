@@ -1,7 +1,7 @@
 // Word Path (lab) — ported from the Claude Design "Word Path v2" file.
 // Preact + htm, vendored (see vendor/README.md): no build step, edit and reload.
 import { h, html, render, Component } from './vendor/preact-htm.module.js';
-import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, picSrc, phonemes, coverage } from './content.js';
+import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, picSrc, phonemes, coverage, decodableBy, soundSimilarity } from './content.js';
 
 // Gameplay settings (were the editor props in Claude Design)
 const CONFIG = {
@@ -103,7 +103,7 @@ class App extends Component {
       state: () => {
         const s = this.state, L = LV[s.lvl], r = s.rounds[s.round];
         return { screen: s.screen, level: L.n, stage: L.stage + 1, type: L.type, kind: L.kind, mode: L.mode, ask: L.ask, round: s.round, rounds: s.rounds.length, solved: s.solved,
-          target: r ? (r.target?.w ?? r.target ?? r.w) : null, mapStage: this.mapStage(), settings: s.settings, done: s.done.slice() };
+          target: r ? (r.target?.w ?? r.target ?? r.w) : null, options: r && r.options ? r.options.map(o => o.w ?? o.label) : null, mapStage: this.mapStage(), settings: s.settings, done: s.done.slice() };
       },
       right: () => this.answer(true),
       wrong: () => this.answer(false),
@@ -239,8 +239,14 @@ class App extends Component {
       }));
     }
     if (L.kind === 'match') {
-      const src = L.mode === 'rhyme' ? L.pairs : L.words.map(w => ({ w }));
-      return this.cycle(src, R).map(t => ({ target: t, options: this.shuf([t, ...this.shuf(src.filter(x => x.w !== t.w)).slice(0, 2)]) }));
+      if (L.mode === 'rhyme') return this.cycle(L.pairs, R).map(t => ({ target: t, options: this.shuf([t, ...this.shuf(L.pairs.filter(x => x.w !== t.w)).slice(0, 2)]) }));
+      // Blend it / Read it: wrong options sound like the answer (cat → cap, can, hat), drawn from every word the
+      // child can decode by this stage, so they have to use every sound, not just the first
+      const pool = decodableBy(L.stage);
+      return this.cycle(L.words, R).map(w => {
+        const near = pool.filter(x => x !== w).map(x => [x, soundSimilarity(w, x) + Math.random() * 0.6]).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([x]) => ({ w: x }));
+        return { target: { w }, options: this.shuf([{ w }, ...near]) };
+      });
     }
     return this.shuf(L.items);
   }
