@@ -21,7 +21,7 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 9 | **Re-record s, th (thin), f** (rumble filter shipped; optionally sh, ng, th (this) held longer) | S | Audio · parallel | Yours: th (thin) is mostly breath even after filtering |
 | 10 | ✅ ~~**Move game logic into its own module, with unit tests**: building rounds, choosing wrong options, unlocking; tests that `coverage()` catches broken content~~ | | | Shipped (CHANGELOG) |
 | 11 | ✅ ~~**Store progress by level id, not position**~~ | | | Shipped (CHANGELOG) |
-| 12 | **Mastery tracking**: record each word and sound, first try right or not; mastered = 3 first-try correct of the last 4, across at least 2 days | M | Learning | Underpins #13, #15–16, #19 and adaptivity |
+| 12 | ✅ ~~**Mastery tracking**~~ | | | Shipped (CHANGELOG) |
 | 13 | **Don't let guessing finish a level**: count first-try answers; after two misses, model the answer instead of letting elimination win | S | Learning | Needs #12 |
 | 14 | **Developmental bands**: regroup stages into K / grade 1 / grade 2 per `LEARNING_DESIGN.md`; add grade 2 content (endings -s -ed -ing, more vowel patterns, two-syllable words) | L | Learning | Fits the K–2 span properly; needs #5 and #11 |
 | 14b | **Consonant blends as a teaching step**: st, sp, sn, fr, tr, cl, -nd, -mp… with sorting, blending and reading levels; today some words (snake, star, spoon, tree) use blends that were never taught | M | Learning | Gap found in LEARNING_DESIGN.md; part of band B |

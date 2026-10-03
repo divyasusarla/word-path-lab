@@ -3,7 +3,8 @@
 import { h, html, render, Component } from './vendor/preact-htm.module.js';
 import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage } from './content.js?v=dev';
 import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
-  unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2 } from './engine.js?v=dev';
+  unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
+  itemKey, recordAttempt, today, masteredIn, levelItems } from './engine.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
 const CONFIG = {
@@ -37,12 +38,13 @@ const PRAISE = ['Yes!', 'Great job!', 'You got it!', 'Nice work!', 'Super!'];
 const KEY = 'wordpath-lab.v3';  // v3: finished level ids. v2 (true/false by position) is migrated once
 const KEY_V2 = 'wordpath-lab.v2';
 const AKEY = 'wordpath-lab.audio';
+const MKEY = 'wordpath-lab.mastery.v1';  // first-try attempts per word and sound (see MASTERY_RULE in engine.js)
 
 class App extends Component {
   sid = 0; run = 0; tms = []; voices = []; spoken = [];
   recorded = new Set(); buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
 
-  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
+  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), mastery:this.loadMastery(), answered:false, settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
 
   // In test mode nothing is read from or written to storage
   load() {
@@ -58,6 +60,17 @@ class App extends Component {
   loadAudio() {
     if (!TEST) try { const a = JSON.parse(localStorage.getItem(AKEY)); if (a) return { voice: a.voice || '', vol: a.vol ?? 0.6, rate: a.rate ?? 0.85 }; } catch (e) {}
     return { voice:'', vol:0.6, rate:0.85 };
+  }
+  loadMastery() {
+    if (!TEST) try { const m = JSON.parse(localStorage.getItem(MKEY)); if (m && typeof m === 'object') return m; } catch (e) {}
+    return {};
+  }
+  // Only the first tap of each round counts towards mastery; guesses after a miss don't
+  record(L, r, ok) {
+    if (this.state.answered) return;
+    const mastery = recordAttempt(this.state.mastery, itemKey(L, r), ok, TEST && Q.get('day') ? Q.get('day') : today());
+    if (!TEST) try { localStorage.setItem(MKEY, JSON.stringify(mastery)); } catch (e) {}
+    this.setState({ mastery, answered: true });
   }
   save(done) { if (!TEST) try { localStorage.setItem(KEY, JSON.stringify(idsFromDone(done))); } catch (e) {} }
   setAudio(patch) {
@@ -107,6 +120,8 @@ class App extends Component {
       recorded: () => [...this.recorded],
       audioState: () => this.actx ? this.actx.state : 'not started',
       layout: () => layoutFor(this.state.vw, this.state.vh),
+      mastery: () => JSON.parse(JSON.stringify(this.state.mastery)),
+      masteredIn: n => masteredIn(LV[n - 1], this.state.mastery),
       played: () => this.playedClips.slice(),
       clearSpoken: () => { this.spoken = []; }
     };
@@ -229,7 +244,7 @@ class App extends Component {
     if (!this.unlocked(i)) { this.speak(['That level is locked. Finish the one before it.']); return; }
     this.stop();
     const L = LV[i], rounds = this.build(L);
-    this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null });
+    this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false });
     this.speak(this.prompt(L, rounds[0], true));
   }
 
@@ -242,7 +257,7 @@ class App extends Component {
       this.speak(['You did it!', 400, `You earned the ${L.sticker.name} sticker!`, ...(stageDone ? [500, `You finished stage ${L.stage + 1}!`] : [])]);
       return;
     }
-    this.setState({ round: round + 1, wrong:[], solved:false, binWrong:null });
+    this.setState({ round: round + 1, wrong:[], solved:false, binWrong:null, answered:false });
     this.speak(this.prompt(L, rounds[round + 1], false));
   }
 
@@ -259,6 +274,7 @@ class App extends Component {
   pickPop(i) {
     const { rounds, round, solved, lvl, wrong } = this.state; if (solved || wrong.includes(i)) return;
     const L = LV[lvl], r = rounds[round], o = r.options[i];
+    this.record(L, r, isRight(L, r, o));
     if (isRight(L, r, o)) return this.win([this.praise()]);
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
     const say = L.mode === 'sound' ? ['That one says', 300, gsnd(o.label)]
@@ -270,6 +286,7 @@ class App extends Component {
   pickMatch(i) {
     const { rounds, round, solved, lvl, wrong } = this.state; if (solved || wrong.includes(i)) return;
     const L = LV[lvl], r = rounds[round], o = r.options[i];
+    this.record(L, r, isRight(L, r, o));
     if (isRight(L, r, o)) return this.win(L.mode === 'rhyme' ? ['Yes!', 300, `${r.target.cue}, ${o.w}.`] : [`${o.w}!`, 300, this.praise()]);
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
     if (L.mode === 'rhyme') this.speak([`${o.w} does not rhyme with ${r.target.cue}.`, 500, 'Try again.']);
@@ -279,6 +296,7 @@ class App extends Component {
   pickBin(b) {
     const { rounds, round, solved, lvl } = this.state; if (solved) return;
     const L = LV[lvl], item = rounds[round];
+    this.record(L, item, isRight(L, item, b));
     if (isRight(L, item, b)) {
       this.setState(s => { const sorted = [s.sorted[0].slice(), s.sorted[1].slice()]; sorted[b].push(item); return { sorted, binWrong:null }; });
       return this.win(['Yes!', 300, L.ask === 'has' ? `${item.w} has` : `${item.w} starts with`, 300, gsnd(L.bins[b])]);
@@ -402,6 +420,11 @@ class App extends Component {
       sortAsk: L.ask === 'has' ? 'Which sound is in it?' : 'Which sound?',
       sortTransform: solved ? 'scale(1.1) rotate(-4deg)' : 'scale(1)',
       doneSticker, doneName: dl.sticker.name,
+      doneKnown: (() => {
+        const n = masteredIn(dl, this.state.mastery).length, of = levelItems(dl).length;
+        const what = dl.kind === 'pop' ? (dl.mode === 'word' ? 'words' : dl.mode === 'name' ? 'letter names' : 'sounds') : dl.kind === 'sort' ? 'pictures' : 'words';
+        return n ? `You know ${n} of the ${of} ${what} in this level` : '';
+      })(),
       doneStage: stageDone ? `You finished stage ${dl.stage + 1}!` : '',
       hasNextAfter: lvl + 1 < LV.length,
       playNext: () => this.start(lvl + 1),
@@ -423,7 +446,7 @@ class App extends Component {
       onVol: e => this.setAudio({ vol: parseFloat(e.target.value) }),
       onRate: e => this.setAudio({ rate: parseFloat(e.target.value) }),
       testVoice: () => this.speak(['Hi! Let\'s play with letters.', 500, 'This letter says', 400, gsnd('s')]),
-      resetAll: () => { if (window.confirm('Reset all progress and stickers?')) { const d = Array(LV.length).fill(false); this.save(d); this.setState({ done: d, settings: false, mapStage: null }); } }
+      resetAll: () => { if (window.confirm('Reset all progress and stickers?')) { const d = Array(LV.length).fill(false); this.save(d); if (!TEST) try { localStorage.removeItem(MKEY); } catch (e) {} this.setState({ done: d, mastery: {}, settings: false, mapStage: null }); } }
     };
   }
 
@@ -452,7 +475,7 @@ class App extends Component {
         ${s.screen === 'play' && html`<div style=${row}>
           <button onClick=${() => this.answer(true)} style=${b}>✓ Answer right</button>
           <button onClick=${() => this.answer(false)} style=${b}>✗ Answer wrong</button>
-          <span style="font-size:12px;color:#5C5677">Round ${s.round + 1}/${s.rounds.length}</span></div>`}
+          <span style="font-size:12px;color:#5C5677">Round ${s.round + 1}/${s.rounds.length} · mastered here ${masteredIn(LV[s.lvl], s.mastery).length}/${levelItems(LV[s.lvl]).length}</span></div>`}
         <div style=${label}>Screens</div>
         <div style=${row}>
           <button onClick=${() => goScreen('map')} style=${b + (s.screen === 'map' ? ';' + on : '')}>Map</button>
@@ -601,6 +624,7 @@ class App extends Component {
             <div style="font-size:22px;font-weight:600;color:#5940D6">Level ${v.levelNum} complete!</div>
             <div style="font-size:60px;font-weight:700;line-height:1.05">You got the ${v.doneName} sticker</div>
             ${v.doneStage && html`<div style="font-size:28px;font-weight:700;color:#17977F;margin-top:8px">${v.doneStage}</div>`}
+            ${v.doneKnown && html`<div class="done-known" style="font-size:20px;font-weight:600;color:#5C5677;margin-top:8px">${v.doneKnown}</div>`}
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:12px">
             ${v.hasNextAfter && html`

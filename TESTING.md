@@ -53,6 +53,7 @@ You can also set things up straight from the address. Combine options with `&`:
 | `?test&rounds=2` | 2 rounds per level, for quicker play-throughs |
 | `?test&think=0` | No pause after a right answer |
 | `?test&mute` | No voice; captions still show what would be said |
+| `?test&day=2026-10-04` | Pretend it's another day (for mastery, which needs two different days) |
 
 For example, `https://divyasusarla.github.io/word-path-lab/?test&level=7&rounds=2`
 

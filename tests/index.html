@@ -316,6 +316,25 @@ async function runAll() {
       expect(!issues.length, issues.join('\n'));
     } finally { frame.style.width = ''; frame.style.height = ''; frame.style.aspectRatio = ''; }
   });
+  await check('Mastery: only the first tap of each round is recorded', async () => {
+    const n = LEVELS.find(l => l.type === 'blend').n;
+    const w = await load(`level=${n}&rounds=3`);
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    const keys = [];
+    for (let r = 0; r < 3; r++) {
+      keys.push(`blend:${w.wp.state().target}`);
+      if (r === 0) { w.wp.wrong(); await sleep(50); w.wp.wrong(); await sleep(50); }
+      w.wp.right();
+      if (r < 2) await waitFor(() => w.wp.state().round === r + 1, 4000, `round ${r + 2}`);
+    }
+    await waitFor(() => w.wp.state().screen === 'done', 4000, 'level complete');
+    const m = w.wp.mastery();
+    const all = Object.values(m).flat();
+    expect(all.length === 3, `expected 3 recorded attempts, got ${all.length}: ${JSON.stringify(m)}`);
+    expect(m[keys[0]][0].ok === false, 'a wrong first tap should record as not right');
+    expect(m[keys[1]].at(-1).ok === true && m[keys[2]].at(-1).ok === true, 'right first taps should record as right');
+    return `${keys.join(', ')} → ${all.map(a => a.ok ? '✓' : '✗').join(' ')}`;
+  });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
     expect(/Level 3 complete!/.test(text()) && text().includes(`${LEVELS[2].sticker.name} sticker`), 'level complete text wrong');
