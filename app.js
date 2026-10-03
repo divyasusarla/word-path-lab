@@ -98,6 +98,7 @@ class App extends Component {
     else if (sc === 'done') this.setState({ screen:'done', lvl: lv });
     else if (sc === 'stickers') this.setState({ screen:'stickers' });
     else if (sc === 'settings') this.setState({ settings:true });
+    else if (sc === 'about') this.setState({ screen:'about' });
     // Hook for the automated checks in tests/ and for poking around in the browser console
     window.wp = {
       state: () => {
@@ -423,7 +424,8 @@ class App extends Component {
     return {
       goMap, goStickers,
       stickerCount: done.filter(Boolean).length, stickerTotal: LV.length,
-      isMap: screen === 'map', isPlay, isDone: screen === 'done', isStickers: screen === 'stickers',
+      isMap: screen === 'map', isPlay, isDone: screen === 'done', isStickers: screen === 'stickers', isAbout: screen === 'about',
+      openAbout: () => { this.stop(); this.setState({ screen:'about', settings:false }); },
       heroTitle: nextIdx < 0 ? 'You finished every level!' : `Level ${nextIdx + 1}: ${LV[nextIdx].title}`,
       hasNext: nextIdx >= 0,
       heroPlay: () => this.start(nextIdx),
@@ -501,6 +503,7 @@ class App extends Component {
         <div style=${row}>
           <button onClick=${() => goScreen('map')} style=${b + (s.screen === 'map' ? ';' + on : '')}>Map</button>
           <button onClick=${() => goScreen('stickers')} style=${b + (s.screen === 'stickers' ? ';' + on : '')}>Stickers</button>
+          <button onClick=${() => goScreen('about')} style=${b + (s.screen === 'about' ? ';' + on : '')}>About</button>
           <button onClick=${() => this.setState({ settings: true })} style=${b + (s.settings ? ';' + on : '')}>Settings</button>
           <button onClick=${() => goScreen('done')} style=${b + (s.screen === 'done' ? ';' + on : '')}>Level complete</button>
         </div>
@@ -649,6 +652,36 @@ class App extends Component {
         </div>
       </section>`}
 
+    ${v.isAbout && html`
+      <section style="display:flex;flex-direction:column;gap:20px;padding:36px;background:#fff;border-radius:48px;box-shadow:0 10px 0 #E8DCC8;font-size:18px;line-height:1.55;max-width:860px">
+        <div style="font-size:44px;font-weight:700;line-height:1.1">About Word Path</div>
+        <p style="margin:0">Word Path is a free early-reading game for children learning to read words, roughly from kindergarten to grade 2. It practises <b>word recognition</b>: letter sounds and names, hearing sounds in words, blending sounds into words, and common sight words, in a planned order. It doesn't teach vocabulary or comprehension, which come from books, conversation and teaching.</p>
+        <div>
+          <div style="font-size:24px;font-weight:700;margin-bottom:6px">Research behind it</div>
+          <ul style="margin:0;padding-left:22px">
+            <li>National Reading Panel (2000), <i>Teaching Children to Read</i></li>
+            <li>Foorman et al. (2016), <i>Foundational Skills to Support Reading for Understanding in Kindergarten Through 3rd Grade</i>, What Works Clearinghouse, U.S. Department of Education</li>
+            <li>Ehri (2005, 2014): phases of word reading and orthographic mapping</li>
+            <li>Castles, Rastle &amp; Nation (2018), "Ending the Reading Wars"</li>
+            <li>Teaching order modelled on <i>Letters and Sounds</i> (Department for Education and Skills, 2007)</li>
+            <li>Sight words from Fry's Instant Word List (1980)</li>
+          </ul>
+          <p style="margin:8px 0 0;font-size:16px;color:#5C5677">Word Path isn't affiliated with or endorsed by any reading programme. All word lists and activities are its own.</p>
+        </div>
+        <div>
+          <div style="font-size:24px;font-weight:700;margin-bottom:6px">Credits</div>
+          <ul style="margin:0;padding-left:22px">
+            <li>Speech sounds recorded by the Word Path author</li>
+            <li>Pictures and stickers: Noto Emoji by Google (Apache License 2.0)</li>
+            <li>Font: Fredoka (SIL Open Font License 1.1)</li>
+            <li>Icons: Lucide (ISC License)</li>
+            <li>Built with Preact (MIT) and htm (Apache License 2.0)</li>
+          </ul>
+        </div>
+        <p style="margin:0;font-size:16px;color:#5C5677">Progress and settings are saved only on this device. Nothing is sent anywhere.</p>
+        <div><button onClick=${v.goMap} style="height:64px;padding:0 28px 0 22px;border:0;border-radius:999px;background:#FFC23C;color:#2A2350;font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:0 5px 0 #DB9A0A"><i class="icon-map" style="font-size:24px;line-height:1"></i>Back to the map</button></div>
+      </section>`}
+
     ${v.isStickers && html`
       <section style="display:flex;flex-direction:column;gap:28px;padding:36px;background:#fff;border-radius:48px;box-shadow:0 10px 0 #E8DCC8">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
@@ -691,6 +724,7 @@ class App extends Component {
         <div style="display:flex;flex-wrap:wrap;gap:12px">
           <button onClick=${v.testVoice} style="height:56px;padding:0 24px 0 18px;border:0;border-radius:999px;background:#7B61FF;color:#fff;font-size:19px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px"><i class="icon-volume-2" style="font-size:22px;line-height:1"></i>Test voice</button>
           <button onClick=${v.resetAll} style="height:56px;padding:0 22px;border:0;border-radius:999px;background:#FFE9E7;color:#B0322A;font-size:17px;font-weight:600;cursor:pointer">Reset progress</button>
+          <button onClick=${v.openAbout} style="height:56px;padding:0 22px;border:0;border-radius:999px;background:#F3EEFF;color:#2A2350;font-size:17px;font-weight:600;cursor:pointer">About and credits</button>
         </div>
       </div>
     </div>`}

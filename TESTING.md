@@ -40,7 +40,7 @@ You can also set things up straight from the address. Combine options with `&`:
 |---|---|
 | `?test` | Test mode, starting on the map |
 | `?test&level=4` | Go straight into level 4 (any number from 1 to 38) |
-| `?test&screen=stickers` | Open a screen: `map`, `play`, `done`, `stickers` or `settings` |
+| `?test&screen=stickers` | Open a screen: `map`, `play`, `done`, `stickers`, `settings` or `about` |
 | `?test&screen=done&level=3` | The level complete screen for level 3 |
 | `?test&done=5` | Pretend the first 5 levels are finished (5 = all of stage 1) |
 | `?test&rounds=2` | 2 rounds per level, for quicker play-throughs |

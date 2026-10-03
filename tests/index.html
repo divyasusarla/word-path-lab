@@ -200,6 +200,13 @@ async function runAll() {
     testBtn.click();
     await waitFor(() => w.wp.spoken().some(t => /play with letters/.test(t)), 2000, 'the test voice line');
   });
+  await check('About and credits: opens from settings and credits the research and every asset licence', async () => {
+    const w = await load('screen=settings');
+    [...doc().querySelectorAll('button')].find(b => /About and credits/.test(b.innerText)).click();
+    await waitFor(() => w.wp.state().screen === 'about', 1000, 'the about screen');
+    for (const t of ['About Word Path', 'National Reading Panel', 'Foorman', 'Ehri', 'Letters and Sounds', 'Noto Emoji', 'Apache', 'Fredoka', 'SIL Open Font', 'Lucide', 'Preact', 'isn\'t affiliated'])
+      expect(text().includes(t), `missing "${t}"`);
+  });
   await check('Settings: speed slider changes the label, and nothing is saved', async () => {
     const w = await load('screen=settings');
     const before = JSON.stringify(Object.keys(w.localStorage).filter(k => k.startsWith('wordpath')).map(k => [k, w.localStorage.getItem(k)]));
