@@ -111,3 +111,36 @@ export const doneFromIds = ids => { const s = new Set(ids); return LV.map(l => s
 export const idsFromDone = done => LV.filter((l, i) => done[i]).map(l => l.id);
 // Before ids, progress was saved as true/false by position (v2, the same 38 levels in the same order)
 export const idsFromV2 = arr => Array.isArray(arr) ? LV.filter((l, i) => arr[i] === true).map(l => l.id) : [];
+
+// ---- Mastery ---------------------------------------------------------------------------------------
+// A word or sound is mastered when the child gets it right on the first try in `correct` of their last `of`
+// attempts, on at least `days` different days. Starting point from LEARNING_DESIGN.md (R4); change it here.
+export const MASTERY_RULE = { correct: 3, of: 4, days: 2 };
+const KEEP_ATTEMPTS = 8;
+
+// What one round practises, as a stable key: "sound:sh", "name:a", "word:said" (sight words),
+// "blend:cat", "read:cat", "rhyme:sun", "sort:sock"
+export function itemKey(L, r) {
+  if (L.kind === 'sort') return `sort:${r.w}`;
+  if (L.kind === 'pop') return `${{ sound: 'sound', name: 'name', word: 'word' }[L.mode]}:${r.target}`;
+  return `${L.mode}:${r.target.w}`;
+}
+// The local calendar day, e.g. "2026-10-03"
+export const today = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// Record one first-try answer. Returns a new store (store: { key: [{ day, ok }, …] }); keeps the last few attempts
+export function recordAttempt(store, key, ok, day = today()) {
+  const list = [...(store[key] || []), { day, ok: !!ok }].slice(-KEEP_ATTEMPTS);
+  return { ...store, [key]: list };
+}
+export function isMastered(attempts = [], rule = MASTERY_RULE) {
+  const recent = attempts.slice(-rule.of), right = recent.filter(a => a.ok);
+  return right.length >= rule.correct && new Set(right.map(a => a.day)).size >= rule.days;
+}
+// Every item a level can practise, so progress can be shown as "3 of 7 words"
+export function levelItems(L) {
+  if (L.kind === 'sort') return L.items.map(x => `sort:${x.w}`);
+  if (L.kind === 'pop') return L.pool.map(t => `${{ sound: 'sound', name: 'name', word: 'word' }[L.mode]}:${t}`);
+  if (L.mode === 'rhyme') return L.pairs.map(p => `rhyme:${p.w}`);
+  return L.words.map(w => `${L.mode}:${w}`);
+}
+export const masteredIn = (L, store, rule = MASTERY_RULE) => levelItems(L).filter(k => isMastered(store[k], rule));

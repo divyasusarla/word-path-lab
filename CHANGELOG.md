@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- Mastery tracking: every word and sound records its first-try answers (right or not, and the day). Mastered = right first time in 3 of the last 4 attempts, across at least 2 days (`MASTERY_RULE` in engine.js, from the literature review). Only the first tap of a round counts; guesses after a miss don't. The level complete screen says how many of the level's words or sounds the child now knows. Saved on the device; Reset progress clears it; test mode never saves it.
 - Play-through checklist page (`tools/checklist.html`): 13 sections and about 80 items covering sound, every kind of level, progress, layout, pictures and playing with a child. Mark ✓/✗, add notes, saved per device; **Copy my notes** makes a summary to share. Level numbers come from the content, so the list stays accurate.
 - Rumble filter on recordings: removes sound below 80 Hz from every clip, and below 300 Hz (steeper) from voiceless sounds (s, f, sh, th, h, p, t, k, ch, x). Low rumble in s dropped from 12% of the clip's energy to under 1%, in f from 18% to 2%. All 69 clips re-imported with it.
 - Game rules moved into `engine.js` (rounds, wrong options, unlocking, speech, saved progress) as plain functions; `app.js` now only draws the screens and plays audio.
