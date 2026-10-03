@@ -502,9 +502,25 @@ async function runAll() {
     expect(w.wp.played().length === before, 'played a recording into stopped sound');
     frame.src = 'about:blank';
   });
+  await check('Screen and voice say the same thing: level complete and the sorting question', async () => {
+    const w = await load('level=1&rounds=1');
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    w.wp.right();
+    await waitFor(() => w.wp.state().screen === 'done' && w.wp.spoken().some(t => /You earned/.test(t)), 4000, 'level complete');
+    const said = w.wp.spoken(), screen = text();
+    for (const line of ['You did it!', `You earned the ${LEVELS[0].sticker.name} sticker!`]) {
+      expect(said.includes(line), `not said: "${line}"`); expect(screen.includes(line), `not on screen: "${line}"`);
+    }
+    for (const L of ['start', 'has'].map(ask => LEVELS.find(l => l.type === 'sort' && (l.ask || 'start') === ask)).filter(Boolean)) {
+      const s = await load(`level=${L.n}`);
+      await waitFor(() => s.wp.spoken().some(t => /^Does it/.test(t)), 3000, 'the sorting question');
+      const q = s.wp.spoken().find(t => /^Does it/.test(t));
+      expect(text().includes(`${q}…`), `level ${L.n}: says "${q}", screen doesn't`);
+    }
+  });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
-    expect(/Level 3 complete!/.test(text()) && text().includes(`${LEVELS[2].sticker.name} sticker`), 'level complete text wrong');
+    expect(/You did it!/.test(text()) && text().includes(`You earned the ${LEVELS[2].sticker.name} sticker!`), 'level complete text wrong');
     [...doc().querySelectorAll('button')].find(b => /Next level/.test(b.innerText)).click();
     await waitFor(() => w.wp.state().screen === 'play' && w.wp.state().level === 4, 2000, 'level 4 to start');
   });
