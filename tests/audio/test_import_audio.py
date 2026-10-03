@@ -75,10 +75,21 @@ class ImportAudio(unittest.TestCase):
         self.run_import({'m.wav': wav_bytes(silence(0.2) + click() + silence(0.5) + tone(1.5) + silence(0.3))})
         self.assertAlmostEqual(self.duration('m'), 1.5, delta=0.2)
 
-    def test_line_keeps_its_pause_and_drops_a_late_click(self):
-        line = tone(0.4) + silence(0.3) + tone(0.5)
-        self.run_import({'say-try-again.wav': wav_bytes(silence(0.3) + line + silence(1.0) + click() + silence(0.2))})
-        self.assertAlmostEqual(self.duration('say-try-again'), 1.2, delta=0.2)
+    def test_line_keeps_a_long_pause(self):
+        # "Level 9. … Blend it.": the recorder asks for a pause after the number; the whole line must survive
+        line = tone(0.6) + silence(0.9) + tone(0.6)
+        self.run_import({'say-level-9-blend-it.wav': wav_bytes(silence(0.1) + line + silence(0.1))})
+        self.assertGreater(self.duration('say-level-9-blend-it'), 2.0)
+
+    def test_word_keeps_a_quiet_start(self):
+        # the "sh" in "ship" is much quieter than the vowel; letter-sound trimming would cut it off
+        ship = tone(0.25, 0.04, 3000) + tone(0.3, 0.4)
+        self.run_import({'word-ship.wav': wav_bytes(silence(0.1) + ship + silence(0.1))})
+        self.assertGreater(self.duration('word-ship'), 0.5)
+
+    def test_word_drops_quiet_room_noise_around_it(self):
+        self.run_import({'word-we.wav': wav_bytes(tone(0.4, 0.005, 300) + tone(0.4) + tone(0.4, 0.005, 300))})
+        self.assertLess(self.duration('word-we'), 0.65)
 
     def test_letter_sound_still_keeps_only_the_loudest_burst(self):
         # letter sounds keep the 120 ms join, so a separate burst 300 ms away is dropped (it would be an "uh")
@@ -101,6 +112,16 @@ class ImportAudio(unittest.TestCase):
         self.run_import({'word-cat.wav': wav_bytes(tone(0.5)), 's.wav': wav_bytes(tone(1.2))})
         self.run_import({'say-yes.wav': wav_bytes(tone(0.4))})
         self.assertEqual(self.manifest(), ['s', 'say-yes', 'word-cat'])
+
+    def test_a_take_already_imported_is_skipped_but_a_re_record_imports(self):
+        take = wav_bytes(silence(0.2) + tone(0.5) + silence(0.2))
+        self.run_import({'word-cat.wav': take})
+        first = (self.audio / 'word-cat.wav').read_bytes()
+        out = self.run_import({'word-cat.wav': take})
+        self.assertIn('Skipped 1 takes already imported unchanged', out)
+        self.assertEqual((self.audio / 'word-cat.wav').read_bytes(), first)
+        self.run_import({'word-cat.wav': wav_bytes(silence(0.2) + tone(0.9) + silence(0.2))})
+        self.assertGreater(self.duration('word-cat'), 0.9)
 
     def test_volume_is_evened_out(self):
         self.run_import({'word-quiet.wav': wav_bytes(tone(0.6, 0.02)), 'word-loud.wav': wav_bytes(tone(0.6, 0.6))})

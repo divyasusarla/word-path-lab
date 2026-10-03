@@ -7,6 +7,7 @@ import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speech
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
   sayId, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED, gateQuestion, gateOk,
   SESSION_CHOICES, sessionOver, progressReport } from './engine.js?v=dev';
+import { SCRIPT, levelSpeech } from './script.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
 const CONFIG = {
@@ -144,6 +145,9 @@ class App extends Component {
       mastery: () => JSON.parse(JSON.stringify(this.state.mastery)),
       masteredIn: n => masteredIn(LV[n - 1], this.state.mastery),
       played: () => this.playedClips.slice(),
+      loadedClips: () => Object.keys(this.buffers),
+      // Starts loading recordings as a first tap would (a scripted tap doesn't count as one in Safari)
+      preloadNow: () => { this.preloaded = true; this.preload(); },
       // Simulates iOS refusing to start sound (no tap yet, or interrupted), to check the voice fallback
       blockAudio: () => { this.audioBlocked = true; return 'blocked'; },
       report: () => progressReport(this.state.done, this.state.mastery),
@@ -207,7 +211,20 @@ class App extends Component {
     for (let i = 0; i < 8 && c.state !== 'running'; i++) { c.resume().catch(() => {}); await new Promise(r => setTimeout(r, 75)); }
     return c.state === 'running';
   }
-  preload() { this.recorded.forEach(id => this.clipBuffer(id)); }
+  // Recordings load in two steps so a phone never downloads all 27 MB: letter sounds and the instruction lines
+  // when sound first starts, then each level's words and lines when it starts (and the level already open, if any)
+  preload() {
+    const lines = new Set(SCRIPT.filter(c => c.kind === 'line').map(c => c.id));
+    this.recorded.forEach(id => { if (!/^(word|say)-/.test(id) || lines.has(id)) this.clipBuffer(id); });
+    if (this.state.screen === 'play') this.preloadLevel(LV[this.state.lvl]);
+  }
+  preloadLevel(L) {
+    if (!this.preloaded) return;
+    for (const parts of levelSpeech(L)) for (const p of parts) {
+      const id = typeof p === 'string' ? sayId(p) : p && p.clip;
+      if (id && this.recorded.has(id)) this.clipBuffer(id);
+    }
+  }
   clipBuffer(id) {
     if (!id || !this.recorded.has(id)) return null;
     const c = this.audioCtx(); if (!c) return null;
@@ -321,6 +338,7 @@ class App extends Component {
     if (!this.unlocked(i)) { this.speak([LOCKED]); return; }
     this.stop();
     const L = LV[i], rounds = this.build(L);
+    this.preloadLevel(L);
     this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false, misses:0, modelled:false, firstTries:[], missed:[] });
     this.speak(this.prompt(L, rounds[0], true));
   }
