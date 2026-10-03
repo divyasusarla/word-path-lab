@@ -562,7 +562,11 @@ async function runAll() {
           const rv = n === cases[4][0] ? (await sleep(300), w.wp.reveal()) : await waitFor(() => { const x = w.wp.reveal(); return x && (n !== cases[2][0] || x.on.join('') === s.target) && x; }, 3000, `the word in level ${n}`);
           expect(good(s, rv), `${name}, level ${n} (${s.target}): ${JSON.stringify(rv)}`);
           const el = doc().querySelector('.reveal');
-          if (el) { const b = el.getBoundingClientRect(); expect(b.left >= 0 && b.right <= wd + 1 && b.top >= 0 && b.bottom <= ht + 1, `${name}, level ${n}: the word card is off screen`); }
+          if (el) {
+            await sleep(400);   // let the card finish sliding in before measuring
+            const b = el.getBoundingClientRect();
+            expect(b.left >= 0 && b.right <= wd + 1 && b.top >= 0 && b.bottom <= ht + 1, `${name}, level ${n}: the word card is off screen (${Math.round(b.left)}–${Math.round(b.right)} × ${Math.round(b.top)}–${Math.round(b.bottom)} on ${wd}×${ht})`);
+          }
           if (name === 'wide' && rv) notes.push(`${n}: ${rv.text} [${rv.on.join(' ')}]`);
         }
       }
