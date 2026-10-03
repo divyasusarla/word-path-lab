@@ -23,6 +23,7 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 12 | **Mastery tracking**: record each word and sound, first try right or not; mastered = 3 first-try correct of the last 4, across at least 2 days | M | Learning | Underpins #13, #15–16, #19 and adaptivity |
 | 13 | **Don't let guessing finish a level**: count first-try answers; after two misses, model the answer instead of letting elimination win | S | Learning | Needs #12 |
 | 14 | **Developmental bands**: regroup stages into K / grade 1 / grade 2 per `LEARNING_DESIGN.md`; add grade 2 content (endings -s -ed -ing, more vowel patterns, two-syllable words) | L | Learning | Fits the K–2 span properly; needs #5 and #11 |
+| 14b | **Consonant blends as a teaching step**: st, sp, sn, fr, tr, cl, -nd, -mp… with sorting, blending and reading levels; today some words (snake, star, spoon, tree) use blends that were never taught | M | Learning | Gap found in LEARNING_DESIGN.md; part of band B |
 | 15 | **Sight words: full coverage**: rotate through every word in a level across plays, bringing missed words back | M | Learning | Today most words in a level are never seen |
 | 16 | **Cumulative review**: mix earlier sounds and words into later levels, weighted to ones not yet mastered | M | Learning | Core phonics practice |
 | 17 | **Letter confusions as wrong options**: b/d, p/q, m/n, short e/i, once both are taught | S | Learning | Targets the most common mix-ups |

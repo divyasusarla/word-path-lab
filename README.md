@@ -37,6 +37,7 @@ A plain static site with no build step: the browser loads `index.html`, which ru
 | `.github/workflows/site.yml` | Runs the checks on every pull request and push; publishes to GitHub Pages from `main` only if they pass |
 | `README.md` | This file |
 | `CHANGELOG.md` | What changed in each version |
+| `LEARNING_DESIGN.md` | How the game teaches and why: principles, research references, developmental bands, content rules |
 | `BACKLOG.md` | Planned work and ideas |
 | `FUTURE.md` | Longer-term decisions: hosting, app stores, privacy, licensing |
 | `TESTING.md` | Test mode, automatic checks and the hands-on checklist |

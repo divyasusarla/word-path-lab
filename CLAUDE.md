@@ -15,6 +15,7 @@
 - Speech sounds: `snd(pair, clipId)` plays `audio/<clipId>.wav` when `audio/manifest.json` lists it, else the browser voice says the fallback text. Every clip id must exist in `sounds.js` (the checks enforce this). New sounds go in `sounds.js` first.
 - Importing recordings: `python3 tools/import_audio.py <zip>` (see RECORDING.md). It rebuilds the manifest; don't hand-edit it. Recordings play through Web Audio, unlocked on the first tap for iOS Safari.
 - `versions/` holds frozen playable copies. Never edit them except to give each its own `wordpath-archive-<ver>.*` storage keys. When cutting a milestone, copy the current site into `versions/<ver>/` and add a card to `versions/index.html`.
+- Learning decisions should trace back to LEARNING_DESIGN.md (principles, bands, content rules); update it when they change.
 - Planned work lives in BACKLOG.md; tick items off there and record them in CHANGELOG.md when they ship.
 - Workflow: every change goes on its own branch with a pull request for the user to review (`gh pr create`). Don't push to main directly. Merging to main publishes the site.
 - Content rules: no material from commercial programmes (e.g. UFLI): our own word lists, pictures and passages only. Credit research sources and asset licences. Longer-term decisions go in FUTURE.md.
