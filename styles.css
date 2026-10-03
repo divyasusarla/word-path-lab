@@ -235,7 +235,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 4px s
 
 /* after a right answer: the word, with the letters for the sound lit up (#34) */
 .play-main { position: relative; }
-.reveal { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; padding: 10px 28px; background: #fff; border-radius: 32px; box-shadow: 0 8px 0 #E8DCC8; z-index: 5; white-space: nowrap; animation: reveal-in .25s ease-out; pointer-events: none; }
+.reveal { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); max-width: calc(100% - 16px); box-sizing: border-box; display: flex; align-items: center; gap: 16px; padding: 10px 28px; background: #fff; border-radius: 32px; box-shadow: 0 8px 0 #E8DCC8; z-index: 5; white-space: nowrap; animation: reveal-in .25s ease-out; pointer-events: none; }
 .reveal img { width: 64px; height: 64px; }
 .reveal-word { font-size: 56px; font-weight: 700; line-height: 1.1; color: #2A2350; letter-spacing: .02em; }
 .reveal-word .on { color: #F2544A; text-decoration: underline; text-decoration-thickness: 5px; text-underline-offset: 8px; }
@@ -243,6 +243,6 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 4px s
 @keyframes reveal-in { from { opacity: 0; transform: translate(-50%, 12px); } }
 .layout-phone .reveal, .layout-phone-landscape .reveal { padding: 6px 18px; gap: 10px; }
 .layout-phone .reveal img, .layout-phone-landscape .reveal img { width: 44px; height: 44px; }
-.layout-phone .reveal-word, .layout-phone-landscape .reveal-word { font-size: 40px; }
+.layout-phone .reveal-word, .layout-phone-landscape .reveal-word { font-size: min(40px, 9vw); }  /* two rhyme words fit a narrow phone */
 @media (prefers-reduced-motion: reduce) { .reveal { animation: none; } }
 

@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- **New words and pictures to record (for #36):** 158 of our own words without pictures, for the coming "find the word" game, built only from each stage's sounds (sat, mop, chip, rope, seed…), and 28 new pictures so First sounds can rotate through more letters (tiger, gift, key, lemon, horse, watermelon, axe, otter, elephant…). They're in the recorder now: 186 new clips across the 7 stage batches. Risky new pictures are flagged (ox → "cow"; otter, olive, honey, watch, nine worth a look). Nothing in the game uses them yet.
 - **Show the word after the answer (#34):** after a right answer, a card shows the written word with the letters for the sound lit up: First sounds "**s**ock", Letter sounds the keyword and picture ("**s**un"), Rhyme time "f**un** · s**un**". In Blend it and Read it, each letter lights up as its sound plays and then the whole word ("c… a… t… cat"), in the first 3 rounds; after that, just the word. No new recordings. The letters line up with the sounds through `spell()` in engine.js (e.g. "rose" is r · o · s · e with the s saying z).
 - From the second round of testing:
   - **No same-sound wrong answers:** when the answer is "c", the bubbles never include "k" or "ck" (they make the same sound), and likewise for a_e / ai and other spellings of one sound.

@@ -8,7 +8,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
   sayId, wordId, slug, codecOffset, KEEP_LEAD, mixUpFor, OPTION_WORDS, spell, revealFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
-import { LEVELS, STAGES, GRAPHEMES, PICS, PICTURE_FLAGS, WORDS, FRY, CONFUSIONS, confusedWith, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, PICS, PICTURE_FLAGS, WORDS, FRY, CONFUSIONS, confusedWith, wordStage, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
 import { SCRIPT, SCRIPT_IDS, BATCHES } from '../../script.js?v=dev';
 
@@ -232,11 +232,15 @@ export const tests = [
     check(heroParts(0), 'map'); check(heroParts(-1), 'map');
   }],
   ['recordings: every sight word and picture word has a slot, and ids are unique and file-safe', () => {
-    for (const w of [...FRY, ...PICTURE_WORDS]) ok(SCRIPT_IDS.has(wordId(w)), `"${w}" has no slot`);
+    for (const w of [...FRY, ...Object.keys(WORDS), ...Object.keys(PICS)]) ok(SCRIPT_IDS.has(wordId(w)), `"${w}" has no slot`);
     eq(SCRIPT_IDS.size, SCRIPT.length, 'unique ids');
     for (const c of SCRIPT) ok(/^(word|say)-[a-z0-9]+(-[a-z0-9]+)*$/.test(c.id), `odd id "${c.id}"`);
     const texts = new Map(); for (const c of SCRIPT) { ok(!texts.has(c.id) || texts.get(c.id) === c.text, `"${c.text}" and "${texts.get(c.id)}" share ${c.id}`); texts.set(c.id, c.text); }
     eq([slug("Let's practise this one again."), wordId('I'), wordId("don't")], ['lets-practise-this-one-again', 'word-i', 'word-dont'], 'slugs');
+  }],
+  ['find-the-word lists: every word is readable with the sounds taught by some stage', () => {
+    for (const w of Object.keys(WORDS)) ok(wordStage(w) >= 0, `"${w}" uses a sound no stage teaches`);
+    ok(Object.keys(WORDS).filter(w => !PICS[w]).length >= 150, 'fewer than 150 words without pictures');
   }],
   ['recordings: lines are reusable (words are said separately), so the script stays small', () => {
     const lines = SCRIPT.filter(c => c.kind === 'line');
