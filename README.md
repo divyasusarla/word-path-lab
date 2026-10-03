@@ -36,6 +36,7 @@ A plain static site with no build step: the browser loads `index.html`, which ru
 | `README.md` | This file |
 | `CHANGELOG.md` | What changed in each version |
 | `BACKLOG.md` | Planned work and ideas |
+| `FUTURE.md` | Longer-term decisions: hosting, app stores, privacy, licensing |
 | `TESTING.md` | Test mode, automatic checks and the hands-on checklist |
 | `RECORDING.md` | Step-by-step recording guide |
 | `CLAUDE.md` | Working notes for Claude Code sessions on this project |
@@ -54,4 +55,4 @@ then open http://127.0.0.1:8765/. Add `?test` to open every level without saving
 
 **Add or redo recordings**: follow `RECORDING.md`, then run `python3 tools/import_audio.py ~/Downloads/word-path-audio-<date>.zip`.
 
-**Publish**: run the checks at `tests/`, then push to `main`. GitHub Actions publishes in about a minute. Add a `CHANGELOG.md` entry; tag milestones (`git tag -a v3.1`) and copy them into `versions/`.
+**Publish**: each change goes on its own branch and pull request. After review, merging into `main` publishes through GitHub Actions in about a minute. Add a `CHANGELOG.md` entry; tag milestones (`git tag -a v3.1`) and copy them into `versions/`.
