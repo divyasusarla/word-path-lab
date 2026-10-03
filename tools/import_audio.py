@@ -10,8 +10,10 @@ Imported: files named after a sound in sounds.js, and words and lines from scrip
 say-<line>.wav; script.js builds that list from the levels, and the checks make sure every one is valid).
 Anything else is skipped and listed.
 Clips already in audio/ that aren't in the zip are kept, so recordings can arrive in batches.
+The recorder's "Download all" includes every take so far, so audio/sources.json remembers a fingerprint of each
+take imported; a take already imported unchanged is skipped (its earlier clean-up is kept). Re-records import.
 """
-import json, re, sys, wave, zipfile
+import hashlib, json, re, sys, wave, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -51,12 +53,14 @@ def high_pass(x, rate, cutoff, passes=1):
         x = y
     return x
 
-def clean(path, drop_first=0.0, voiceless=False, gap_ms=120):
+def clean(path, drop_first=0.0, voiceless=False, whole=False):
     """Keep only the spoken sound: drop key clicks and gaps before/after it, then even out the volume.
 
-    Splits the clip into bursts of sound, joins bursts less than gap_ms apart, and keeps the burst
+    Splits the clip into bursts of sound, joins bursts less than 120 ms apart, and keeps the burst
     with the most energy (the voice). Clicks are short and far from the voice, so they fall away.
-    Words and lines use a longer gap_ms, so pauses inside them (a stop in "cat", a breath in a line) are kept.
+    whole=True (words and lines) keeps everything between the first and last sound instead: the recorder has
+    already trimmed the key clicks, and words and lines have pauses ("Level 9. … Blend it.") and quiet
+    starts (the sh in "ship") that the letter-sound rules would cut.
     """
     import math, struct
     with wave.open(str(path)) as w:
@@ -75,13 +79,19 @@ def clean(path, drop_first=0.0, voiceless=False, gap_ms=120):
         if e <= thr and start is not None: segs.append([start, i]); start = None
     merged = []
     for sg in segs:
-        if merged and sg[0] - merged[-1][1] <= gap_ms // 10: merged[-1][1] = sg[1]
+        if merged and sg[0] - merged[-1][1] <= 12: merged[-1][1] = sg[1]
         else: merged.append(sg)
-    a, b = max(merged, key=lambda sg: sum(e * e for e in env[sg[0]:sg[1]]))
-    top = max(env[a:b])
-    while a < b - 1 and env[a] < top * 0.2: a += 1        # quiet lead-in (room noise, breath)
-    a = max(0, a - 4)                                     # keep 40 ms before it so soft starts (f, s) aren't clipped
-    while b > a + 1 and env[b - 1] < top * 0.04: b -= 1   # long near-silent tail
+    if whole:
+        quiet = max(max(env) * 0.03, 0.002)
+        a = next(i for i, e in enumerate(env) if e > quiet)
+        b = len(env) - next(i for i, e in enumerate(reversed(env)) if e > quiet)
+        a = max(0, a - 2)
+    else:
+        a, b = max(merged, key=lambda sg: sum(e * e for e in env[sg[0]:sg[1]]))
+        top = max(env[a:b])
+        while a < b - 1 and env[a] < top * 0.2: a += 1        # quiet lead-in (room noise, breath)
+        a = max(0, a - 4)                                     # keep 40 ms before it so soft starts (f, s) aren't clipped
+        while b > a + 1 and env[b - 1] < top * 0.04: b -= 1   # long near-silent tail
     lo, hi = max(0, a * win - int(r * 0.04)), min(n, b * win + int(r * 0.1))
     y = x[lo:hi]
     voiced = [e for e in env[a:b] if e > thr] or env[a:b]
@@ -112,7 +122,9 @@ def check(path, kind):
 def main(zpath, drop_first=0.0):
     kinds = sound_list()
     AUDIO.mkdir(exist_ok=True)
-    imported, skipped = [], []
+    imported, skipped, unchanged = [], [], []
+    src_file = AUDIO / 'sources.json'
+    sources = json.loads(src_file.read_text()) if src_file.exists() else {}
     with zipfile.ZipFile(zpath) as z:
         for info in z.infolist():
             name = Path(info.filename).name
@@ -120,12 +132,18 @@ def main(zpath, drop_first=0.0):
             kind = kind_of(cid, kinds) if cid else None
             if not kind or info.file_size > 2_000_000:
                 skipped.append(info.filename); continue
-            (AUDIO / name).write_bytes(z.read(info))
-            clean(AUDIO / name, drop_first, voiceless=cid in VOICELESS, gap_ms=120 if cid in kinds else 600)
+            data = z.read(info); fp = hashlib.sha1(data).hexdigest()
+            if sources.get(cid) == fp and (AUDIO / name).exists():
+                unchanged.append(cid); continue
+            (AUDIO / name).write_bytes(data)
+            sources[cid] = fp
+            clean(AUDIO / name, drop_first, voiceless=cid in VOICELESS, whole=cid not in kinds)
             imported.append(cid)
     present = sorted(p.stem for p in AUDIO.glob('*.wav') if kind_of(p.stem, kinds))
     (AUDIO / 'manifest.json').write_text(json.dumps({'clips': present}, indent=2) + '\n')
+    src_file.write_text(json.dumps(dict(sorted(sources.items())), indent=1) + '\n')
 
+    if unchanged: print(f'Skipped {len(unchanged)} takes already imported unchanged.')
     sounds = [c for c in present if c in kinds]
     print(f'Imported {len(imported)} recordings; {len(sounds)} of {len(kinds)} letter sounds and {len(present) - len(sounds)} words and lines now recorded.')
     for cid in present:
