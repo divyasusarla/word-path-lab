@@ -144,3 +144,33 @@ export function levelItems(L) {
   return L.words.map(w => `${L.mode}:${w}`);
 }
 export const masteredIn = (L, store, rule = MASTERY_RULE) => levelItems(L).filter(k => isMastered(store[k], rule));
+
+// ---- Feedback ------------------------------------------------------------------------------------
+// After this many misses in a round, the game shows and says the answer (a sort has only two bins, so one miss)
+export const modelAfter = L => L.kind === 'sort' ? 1 : 2;
+// What's said when the answer is shown; the child then taps it
+export function modelParts(L, r) {
+  if (L.kind === 'sort') return ['Listen.', 300, { t: r.w, rate: 0.7 }, 300, L.ask === 'has' ? 'has' : 'starts with', 300, gsnd(L.bins[r.bin]), 500, 'Tap that one.'];
+  if (L.kind === 'pop') {
+    if (L.mode === 'sound') return ['Here it is.', 300, gsnd(r.target), 500, 'Tap it.'];
+    if (L.mode === 'name') return ['Here it is.', 300, nsnd(r.target), 500, 'Tap it.'];
+    return [{ t: `Here it is: ${r.target}.`, rate: 0.85 }, 400, 'Tap it.'];
+  }
+  if (L.mode === 'rhyme') return [{ t: `${r.target.cue} rhymes with ${r.target.w}.`, rate: 0.85 }, 400, 'Tap it.'];
+  return [{ t: `Here it is: ${r.target.w}.`, rate: 0.85 }, 400, 'Tap it.'];
+}
+// Praise that says what was right (informational, per the rewards research), plus news of a newly mastered item
+export function praiseParts(L, r, { modelled = false, mastered = false } = {}) {
+  if (modelled) return ['That\'s it.'];
+  const extra = mastered ? [400, 'You know that one now!'] : [];
+  if (L.kind === 'sort') return ['Yes!', 300, L.ask === 'has' ? `${r.w} has` : `${r.w} starts with`, 300, gsnd(L.bins[r.bin]), ...extra];
+  if (L.kind === 'pop') {
+    if (L.mode === 'sound') return ['Yes! That says', 300, gsnd(r.target), ...extra];
+    if (L.mode === 'name') return ['Yes! That\'s', 300, nsnd(r.target), ...extra];
+    return [{ t: `Yes! ${r.target}.`, rate: 0.85 }, ...extra];
+  }
+  if (L.mode === 'rhyme') return ['Yes!', 300, `${r.target.cue}, ${r.target.w}.`, ...extra];
+  return [`${r.target.w}!`, ...extra];
+}
+// Suggest practising a level again when fewer than half the first taps were right
+export const shouldPractiseAgain = firstTries => firstTries.length > 0 && firstTries.filter(Boolean).length / firstTries.length < 0.5;

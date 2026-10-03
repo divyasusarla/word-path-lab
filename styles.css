@@ -124,3 +124,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 4px s
 .layout-phone-landscape .read-word { font-size: clamp(44px, 13vh, 64px) !important; padding: 4px 28px 10px !important; }
 .layout-phone-landscape .play-bottom { flex-direction: column-reverse; align-items: center; gap: 10px; width: 96px; }
 .layout-phone-landscape .sound-out { width: 64px !important; height: 64px !important; padding: 0 !important; justify-content: center; font-size: 0 !important; margin: 0 !important; }
+
+/* the answer, shown after repeated misses */
+@keyframes wpGlow { from { transform: scale(1) } to { transform: scale(1.06) } }
+.shown { outline: 8px solid #FFC23C !important; outline-offset: 2px; animation: wpGlow 1s ease-in-out infinite alternate; }
