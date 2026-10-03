@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- **Smaller audio files (#27b):** every recording now has a compressed copy (AAC, `.m4a`): 5.4 MB in all instead of 27 MB, so level 1 loads about 1 MB instead of 5. The game plays the small copy and falls back to the original WAV (kept as the master) if a browser can't decode it. The importer makes the copies automatically on a Mac.
 - Backlog reorganised: **Next up** (ranked), **Later** (teacher and classroom items: export/import, usage data, group mode, grown-up prompts, child profiles, adaptive difficulty), and **Shipped**. New items: show the word after the answer (#34), hint ladder (#35), word pool breadth (#36). iPhone sound (#7c) confirmed.
 - **Screen matches the voice:** level complete now reads "You did it!" and "You earned the Fox sticker!" (it said "Level 9 complete!" and "You got the Fox sticker"), and the sorting question on screen is "Does it start with…" / "Does it have…" (it said "Which sound?"). A check now compares the two.
 - **Your recordings for every word and line:** all 535 (300 sight words, about 110 picture words, 121 instructions, level names and sticker lines) are in the game, so the device voice is now used only for "Test voice" in Settings. Checked before importing: every clip matched a current slot, none missing.

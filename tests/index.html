@@ -43,7 +43,7 @@
 import { SOUNDS } from '../sounds.js';
 import { tests as unitTests } from './unit/engine.test.js';
 import { LEVELS, STAGES, STICKERS, coverage, allPictureFiles, decodableBy, phonemes, soundSimilarity } from '../content.js';
-import { PICTURE_WORDS } from '../engine.js?v=dev';
+import { PICTURE_WORDS, codecOffset, KEEP_LEAD } from '../engine.js?v=dev';
 import { SCRIPT, SCRIPT_IDS } from '../script.js?v=dev';
 const levelOf = type => LEVELS.find(l => l.type === type).n;
 const usedClips = new Map();   // clip id -> where the game got it ('recording' or 'voice')
@@ -486,6 +486,33 @@ async function runAll() {
     expect(loaded.size < recorded.length / 2, `loaded ${loaded.size} of ${recorded.length} recordings`);
     frame.src = 'about:blank';
     return `${loaded.size} of ${recorded.length} recordings loaded for level 1`;
+  });
+  await check('Sound: recordings play from the small .m4a copies (or the .wav if this browser can\'t decode them)', async () => {
+    const m = await (await fetch('../audio/manifest.json', { cache: 'no-cache' })).json();
+    if (!m.clips.length) return 'no recordings';
+    expect(m.m4a && m.m4a.length === m.clips.length, `${m.m4a?.length ?? 0} of ${m.clips.length} clips have a compressed copy: run tools/import_audio.py --encode-all`);
+    const ctx = new OfflineAudioContext(1, 1, 22050), decode = async url => ctx.decodeAudioData(await (await fetch(url)).arrayBuffer());
+    const sample = ['m', 'word-ship', 'say-level-9-blend-it', 'say-try-again'].filter(id => m.clips.includes(id));
+    let aac = true;
+    for (const id of sample) {
+      const wav = await decode(`../audio/${id}.wav`);
+      let small; try { small = await decode(`../audio/${id}.m4a`); } catch (e) { aac = false; continue; }
+      // after skipping any codec padding (as the game does), the sound starts and lasts as in the original
+      const lead = b => { const x = b.getChannelData(0); let i = 0; while (i < x.length && Math.abs(x[i]) < 0.01) i++; return i / b.sampleRate; };
+      const skip = codecOffset(small.getChannelData(0), small.sampleRate);
+      expect(Math.abs((lead(small) - skip) - Math.min(lead(wav), KEEP_LEAD)) < 0.03, `${id}: starts ${(lead(small) - skip).toFixed(3)}s in, original ${lead(wav).toFixed(3)}s`);
+      expect(Math.abs((small.duration - skip) - (wav.duration - Math.max(0, lead(wav) - KEEP_LEAD))) < 0.12, `${id}: ${(small.duration - skip).toFixed(3)}s compressed vs ${wav.duration.toFixed(3)}s`);
+    }
+    frame.src = 'about:blank'; await sleep(30);
+    frame.src = '../?test&think=0&level=1';
+    const w = await waitFor(() => frame.contentWindow.wp && frame.contentWindow, 6000, 'the game to load');
+    await waitFor(() => w.wp.recorded().length, 4000, 'the recording list');
+    w.wp.preloadNow();
+    await waitFor(() => Object.keys(w.wp.clipSources()).length > 20, 6000, 'recordings to decode');
+    const srcs = Object.values(w.wp.clipSources());
+    expect(srcs.every(x => x === (aac ? 'm4a' : 'wav')), `expected every clip from ${aac ? '.m4a' : '.wav (no AAC here)'}, got ${[...new Set(srcs)].join(', ')}`);
+    frame.src = 'about:blank';
+    return `${srcs.length} clips decoded from .${srcs[0]}${aac ? '' : ' (this browser can\'t decode AAC, so the .wav fallback was used)'}`;
   });
   await check('Sound: when iOS won\'t start sound, letter sounds fall back to the voice instead of silence', async () => {
     frame.src = 'about:blank'; await sleep(30);

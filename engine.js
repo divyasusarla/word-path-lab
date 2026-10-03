@@ -319,6 +319,16 @@ export function gateQuestion(rng = Math.random) {
 }
 export const gateOk = (q, typed) => typed !== '' && Number(typed) === q.answer;
 
+// ---- Compressed recordings ----------------------------------------------------------------------
+// AAC adds about 0.1 s of silence at the start of a clip, which some decoders keep (WebKit on Linux) and others
+// remove (Safari, Chrome). Everything before the first audible sample is silence, so skip all but 10 ms of it:
+// every browser then starts the sound on time, within a few milliseconds of the original WAV.
+export const KEEP_LEAD = 0.01;
+export function codecOffset(samples, rate, threshold = 0.01) {
+  let i = 0; while (i < samples.length && Math.abs(samples[i]) < threshold) i++;
+  return Math.max(0, i / rate - KEEP_LEAD);
+}
+
 // ---- Session length ------------------------------------------------------------------------------
 // About 15 minutes a session suits ages 5–8 (LEARNING_DESIGN.md, R5). After that, the level complete screen
 // suggests a break. 0 turns it off.
