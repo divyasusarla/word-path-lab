@@ -146,6 +146,8 @@ class App extends Component {
       masteredIn: n => masteredIn(LV[n - 1], this.state.mastery),
       played: () => this.playedClips.slice(),
       loadedClips: () => Object.keys(this.buffers),
+      // Starts loading recordings as a first tap would (a scripted tap doesn't count as one in Safari)
+      preloadNow: () => { this.preloaded = true; this.preload(); },
       // Simulates iOS refusing to start sound (no tap yet, or interrupted), to check the voice fallback
       blockAudio: () => { this.audioBlocked = true; return 'blocked'; },
       report: () => progressReport(this.state.done, this.state.mastery),

@@ -475,8 +475,8 @@ async function runAll() {
     frame.src = 'about:blank'; await sleep(30);
     frame.src = '../?test&think=0&level=1';
     const w = await waitFor(() => frame.contentWindow.wp && frame.contentWindow, 6000, 'the game to load');
-    await sleep(300);
-    frame.contentDocument.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await waitFor(() => w.wp.recorded().length, 4000, 'the recording list');
+    w.wp.preloadNow();
     await waitFor(() => w.wp.loadedClips().length > 0, 4000, 'recordings to start loading');
     await sleep(200);
     const loaded = new Set(w.wp.loadedClips()), recorded = w.wp.recorded();
