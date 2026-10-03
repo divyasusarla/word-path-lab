@@ -8,7 +8,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
   sayId, wordId, slug, codecOffset, KEEP_LEAD, mixUpFor, OPTION_WORDS, spell, revealFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
-import { LEVELS, STAGES, GRAPHEMES, PICS, PICTURE_FLAGS, WORDS, FRY, CONFUSIONS, confusedWith, wordStage, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, PICS, PICTURE_FLAGS, WORDS, FRY, CONFUSIONS, confusedWith, wordStage, heartParts, heartSounds, heartStage, sightStage, isHeart, SIGHT_CAP, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
 import { SCRIPT, SCRIPT_IDS, BATCHES } from '../../script.js?v=dev';
 
@@ -114,6 +114,26 @@ export const tests = [
     eq(itemLabel('sound:sh').kindName, 'letter sound', 'sound'); eq(itemLabel('word:said').text, 'said', 'sight word');
   }],
 
+  // ---- heart words (#25)
+  ['heart words: tricky letters marked; the rest are taught sounds', () => {
+    const tricky = w => heartParts(w).filter(p => p.tricky).map(p => p.t).join(' ');
+    eq([tricky('said'), tricky('the'), tricky('was'), tricky('and')], ['ai', 'e', 'a s', ''], 'examples');
+    eq(heartSounds('make'), ['m', 'a_e', 'k'], 'split e'); eq(heartSounds('place'), ['p', 'l', 'a_e'], 'split e around a tricky c');
+    for (const w of FRY) { ok(heartSounds(w) !== null, `"${w}" doesn't parse`); eq(heartParts(w).map(p => p.t).join(''), w, `"${w}" marking`); }
+    ok(!isHeart('and') && isHeart('said'), 'isHeart');
+  }],
+  ['heart words: Word pop levels hold every sight word once, in the stage that teaches its regular sounds', () => {
+    const sight = LV.filter(l => l.type === 'sight'), all = sight.flatMap(l => l.pool);
+    eq(all.length, FRY.length, 'every word'); eq(new Set(all).size, FRY.length, 'no repeats');
+    sight.forEach((l, k) => {
+      if (k < sight.length - 1) { ok(l.pool.length <= SIGHT_CAP[k], `${l.title}: ${l.pool.length} words`); for (const w of l.pool) ok(heartStage(w) <= l.stage && sightStage(w) <= l.stage, `${l.title}: "${w}" needs stage ${sightStage(w) + 1}`); }
+      eq(l.pool.slice().sort((a, b) => FRY.indexOf(a) - FRY.indexOf(b)), l.pool, `${l.title}: most common first`);
+    });
+  }],
+  ['content check catches a sight word with no heart marking', () => {
+    ok(coverage({ fry: [...FRY, 'xyzzy'] }).some(p => p.includes('"xyzzy" has no heart-word marking')), 'unmarked word not caught');
+  }],
+
   // ---- compressed recordings (#27b)
   ['codec padding: silence at the start beyond 40 ms is skipped; a normal start is left alone', () => {
     const rate = 22050, clip = (lead, len = 0.3) => Float32Array.from({ length: Math.round((lead + len) * rate) }, (_, i) => i < lead * rate ? 0 : 0.3);
@@ -148,7 +168,7 @@ export const tests = [
     const S = level('sounds'); eq(on(revealFor(S, { target: 's' })), 's', 'letter sound keyword');
     const R = LV.find(l => l.mode === 'rhyme'); eq(on(revealFor(R, { target: { cue: 'fun', w: 'sun' } })), 'un un', 'rhyme ending');
     eq(on(revealFor(level('blend'), { target: { w: 'cat' } })), '', 'blend: nothing lit until the sounds play');
-    eq(revealFor(level('sight'), { target: 'said' }), null, 'sight words: nothing extra'); eq(revealFor(level('names'), { target: 'b' }), null, 'letter names');
+    eq(on(revealFor(level('sight'), { target: 'said' })), 'ai', 'sight words: the tricky letters'); eq(revealFor(level('names'), { target: 'b' }), null, 'letter names');
   }],
   ['reveal: Blend it praise cues each sound, then the whole word; later rounds just the word', () => {
     const B = level('blend'), r = { target: { w: 'cat' } };

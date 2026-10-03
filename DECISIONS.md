@@ -97,3 +97,9 @@ Why Word Path is built the way it is. Each entry: the decision, why, what else w
 - **Decision:** Settings → Progress report shows totals, "needs practice" items and played levels on one screen, laid out for a screenshot rather than printing. Needs practice = not yet known, at least 2 recent first tries, under half of them right (`PRACTICE_RULE`).
 - **Why:** teachers share screenshots, not printouts. First tries are the honest measure (later taps are guided by "Try again" and shown answers). Requiring 2 tries avoids flagging a word from one slip.
 - **Revisit:** with child profiles (#28) and export (#20), when a class view makes sense; and the thresholds once there's real usage (R4, R8).
+
+### 21. Heart words: our own markings, Word pop by sounds taught (2026-10-03)
+- **Decision:** every sight word is written with its tricky letters in brackets (`HEART_MARKS` in content.js): irregular parts (s[ai]d) and patterns the game doesn't teach yet (h[igh]). A word goes in the Word pop level of the stage that teaches its regular sounds, most common first, and no more than one level before its frequency band. Tricky letters are underlined with a ♥ badge.
+- **Why:** high-frequency words are learned by connecting their letters to their sounds (Ehri 2014), so the regular parts should be readable when the word is taught and only the tricky part needs remembering. The markings are our own analysis, not a programme's lists.
+- **Trade-off:** very common words with sounds taught late come late ("the" in Word pop 5, because of "th"). Many classrooms teach "the" as a heart word from day one; we could move a short list of the most common words earlier.
+- **Revisit:** after review of `tools/hearts.html` and testing.

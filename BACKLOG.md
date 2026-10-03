@@ -19,7 +19,6 @@ Work top to bottom. "Parallel" items are mostly your time and can happen alongsi
 | 26 | **Early phonological awareness**: syllable clapping, first/last sound matching for the K band | M | Learning | Fills the start of the sequence |
 | 23 | **Segmenting levels**: hear "cat", tap the sounds in order | M | Learning | Missing core skill (reverse of blending) |
 | 24 | **Spelling levels**: build the word from letter tiles | M | Learning | Spelling strongly reinforces reading |
-| 25 | **Heart words**: teach decodable high-frequency words as decoding once their sounds are taught; drill only the irregular parts | M | Learning | Better sight-word method |
 | 29 | **Drag to sort**, as well as tapping | S | Product | An extra way to answer: tapping stays, so the game still works for children who find dragging hard (dragging is harder for the youngest) |
 | 30 | **Accessibility pass**: screen-reader labels, contrast, captions for spoken prompts | M | Product | Wider reach; captions help in noisy classrooms |
 | 32 | **Decodable sentences**: short sentences from taught sounds and heart words, then pick the picture | L | Learning | The step from words to reading text |
@@ -67,6 +66,7 @@ Details in CHANGELOG.md.
 | 7c | ✅ ~~**iOS Safari sound reliability**~~ (confirmed on iPhone Safari 2026-10-03, with the new recordings) | | | Shipped (CHANGELOG) |
 | 27b | ✅ ~~**Smaller audio files**~~ (AAC copies: 5.4 MB instead of 27 MB; WAV kept as the master) | | | Shipped (CHANGELOG) |
 | 34 | ✅ ~~**Show the word after the answer**~~ | | | Shipped (CHANGELOG) |
+| 25 | ✅ ~~**Heart words**~~ (first version: marks for all 300, Word pop grouped by sounds taught; review on `tools/hearts.html`) | | | Shipped (CHANGELOG) |
 
 ## Research
 

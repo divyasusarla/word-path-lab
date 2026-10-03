@@ -551,7 +551,7 @@ async function runAll() {
       [LEVELS.find(l => l.type === 'sounds').n, (s, rv) => rv.on.length === 1],
       [LEVELS.find(l => l.type === 'blend').n, (s, rv) => rv.text === s.target && rv.on.join('') === s.target],
       [LEVELS.find(l => l.type === 'rhyme').n, (s, rv) => rv.on.length === 2],
-      [LEVELS.find(l => l.type === 'sight').n, (s, rv) => rv === null]];
+      [LEVELS.find(l => l.type === 'sight').n, (s, rv) => rv && rv.text.replace(/\s*♥$/, '') === s.target]];
     try {
       for (const [name, wd, ht] of SIZES) {
         frame.style.width = `${wd}px`; frame.style.height = `${ht}px`; frame.style.aspectRatio = 'auto';
@@ -559,7 +559,7 @@ async function runAll() {
           const w = await open(`../?test&mute&think=3&level=${n}`);   // a pause after the answer, so the word stays up
           await waitFor(() => w.wp.state().screen === 'play' && w.wp.state().level === n, 3000, `level ${n}`);
           const s = w.wp.state(); w.wp.right();
-          const rv = n === cases[4][0] ? (await sleep(300), w.wp.reveal()) : await waitFor(() => { const x = w.wp.reveal(); return x && (n !== cases[2][0] || x.on.join('') === s.target) && x; }, 3000, `the word in level ${n}`);
+          const rv = await waitFor(() => { const x = w.wp.reveal(); return x && (n !== cases[2][0] || x.on.join('') === s.target) && x; }, 3000, `the word in level ${n}`);
           expect(good(s, rv), `${name}, level ${n} (${s.target}): ${JSON.stringify(rv)}`);
           const el = doc().querySelector('.reveal');
           if (el) {
@@ -596,6 +596,13 @@ async function runAll() {
     expect(doc().querySelectorAll('.item').length === w.checklistReady.items, 'not every item rendered');
     expect(!/undefined|NaN/.test(text()), 'a level number didn\'t resolve');
     return `${w.checklistReady.sections} sections, ${w.checklistReady.items} items`;
+  });
+  await check('Heart words page: shows every sight word in its Word pop level', async () => {
+    frame.src = '../tools/hearts.html';
+    const w = await waitFor(() => frame.contentWindow.heartsReady && frame.contentWindow, 6000, 'the heart words page');
+    expect(w.heartsReady.words === 300 && w.heartsReady.levels === LEVELS.filter(l => l.type === 'sight').length, `${w.heartsReady.words} words in ${w.heartsReady.levels} levels`);
+    expect(doc().querySelectorAll('.w b').length > 0, 'no tricky letters shown');
+    return `${w.heartsReady.words} words, ${w.heartsReady.hearts} heart words`;
   });
   await check('Picture review page: shows every picture', async () => {
     frame.src = '../tools/pictures.html';
