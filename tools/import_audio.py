@@ -24,8 +24,26 @@ def sound_list():
     return kinds
 
 RATE_OUT_RMS, PEAK_CAP = 0.15, 0.89
+# Voiceless sounds have nothing below a few hundred Hz, so anything there is rumble (fans, hum, desk bumps)
+VOICELESS = {'s', 'f', 'sh', 'th-thin', 'h', 'p', 't', 'k', 'ch', 'x'}
 
-def clean(path, drop_first=0.0):
+def high_pass(x, rate, cutoff, passes=1):
+    """Remove sound below `cutoff` Hz (2nd-order Butterworth biquad; each pass adds 12 dB/octave)."""
+    import math
+    w0 = 2 * math.pi * cutoff / rate; alpha = math.sin(w0) / (2 * 0.7071); c = math.cos(w0)
+    a0 = 1 + alpha
+    b0, b1, b2 = (1 + c) / 2 / a0, -(1 + c) / a0, (1 + c) / 2 / a0
+    a1, a2 = -2 * c / a0, (1 - alpha) / a0
+    for _ in range(passes):
+        y, x1, x2, y1, y2 = [], 0.0, 0.0, 0.0, 0.0
+        for v in x:
+            out = b0 * v + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+            x2, x1, y2, y1 = x1, v, y1, out
+            y.append(out)
+        x = y
+    return x
+
+def clean(path, drop_first=0.0, voiceless=False):
     """Keep only the spoken sound: drop key clicks and gaps before/after it, then even out the volume.
 
     Splits the clip into bursts of sound, joins bursts less than 120 ms apart, and keeps the burst
@@ -36,6 +54,8 @@ def clean(path, drop_first=0.0):
         r, n = w.getframerate(), w.getnframes()
         x = [v / 32768 for v in struct.unpack(f'<{n}h', w.readframes(n))]
     x = x[int(r * drop_first):]; n = len(x)
+    # rumble filter: everything below 80 Hz always; below 300 Hz (steeper) for voiceless sounds
+    x = high_pass(x, r, 300, passes=2) if voiceless else high_pass(x, r, 80)
     win = max(1, int(r * 0.01))
     env = [math.sqrt(sum(v * v for v in x[i:i + win]) / win) for i in range(0, n - win + 1, win)]
     if not env: return None
@@ -89,7 +109,7 @@ def main(zpath, drop_first=0.0):
             if not cid or cid not in kinds or info.file_size > 2_000_000:
                 skipped.append(info.filename); continue
             (AUDIO / name).write_bytes(z.read(info))
-            clean(AUDIO / name, drop_first)
+            clean(AUDIO / name, drop_first, voiceless=cid in VOICELESS)
             imported.append(cid)
     present = sorted(p.stem for p in AUDIO.glob('*.wav') if p.stem in kinds)
     (AUDIO / 'manifest.json').write_text(json.dumps({'clips': present}, indent=2) + '\n')
