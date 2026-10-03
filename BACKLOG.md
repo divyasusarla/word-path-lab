@@ -16,7 +16,7 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 6 | ✅ ~~**About and credits page**: research sources and asset licences (Noto Emoji, Fredoka, Lucide, Preact) in the game~~ | | | Shipped (CHANGELOG) |
 | 7 | ✅ ~~Layout for tablet, phone and desktop, landscape and portrait~~ | | | Shipped (CHANGELOG) |
 | 7b | **Second layout pass: sticker book, settings, level complete and About screens** on phone and tablet, in both orientations; design in the same Claude Design canvas first | S–M | Product | The main layout covered the map and play screens only |
-| 7c | **iOS Safari sound reliability**: confirm clips and the browser voice play every time on iPhone/iPad (audio unlocking, switching apps, the silent switch); fix what testing finds | S | Product | Needs your iPhone testing |
+| 7c | **iOS Safari sound reliability**: first fix shipped (recordings wait for sound to be running, fall back to the voice, restart after interruptions); confirm on your iPhone and iPad with the ⚠️ captions in test mode | S | Product | Needs your iPhone testing |
 | 8 | ✅ ~~**Interim voice fix**: prefer on-device voices over the online Google voice; say the word in the same utterance as the prompt~~ | | | Shipped (CHANGELOG) |
 | 9 | **Re-record s, th (thin), f** (rumble filter shipped; optionally sh, ng, th (this) held longer) | S | Audio · parallel | Yours: th (thin) is mostly breath even after filtering |
 | 10 | ✅ ~~**Move game logic into its own module, with unit tests**: building rounds, choosing wrong options, unlocking; tests that `coverage()` catches broken content~~ | | | Shipped (CHANGELOG) |

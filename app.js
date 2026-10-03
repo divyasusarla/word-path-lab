@@ -88,12 +88,13 @@ class App extends Component {
     window.addEventListener('resize', this.onResize);
     if (TEST) this.initTest();
     this.loadManifest();
-    // Safari (iPad/iPhone) only allows sound after a tap, so start the audio engine on the first touch or key
-    const unlock = () => {
-      const c = this.audioCtx();
-      if (c && c.state === 'running') { ['pointerdown', 'keydown'].forEach(e => document.removeEventListener(e, unlock, true)); this.preload(); }
-    };
-    ['pointerdown', 'keydown'].forEach(e => document.addEventListener(e, unlock, true));
+    // Safari (iPad/iPhone) only allows sound after a tap, so start the audio engine on taps and keys. Safari counts
+    // some events (touchend, click) but not always others, so listen to all of them. Keep listening: iOS can pause
+    // the engine again later (after the voice speaks, or when the app is in the background), and a tap restarts it.
+    const unlock = () => { const c = this.audioCtx(); if (c && c.state === 'running' && !this.preloaded) { this.preloaded = true; this.preload(); } };
+    ['pointerdown', 'touchend', 'click', 'keydown'].forEach(e => document.addEventListener(e, unlock, true));
+    this.onVisible = () => { if (document.visibilityState === 'visible' && this.actx) this.audioCtx(); };
+    document.addEventListener('visibilitychange', this.onVisible);
     const ss = window.speechSynthesis; if (!ss) return;
     const pick = () => { this.voices = ss.getVoices().filter(v => /^en/i.test(v.lang)); this.setState(s => ({ vtick: s.vtick + 1 })); };
     pick(); ss.onvoiceschanged = pick;
@@ -127,6 +128,9 @@ class App extends Component {
       mastery: () => JSON.parse(JSON.stringify(this.state.mastery)),
       masteredIn: n => masteredIn(LV[n - 1], this.state.mastery),
       played: () => this.playedClips.slice(),
+      // Simulates iOS refusing to start sound (no tap yet, or interrupted), to check the voice fallback
+      blockAudio: async () => { const c = this.audioCtx(); if (!c) return 'no audio'; c.resume = () => Promise.resolve(); await c.suspend(); return c.state; },
+      replay: () => { const L = LV[this.state.lvl], r = this.state.rounds[this.state.round]; if (r) this.speak(this.prompt(L, r, false)); },
       clearSpoken: () => { this.spoken = []; }
     };
   }
@@ -141,7 +145,7 @@ class App extends Component {
     L.kind === 'pop' ? this.pickPop(i) : this.pickMatch(i);
     return true;
   }
-  componentWillUnmount() { this.stop(); window.removeEventListener('resize', this.onResize); }
+  componentWillUnmount() { this.stop(); window.removeEventListener('resize', this.onResize); document.removeEventListener('visibilitychange', this.onVisible); }
 
   // Prefer voices built into the device: online voices (e.g. Chrome's "Google US English" on a Mac) can clip
   // the start of short words. A voice picked in Grown-up settings always wins.
@@ -170,8 +174,16 @@ class App extends Component {
       const b = this.actx.createBuffer(1, 1, 22050), src = this.actx.createBufferSource();  // a silent blip unlocks iOS
       src.buffer = b; src.connect(this.actx.destination); src.start(0);
     }
-    if (this.actx.state === 'suspended') this.actx.resume();
+    // 'suspended' (not started yet, or backgrounded) and 'interrupted' (iOS, e.g. after the voice spoke) both need a resume
+    if (this.actx.state !== 'running' && this.actx.state !== 'closed') this.actx.resume().catch(() => {});
     return this.actx;
+  }
+  // Make sure sound is actually running before playing a recording; wait briefly if it's starting up.
+  // Returns false if it still isn't, so the caller can use the browser voice instead of playing into silence.
+  async audioReady() {
+    const c = this.audioCtx(); if (!c) return false;
+    for (let i = 0; i < 8 && c.state !== 'running'; i++) { c.resume().catch(() => {}); await new Promise(r => setTimeout(r, 75)); }
+    return c.state === 'running';
   }
   preload() { this.recorded.forEach(id => this.clipBuffer(id)); }
   clipBuffer(id) {
@@ -222,10 +234,11 @@ class App extends Component {
       if (typeof p === 'number') { if (!mute) await this.wait(p); continue; }
       const o = typeof p === 'string' ? { t: p } : p;
       const rec = o.clip && this.recorded.has(o.clip);
-      if (TEST) this.caption(o.t, o.clip, o.clip ? (rec ? 'recording' : 'voice') : null);
-      if (mute) { await this.wait(0); continue; }
-      const buf = rec ? await this.clipBuffer(o.clip) : null;
+      if (mute) { if (TEST) this.caption(o.t, o.clip, o.clip ? (rec ? 'recording' : 'voice') : null); await this.wait(0); continue; }
+      // A recording only plays if sound is running; otherwise the browser voice says it, so there's never silence
+      const buf = rec && await this.audioReady() ? await this.clipBuffer(o.clip) : null;
       if (id !== this.sid) return false;
+      if (TEST) this.caption(o.t, o.clip, o.clip ? (buf ? 'recording' : rec ? 'fallback' : 'voice') : null);
       if (buf) await this.playClip(buf); else if (ss) await this.utter(o);
     }
     return id === this.sid;
@@ -508,9 +521,9 @@ class App extends Component {
         <div style=${label}>Levels finished (changes the map and sticker book)</div>
         <div style=${row}>${[0, ...STAGES.map(stg => stg.first + stg.count)].map(n => html`<button title=${n ? `Stages 1–${LV[n - 1].stage + 1} done` : 'Nothing done'} onClick=${() => this.setState({ done: Array.from({ length: LV.length }, (_, i) => i < n), mapStage: null })} style=${b + (doneCount === n ? ';' + on : '')}>${n}</button>`)}</div>
         ${this.coverageNote()}
-        <div style=${label}>Spoken${T.mute ? ' (muted)' : ''} · 🎙 recording, 🤖 browser voice · ${this.recorded.size} recordings</div>
+        <div style=${label}>Spoken${T.mute ? ' (muted)' : ''} · 🎙 recording, 🤖 browser voice, ⚠️ recording skipped (sound not running) · ${this.recorded.size} recordings · sound: ${this.actx ? this.actx.state : 'not started'}</div>
         <div style="display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:1.35;min-height:20px">
-          ${this.spoken.slice(-6).map((x, k, a) => html`<div style=${k === a.length - 1 ? 'font-weight:600' : 'color:#5C5677'}>${x.src ? html`<span title=${x.src === 'recording' ? `Recording: audio/${x.clip}.wav` : `No recording yet for "${x.clip}"; browser voice`}>${x.src === 'recording' ? '🎙' : '🤖'} </span>` : ''}“${x.t}”</div>`)}
+          ${this.spoken.slice(-6).map((x, k, a) => html`<div style=${k === a.length - 1 ? 'font-weight:600' : 'color:#5C5677'}>${x.src ? html`<span title=${x.src === 'recording' ? `Recording: audio/${x.clip}.wav` : x.src === 'fallback' ? `Recording exists but sound wasn't running; browser voice used` : `No recording yet for "${x.clip}"; browser voice`}>${x.src === 'recording' ? '🎙' : x.src === 'fallback' ? '⚠️' : '🤖'} </span>` : ''}“${x.t}”</div>`)}
         </div>
         <div style="font-size:12px;color:#5C5677">Nothing is saved in test mode.</div>
       </div>`;

@@ -364,9 +364,9 @@ async function runAll() {
     const w = await load(`level=${n}&rounds=1`);
     await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
     w.wp.clearSpoken(); w.wp.right();
-    await waitFor(() => w.wp.spoken().some(t => /Yes! That says/.test(t)), 2000, '"Yes! That says …"');
-    const d = w.wp.spokenDetail(); const i = d.findIndex(x => /Yes! That says/.test(x.t));
-    expect(d[i + 1] && d[i + 1].clip, 'the sound should follow the praise');
+    const after = () => { const d = w.wp.spokenDetail(), i = d.findIndex(x => /Yes! That says/.test(x.t)); return i >= 0 && d[i + 1]; };
+    const next = await waitFor(after, 2000, 'the praise and the sound after it');
+    expect(next.clip, 'the sound should follow the praise');
   });
   await check('Level complete: offers "Practise again" when under half the first taps were right', async () => {
     const n = LEVELS.find(l => l.type === 'blend').n;
@@ -392,6 +392,32 @@ async function runAll() {
     await waitFor(() => w.wp.spoken().some(t => /Time for a break/.test(t)), 2000, 'the spoken suggestion');
     const w2 = await load('screen=settings');
     expect(/Suggest a break after/.test(text()), 'no session setting in Settings');
+  });
+  await check('Sound: a recording is only played when sound is running; otherwise the voice says it (never silence)', async () => {
+    frame.src = 'about:blank'; await sleep(30);
+    frame.src = '../?test&think=0&level=1';   // not muted: the real audio path
+    const w = await waitFor(() => frame.contentWindow.wp && frame.contentWindow, 6000, 'the game to load');
+    await waitFor(() => w.wp.spokenDetail().some(x => x.clip), 8000, 'the first speech sound');
+    const clips = w.wp.spokenDetail().filter(x => x.clip), played = w.wp.played();
+    expect(played.every(p => p.state === 'running'), `a recording played while sound was ${played.map(p => p.state).join(', ')}`);
+    expect(clips.every(x => ['recording', 'fallback', 'voice'].includes(x.src)), 'unknown source');
+    expect(clips.filter(x => x.src === 'recording').length <= played.length, 'claimed a recording that never played');
+    frame.src = 'about:blank';
+    return `first sound: ${clips[0].src} (sound ${w.wp.audioState()})`;
+  });
+  await check('Sound: when iOS won\'t start sound, letter sounds fall back to the voice instead of silence', async () => {
+    frame.src = 'about:blank'; await sleep(30);
+    frame.src = '../?test&think=0&level=1';
+    const w = await waitFor(() => frame.contentWindow.wp && frame.contentWindow, 6000, 'the game to load');
+    await waitFor(() => w.wp.spokenDetail().some(x => x.clip), 8000, 'the first speech sound');
+    expect(await w.wp.blockAudio() === 'suspended', 'could not simulate stopped sound');
+    w.wp.clearSpoken(); const before = w.wp.played().length;
+    w.wp.replay();
+    await waitFor(() => w.wp.spokenDetail().some(x => x.clip), 8000, 'the sound after blocking');
+    const clip = w.wp.spokenDetail().find(x => x.clip);
+    expect(clip.src === 'fallback', `expected the voice fallback, got ${clip.src}`);
+    expect(w.wp.played().length === before, 'played a recording into stopped sound');
+    frame.src = 'about:blank';
   });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
