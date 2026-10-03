@@ -355,6 +355,38 @@ export function missParts(L, r, option) {
   return ['That one is', 300, word(option.w)];
 }
 export const TRY_AGAIN = 'Try again.', BONUS = 'Bonus round!', LOCKED = 'That level is locked. Finish the one before it.';
+
+// ---- Hint ladder (#35) ---------------------------------------------------------------------------
+// A little help first, more if needed: after the first miss (before the answer is shown at modelAfter), the game
+// takes away one more wrong answer where enough are left, and gives a hint suited to the game:
+//   letter sounds: the keyword picture ("like in" sun) without its word, so the letter isn't given away
+//   Blend it: the sounds again, closer together (nearer to the word)
+//   Read it: "Sound it out", each sound of the word on screen
+//   others: the question again
+// Returns { parts: what's said after "Try again", take: wrong answers to remove, pic: a picture word to show }.
+export function hintFor(L, r, optionsLeft) {
+  if (L.kind === 'pop') {
+    const ex = L.mode === 'sound' ? GRAPHEMES[r.target].ex : null;
+    return { parts: prompt(L, r, false), take: optionsLeft > 2 ? 1 : 0, pic: ex && PICS[ex] ? ex : null };
+  }
+  if (L.mode === 'blend') return { parts: ['Listen.', 400, ...phonemes(r.target.w).flatMap(p => [gsnd(p), 120]).slice(0, -1), 400, 'What word is that?'], take: 0, pic: null };
+  if (L.mode === 'read') return { parts: soundOutParts(r.target.w), take: 0, pic: null };
+  return { parts: prompt(L, r, false), take: 0, pic: null };
+}
+// After a run of rounds missed on the first try, the next rounds have fewer choices until one is right first time
+export const EASE_AFTER = 3;
+export const shouldEase = firstTries => firstTries.length >= EASE_AFTER && firstTries.slice(-EASE_AFTER).every(x => !x);
+// The same round with fewer choices: 3 bubbles, or 2 pictures (the answer is always kept, and a letter's mix-up)
+export function easeRound(L, r, rng = Math.random) {
+  if (L.kind === 'sort' || !r.options) return r;
+  const keep = L.kind === 'pop' ? 3 : 2;
+  if (r.options.length <= keep) return r;
+  const right = r.options.filter(o => isRight(L, r, o)), mix = L.kind === 'pop' ? mixUpFor(L, r.target) : null;
+  const wrong = r.options.filter(o => !isRight(L, r, o));
+  const must = wrong.filter(o => o.label === mix), rest = shuffle(wrong.filter(o => o.label !== mix), rng);
+  const kept = new Set([...right, ...must, ...rest].slice(0, keep));
+  return { ...r, eased: true, options: r.options.filter(o => kept.has(o)) };
+}
 // Level complete: what was earned, then a break or practise-again suggestion
 export function finishParts(L, { stageDone = false, rest = false, again = false } = {}) {
   return ['You did it!', 400, `You earned the ${L.sticker.name} sticker!`, ...(stageDone ? [500, `You finished stage ${L.stage + 1}!`] : []),

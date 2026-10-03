@@ -12,7 +12,6 @@ Work top to bottom. "Parallel" items are mostly your time and can happen alongsi
 |---|---|---|---|---|
 | 9 | **Re-record 6 letter sounds** in the recorder's "Letter sounds and names" batch: s and f (background rumble), th (thin) and th (this) (0.3–0.4 s, mostly breath), sh and ng (0.6 s): hold each for about 2 seconds. Then Download all; only these re-imports | S | Audio · parallel | Yours |
 | 3 | **Picture naming review** (part 1 shipped: `tools/pictures.html`; part 2, the decisions, happens during testing: see Research R2): check pictures a child could name differently (tap → "water", cup → "drink", pan → "egg", nap → "sleep", cash → "money", king → "prince"); swap or rename; say a picture's name when it's pressed and held | S | Learning | A misnamed picture makes a right answer look wrong |
-| 35 | **Hint ladder**: a little help first, more if needed. First miss: replay the question more slowly and take away one wrong option. Then a hint per game: the keyword picture for a letter sound, a stretched first sound ("sssock") for sorting, the sounds closer together for Blend it. After two misses: show and say the answer (as now). Several misses in a row: easier next rounds, or suggest the level before | M | Learning | Supporting a child who's stuck (first child test); graded prompting and corrective feedback (LEARNING_DESIGN.md) |
 | 36 | **Word pool breadth**: far more words per level, so plays don't repeat the same few. A "hear it, find the word" game (hear "map", pick from map / mop / nap) needs no picture, so any decodable word can be used; First sounds varies its letter pair each play across every letter taught; letter levels mix in more earlier letters. New words are recorded in batches like before | M–L | Learning | Repeats felt in the first child test; decoding practice needs many words with taught sounds (Foorman et al. 2016, rec. 3) |
 | 14 | **Developmental bands**: regroup stages into K / grade 1 / grade 2 per `LEARNING_DESIGN.md`; add grade 2 content (endings -s -ed -ing, more vowel patterns, two-syllable words) | L | Learning | Fits the K–2 span properly; needs #5 and #11 |
 | 14b | **Consonant blends as a teaching step**: st, sp, sn, fr, tr, cl, -nd, -mp… with sorting, blending and reading levels; today some words (snake, star, spoon, tree) use blends that were never taught | M | Learning | Gap found in LEARNING_DESIGN.md; part of band B |
@@ -67,6 +66,7 @@ Details in CHANGELOG.md.
 | 7c | ✅ ~~**iOS Safari sound reliability**~~ (confirmed on iPhone Safari 2026-10-03, with the new recordings) | | | Shipped (CHANGELOG) |
 | 27b | ✅ ~~**Smaller audio files**~~ (AAC copies: 5.4 MB instead of 27 MB; WAV kept as the master) | | | Shipped (CHANGELOG) |
 | 34 | ✅ ~~**Show the word after the answer**~~ | | | Shipped (CHANGELOG) |
+| 35 | ✅ ~~**Hint ladder**~~ | | | Shipped (CHANGELOG) |
 
 ## Research
 

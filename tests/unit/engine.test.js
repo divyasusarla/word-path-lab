@@ -6,7 +6,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
-  sayId, wordId, slug, codecOffset, KEEP_LEAD, mixUpFor, OPTION_WORDS, spell, revealFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
+  sayId, wordId, slug, hintFor, shouldEase, easeRound, EASE_AFTER, codecOffset, KEEP_LEAD, mixUpFor, OPTION_WORDS, spell, revealFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, PICTURE_FLAGS, WORDS, FRY, CONFUSIONS, confusedWith, wordStage, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
@@ -112,6 +112,33 @@ export const tests = [
   ['report: item labels say what kind of item it is', () => {
     eq(itemLabel('name:b'), { kind: 'name', kindName: 'letter name', text: 'B' }, 'letter name');
     eq(itemLabel('sound:sh').kindName, 'letter sound', 'sound'); eq(itemLabel('word:said').text, 'said', 'sight word');
+  }],
+
+  // ---- hint ladder (#35)
+  ['hints: one more wrong answer goes when enough are left; each game gets its own hint', () => {
+    const S = level('sounds'), t = S.pool.find(g => PICS[GRAPHEMES[g].ex]);
+    const h = hintFor(S, { target: t }, 3);
+    eq([h.take, h.pic], [1, GRAPHEMES[t].ex], 'letter sounds: take one, show the keyword picture');
+    eq(hintFor(S, { target: t }, 2).take, 0, 'never down to one choice');
+    const B = hintFor(level('blend'), { target: { w: 'cat' } }, 2);
+    eq(B.parts.filter(p => p && p.clip && !p.clip.startsWith('say-')).length, 3, 'Blend it: the three sounds again');
+    ok(B.parts.filter(p => typeof p === 'number' && p < 200).length === 2, 'Blend it: closer together than the question (120 ms)');
+    eq(hintFor(level('read'), { target: { w: 'cat' } }, 2).parts, soundOutParts('cat'), 'Read it: sound it out');
+    eq(hintFor(level('sight'), { target: 'said' }, 4).pic, null, 'no picture for sight words');
+  }],
+  ['easier rounds: after 3 first-try misses in a row; fewer choices, answer and mix-up kept', () => {
+    ok(!shouldEase([false, false]) && shouldEase([true, false, false, false]) && !shouldEase([false, false, true]), 'when to ease');
+    eq(EASE_AFTER, 3, 'run length');
+    const L = LV.find(l => l.mode === 'sound' && l.pool.includes('b') && l.pool.length > 4);
+    for (const r of buildRounds(L, 8, seeded(5))) {
+      const e = easeRound(L, r, seeded(2)), labels = e.options.map(o => o.label);
+      eq(labels.length, Math.min(3, r.options.length), 'three bubbles'); ok(labels.includes(r.target), 'answer kept');
+      const mix = r.options.find(o => o.label !== r.target && ['b', 'd'].includes(o.label) && ['b', 'd'].includes(r.target));
+      if (mix) ok(labels.includes(mix.label), 'mix-up kept');
+    }
+    const M = level('blend'), r = buildRounds(M, 1, seeded(3))[0], e = easeRound(M, r, seeded(1));
+    eq(e.options.length, 2, 'two pictures'); ok(e.options.some(o => o.w === r.target.w), 'answer kept');
+    const S = level('sort'); eq(easeRound(S, S.items[0]), S.items[0], 'sorting unchanged');
   }],
 
   // ---- compressed recordings (#27b)

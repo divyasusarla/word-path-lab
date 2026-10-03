@@ -97,3 +97,8 @@ Why Word Path is built the way it is. Each entry: the decision, why, what else w
 - **Decision:** Settings → Progress report shows totals, "needs practice" items and played levels on one screen, laid out for a screenshot rather than printing. Needs practice = not yet known, at least 2 recent first tries, under half of them right (`PRACTICE_RULE`).
 - **Why:** teachers share screenshots, not printouts. First tries are the honest measure (later taps are guided by "Try again" and shown answers). Requiring 2 tries avoids flagging a word from one slip.
 - **Revisit:** with child profiles (#28) and export (#20), when a class view makes sense; and the thresholds once there's real usage (R4, R8).
+
+### 20. Hint ladder: narrow, hint, then show (2026-10-03)
+- **Decision:** after a first miss, take one wrong answer away (only if two or more choices would remain) and give a game-specific hint; after the second miss, show the answer. Three first-try misses in a row make the next rounds easier (fewer choices) until one is right first time. Hints never give the answer away: Letter sounds shows the keyword *picture*, not its word.
+- **Why:** support that starts small and grows is standard practice in early-reading help, and it keeps the child doing the thinking. Easier rounds stop a struggling child from a long run of failures without moving them off the level.
+- **Revisit:** after testing (are hints noticed? does easing feel like a reward for missing?), and with adaptive difficulty (#33).
