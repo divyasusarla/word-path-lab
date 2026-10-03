@@ -92,3 +92,8 @@ Why Word Path is built the way it is. Each entry: the decision, why, what else w
 - **Decision:** Settings opens after answering a single digit times a teen (3 × 12 to 9 × 19) on an on-screen number pad. A wrong answer gives a new sum. Passing it lasts until the page reloads.
 - **Why:** children find long-press gates by accident or by copying grown-ups. Ages 5–8 rarely know two-digit products, while adults answer in seconds. A number pad avoids the device keyboard covering the screen. Not reading-based, since 7–8-year-olds can read.
 - **Revisit:** if testers find it too hard or children get past it (checklist item), or if the game goes into an app store with its own gate rules.
+
+### 19. The teacher report is a screen to screenshot, built only from first tries (2026-10-03)
+- **Decision:** Settings → Progress report shows totals, "needs practice" items and played levels on one screen, laid out for a screenshot rather than printing. Needs practice = not yet known, at least 2 recent first tries, under half of them right (`PRACTICE_RULE`).
+- **Why:** teachers share screenshots, not printouts. First tries are the honest measure (later taps are guided by "Try again" and shown answers). Requiring 2 tries avoids flagging a word from one slip.
+- **Revisit:** with child profiles (#28) and export (#20), when a class view makes sense; and the thresholds once there's real usage (R4, R8).

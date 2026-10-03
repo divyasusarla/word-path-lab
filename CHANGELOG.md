@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- **Progress report (#19):** Settings → Progress report (behind the grown-up gate) shows one screen to screenshot: levels finished, words and sounds known, how often first tries are right, the last day played, the words and sounds that need practice (under half right recently, worst first), and each played level with how many of its items are known. One child per device for now (profiles are #28).
 - **Grown-up gate (#18):** the Settings button now asks "Grown-ups only: What is 6 × 13?" with a big number pad. A wrong answer gives a new sum, so guessing doesn't pay; once answered, Settings opens straight away until the page is reloaded. The teacher report (#19) will sit behind it too.
 - **Audio tool tests (#31):** 11 tests for the recording importer, run on every pull request, using made-up recordings (tones, key clicks, hum), and a check of the recorder's own clean-up on the checks page. They cover what matters before importing hundreds of clips: clicks trimmed, pauses inside words and lines kept, volume evened, rumble filtered, unknown files skipped, batches adding up.
 - The Safari-engine (WebKit) checks have passed on every run since 2026-10-03, so they're now required to merge, alongside the Chrome checks.

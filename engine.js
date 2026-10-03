@@ -229,6 +229,38 @@ export function levelItems(L) {
 }
 export const masteredIn = (L, store, rule = MASTERY_RULE) => levelItems(L).filter(k => isMastered(store[k], rule));
 
+// ---- Progress report (#19) -----------------------------------------------------------------------
+// How an item key reads in the report: "sh" (letter sound), "B" (letter name), "said" (sight word)…
+export const KIND_NAMES = { sound: 'letter sound', name: 'letter name', word: 'sight word', blend: 'Blend it', read: 'Read it', sort: 'sorting', rhyme: 'rhyme' };
+export function itemLabel(key) {
+  const i = key.indexOf(':'), kind = key.slice(0, i), x = key.slice(i + 1);
+  return { kind, kindName: KIND_NAMES[kind] || kind, text: kind === 'name' ? x.toUpperCase() : x };
+}
+// Needs practice: not yet mastered, at least 2 recent first tries, and under half of them right. Worst first.
+export const PRACTICE_RULE = { minTries: 2, below: 0.5, show: 12 };
+// Everything the teacher report shows, from finished levels and the mastery store. Only levels that have been
+// finished or practised are listed. "First tries right" uses the attempts kept per item (the last 8).
+export function progressReport(done, store, rule = MASTERY_RULE, prule = PRACTICE_RULE) {
+  const lastOf = atts => atts.reduce((m, a) => a.day > m ? a.day : m, '');
+  const levels = LV.map((L, i) => {
+    const keys = levelItems(L), atts = keys.flatMap(k => store[k] || []);
+    return { n: L.n, stage: L.stage + 1, title: L.title, done: !!done[i], known: keys.filter(k => isMastered(store[k], rule)).length,
+      total: keys.length, tries: atts.length, right: atts.filter(a => a.ok).length, last: lastOf(atts) };
+  }).filter(l => l.done || l.tries);
+  const keys = Object.keys(store).filter(k => (store[k] || []).length), all = keys.flatMap(k => store[k]);
+  const practice = keys.filter(k => !isMastered(store[k], rule)).map(k => {
+    const recent = store[k].slice(-rule.of);
+    return { key: k, ...itemLabel(k), tries: recent.length, right: recent.filter(a => a.ok).length };
+  }).filter(p => p.tries >= prule.minTries && p.right / p.tries < prule.below)
+    .sort((a, b) => a.right / a.tries - b.right / b.tries || b.tries - a.tries || a.key.localeCompare(b.key));
+  return {
+    finished: done.filter(Boolean).length, levelCount: LV.length,
+    known: keys.filter(k => isMastered(store[k], rule)).length, practised: keys.length,
+    tries: all.length, right: all.filter(a => a.ok).length, last: lastOf(all),
+    levels, practice: practice.slice(0, prule.show), morePractice: Math.max(0, practice.length - prule.show)
+  };
+}
+
 // ---- Feedback ------------------------------------------------------------------------------------
 // After this many misses in a round, the game shows and says the answer (a sort has only two bins, so one miss)
 export const modelAfter = L => L.kind === 'sort' ? 1 : 2;

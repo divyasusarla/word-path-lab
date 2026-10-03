@@ -49,13 +49,14 @@ You can also set things up straight from the address. Combine options with `&`:
 |---|---|
 | `?test` | Test mode, starting on the map |
 | `?test&level=4` | Go straight into level 4 (any number from 1 to 38) |
-| `?test&screen=stickers` | Open a screen: `map`, `play`, `done`, `stickers`, `settings`, `gate` (the Grown-ups only sum) or `about` |
+| `?test&screen=stickers` | Open a screen: `map`, `play`, `done`, `stickers`, `settings`, `gate` (the Grown-ups only sum), `report` or `about` |
 | `?test&screen=done&level=3` | The level complete screen for level 3 |
 | `?test&done=5` | Pretend the first 5 levels are finished (5 = all of stage 1) |
 | `?test&rounds=2` | 2 rounds per level, for quicker play-throughs |
 | `?test&think=0` | No pause after a right answer |
 | `?test&mute` | No voice; captions still show what would be said |
 | `?test&session=0.1` | Suggest a break after 0.1 minutes (to see the break message quickly) |
+| `?test&screen=report&demo` | The progress report with sample progress (9 levels finished, some words known, some often missed) |
 | `?test&day=2026-10-04` | Pretend it's another day (for mastery, which needs two different days) |
 
 For example, `https://divyasusarla.github.io/word-path-lab/?test&level=7&rounds=2`
