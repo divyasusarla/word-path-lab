@@ -573,6 +573,56 @@ async function runAll() {
     } finally { frame.style.width = ''; frame.style.height = ''; frame.style.aspectRatio = ''; }
     return notes.join(' · ');
   });
+  await check('Hint ladder: a first miss takes one wrong answer away and gives a hint that never covers an answer', async () => {
+    try {
+      for (const [name, wd, ht] of SIZES) {
+        frame.style.width = `${wd}px`; frame.style.height = `${ht}px`; frame.style.aspectRatio = 'auto';
+        const n = LEVELS.find(l => l.type === 'sounds').n;
+        let w, s;
+        for (let k = 0; k < 6; k++) {   // find a round whose keyword has a picture
+          w = await load(`level=${n}`);
+          await waitFor(() => w.wp.state().screen === 'play' && w.wp.state().level === n, 3000, `level ${n}`);
+          s = w.wp.state(); if (['s', 'a', 'n', 'i'].includes(s.target)) break;
+        }
+        w.wp.clearSpoken(); w.wp.wrong();
+        await waitFor(() => w.wp.state().misses === 1 && w.wp.spoken().includes('Try again.'), 3000, 'the hint');
+        const st = w.wp.state();
+        expect(st.hidden.length === 1 && !st.modelled, `${name}: expected one answer taken away, got ${st.hidden.length}`);
+        expect(st.options[st.hidden[0]] !== st.target, `${name}: took away the right answer`);
+        const hint = doc().querySelector('.reveal.hint');
+        if (st.hintPic) {
+          expect(hint, `${name}: no hint picture`);
+          await sleep(350);
+          const hb = hint.getBoundingClientRect();
+          const live = [...doc().querySelectorAll('.play-main button')].filter((b, i) => !st.hidden.includes(i));
+          for (const b of live) { const r = b.getBoundingClientRect(), overlap = !(r.right <= hb.left || r.left >= hb.right || r.bottom <= hb.top || r.top >= hb.bottom);
+            expect(!overlap, `${name}: the hint picture covers the "${b.innerText.trim()}" bubble`); }
+        }
+      }
+    } finally { frame.style.width = ''; frame.style.height = ''; frame.style.aspectRatio = ''; }
+    const B = await load(`level=${LEVELS.find(l => l.type === 'blend').n}`);
+    await waitFor(() => B.wp.state().screen === 'play', 2000, 'Blend it');
+    B.wp.clearSpoken(); B.wp.wrong();
+    await waitFor(() => B.wp.spoken().includes('What word is that?'), 3000, 'the Blend it hint');
+    const said = B.wp.spokenDetail(), i = said.findIndex(x => x.t === 'Try again.');
+    expect(said[i + 1]?.t === 'Listen.' && said.slice(i + 2).filter(x => x.clip && !x.clip.startsWith('say-')).length === phonemes(B.wp.state().target).length, 'Blend it hint should replay the sounds');
+  });
+  await check('Hint ladder: three first-try misses in a row make the next round easier, until one is right', async () => {
+    const n = LEVELS.find(l => l.type === 'sounds' && l.pool.length > 6).n;
+    const w = await load(`level=${n}&rounds=8`);
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    const full = w.wp.state().options.length;
+    for (let r = 0; r < 3; r++) {
+      w.wp.wrong(); await sleep(40); w.wp.right();
+      await waitFor(() => w.wp.state().round === r + 1, 4000, `round ${r + 2}`);
+    }
+    let s = w.wp.state();
+    expect(s.easy && s.eased && s.options.length === 3 && full > 3, `round 4 should have 3 bubbles (had ${full}), got ${s.options.length}`);
+    w.wp.right();
+    await waitFor(() => w.wp.state().round === 4, 4000, 'round 5');
+    s = w.wp.state();
+    expect(!s.easy && s.options.length === full, `after a first-try right, back to ${full} bubbles, got ${s.options.length}`);
+  });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
     expect(/You did it!/.test(text()) && text().includes(`You earned the ${LEVELS[2].sticker.name} sticker!`), 'level complete text wrong');

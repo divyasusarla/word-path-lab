@@ -2,11 +2,11 @@
 // Preact + htm, vendored (see vendor/README.md): no build step, edit and reload.
 import { h, html, render, Component } from './vendor/preact-htm.module.js';
 import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage, heartParts } from './content.js?v=dev';
-import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
+import { LV, shuffle, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
   sayId, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED, gateQuestion, gateOk,
-  SESSION_CHOICES, sessionOver, progressReport, revealFor, codecOffset } from './engine.js?v=dev';
+  SESSION_CHOICES, sessionOver, progressReport, revealFor, codecOffset, hintFor, shouldEase, easeRound } from './engine.js?v=dev';
 import { SCRIPT, levelSpeech } from './script.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
@@ -58,7 +58,7 @@ class App extends Component {
   sid = 0; run = 0; tms = []; voices = []; spoken = [];
   recorded = new Set(); compressed = new Set(); clipSources = {}; buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
 
-  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), mastery:this.loadMastery(), answered:false, misses:0, modelled:false, firstTries:[], missed:[], cue:null, settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
+  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), mastery:this.loadMastery(), answered:false, misses:0, modelled:false, firstTries:[], missed:[], cue:null, hidden:[], hintPic:null, easy:false, settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
 
   // In test mode nothing is read from or written to storage
   load() {
@@ -89,7 +89,8 @@ class App extends Component {
     this.justMastered = ok && !before && isMastered(mastery[key]);
     if (!TEST) try { localStorage.setItem(MKEY, JSON.stringify(mastery)); } catch (e) {}
     const target = r.target?.w ?? r.target ?? r.w;  // missed items come back in bonus rounds
-    this.setState(s => ({ mastery, answered: true, firstTries: s.firstTries.concat(!!ok), missed: ok ? s.missed : s.missed.concat(target) }));
+    // a run of first-try misses makes the next rounds easier, until one is right first time (hint ladder)
+    this.setState(s => { const firstTries = s.firstTries.concat(!!ok); return { mastery, answered: true, firstTries, missed: ok ? s.missed : s.missed.concat(target), easy: ok ? false : s.easy || shouldEase(firstTries) }; });
   }
   save(done) { if (!TEST) try { localStorage.setItem(KEY, JSON.stringify(idsFromDone(done))); } catch (e) {} }
   setAudio(patch) {
@@ -129,7 +130,7 @@ class App extends Component {
       state: () => {
         const s = this.state, L = LV[s.lvl], r = s.rounds[s.round];
         return { screen: s.screen, level: L.n, stage: L.stage + 1, type: L.type, kind: L.kind, mode: L.mode, ask: L.ask, round: s.round, rounds: s.rounds.length, solved: s.solved,
-          target: r ? (r.target?.w ?? r.target ?? r.w) : null, review: !!(r && r.review), bonus: !!(r && r.bonus), missed: s.missed.slice(), modelled: s.modelled, misses: s.misses, firstTries: s.firstTries.slice(), options: r && r.options ? r.options.map(o => o.w ?? o.label) : null, mapStage: this.mapStage(), settings: s.settings, done: s.done.slice() };
+          target: r ? (r.target?.w ?? r.target ?? r.w) : null, review: !!(r && r.review), bonus: !!(r && r.bonus), missed: s.missed.slice(), hidden: s.hidden.slice(), hintPic: s.hintPic, easy: s.easy, eased: !!(r && r.eased), modelled: s.modelled, misses: s.misses, firstTries: s.firstTries.slice(), options: r && r.options ? r.options.map(o => o.w ?? o.label) : null, mapStage: this.mapStage(), settings: s.settings, done: s.done.slice() };
       },
       right: () => this.answer(true),
       wrong: () => this.answer(false),
@@ -164,7 +165,7 @@ class App extends Component {
     const { screen, lvl, rounds, round, wrong } = this.state; if (screen !== 'play') return false;
     const L = LV[lvl], r = rounds[round]; if (!r) return false;
     if (L.kind === 'sort') return this.pickBin(correct ? r.bin : 1 - r.bin), true;
-    const i = r.options.findIndex((o, k) => isRight(L, r, o) === correct && !wrong.includes(k));
+    const i = r.options.findIndex((o, k) => isRight(L, r, o) === correct && !wrong.includes(k) && !this.state.hidden.includes(k));
     if (i < 0) return false;
     L.kind === 'pop' ? this.pickPop(i) : this.pickMatch(i);
     return true;
@@ -349,7 +350,7 @@ class App extends Component {
     this.stop();
     const L = LV[i], rounds = this.build(L);
     this.preloadLevel(L);
-    this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false, misses:0, modelled:false, firstTries:[], missed:[], cue:null });
+    this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false, misses:0, modelled:false, firstTries:[], missed:[], cue:null, hidden:[], hintPic:null, easy:false });
     this.speak(this.prompt(L, rounds[0], true));
   }
 
@@ -372,15 +373,26 @@ class App extends Component {
       upcoming = bonusRound(L, this.state.missed, prev, this.state.mastery);
       list = rounds.slice(); list[round + 1] = upcoming;
     }
-    this.setState({ round: round + 1, rounds: list, wrong:[], solved:false, binWrong:null, answered:false, misses:0, modelled:false, cue:null });
+    if (this.state.easy && !upcoming.eased) { upcoming = easeRound(L, upcoming); if (list === rounds) list = rounds.slice(); list[round + 1] = upcoming; }
+    this.setState({ round: round + 1, rounds: list, wrong:[], solved:false, binWrong:null, answered:false, misses:0, modelled:false, cue:null, hidden:[], hintPic:null });
     this.speak([...(upcoming.bonus && !rounds[round].bonus ? [BONUS, 500] : []), ...this.prompt(L, upcoming, false, round + 1)]);
   }
 
   // Count a miss; after enough misses, show and say the answer instead of letting guessing win
-  miss(L, r, said) {
+  // Before that, the hint ladder: one more wrong answer taken away where enough are left, and a hint (hintFor)
+  miss(L, r, said, tapped) {
     const misses = this.state.misses + 1, model = misses >= modelAfter(L);
-    this.setState({ misses, modelled: this.state.modelled || model });
-    this.speak(model ? [...said, 600, ...modelParts(L, r)] : [...said, 600, TRY_AGAIN, 700, ...this.prompt(L, r, false)]);
+    if (model) {
+      this.setState({ misses, modelled: true, hintPic: null });
+      return this.speak([...said, 600, ...modelParts(L, r)]);
+    }
+    const out = new Set([...this.state.wrong, ...this.state.hidden, tapped]);
+    const left = r.options ? r.options.filter((o, k) => !out.has(k)) : [];
+    const hint = hintFor(L, r, left.length);
+    const spare = r.options ? r.options.map((o, k) => k).filter(k => !out.has(k) && !isRight(L, r, r.options[k])) : [];
+    const hide = shuffle(spare).slice(0, hint.take);
+    this.setState(s => ({ misses, hidden: s.hidden.concat(hide), hintPic: hint.pic }));
+    this.speak([...said, 600, TRY_AGAIN, 700, ...hint.parts]);
   }
   praise(L, r) { return praiseParts(L, r, { modelled: this.state.modelled, mastered: this.justMastered, n: this.state.round }); }
 
@@ -393,21 +405,21 @@ class App extends Component {
   }
 
   pickPop(i) {
-    const { rounds, round, solved, lvl, wrong } = this.state; if (solved || wrong.includes(i)) return;
+    const { rounds, round, solved, lvl, wrong, hidden } = this.state; if (solved || wrong.includes(i) || hidden.includes(i)) return;
     const L = LV[lvl], r = rounds[round], o = r.options[i];
     this.record(L, r, isRight(L, r, o));
     if (isRight(L, r, o)) return this.win(this.praise(L, r));
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
-    this.miss(L, r, missParts(L, r, o));
+    this.miss(L, r, missParts(L, r, o), i);
   }
 
   pickMatch(i) {
-    const { rounds, round, solved, lvl, wrong } = this.state; if (solved || wrong.includes(i)) return;
+    const { rounds, round, solved, lvl, wrong, hidden } = this.state; if (solved || wrong.includes(i) || hidden.includes(i)) return;
     const L = LV[lvl], r = rounds[round], o = r.options[i];
     this.record(L, r, isRight(L, r, o));
     if (isRight(L, r, o)) return this.win(this.praise(L, r));
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
-    this.miss(L, r, missParts(L, r, o));
+    this.miss(L, r, missParts(L, r, o), i);
   }
 
   pickBin(b) {
@@ -419,7 +431,7 @@ class App extends Component {
       return this.win(this.praise(L, item));
     }
     this.setState({ binWrong: b });
-    this.miss(L, item, missParts(L, item, b));
+    this.miss(L, item, missParts(L, item, b), null);
   }
 
   // Says each sound in the word, slowly, but not the word itself: the child does the blending
@@ -437,7 +449,7 @@ class App extends Component {
     const field = { position:'relative', flex:1, minHeight: layout === 'phone-landscape' ? 0 : 320, display:'grid', gridTemplateColumns:`repeat(${cols}, ${size}px)`, alignContent:'center', justifyContent:'space-evenly', justifyItems:'center', gap:24, padding:'24px 16px', overflow:'hidden', borderRadius: layout === 'phone' ? 32 : 40, background:'#D9F0FF' };
     return h('div', { style: field },
       r.options.map((o, i) => {
-        const right = solved && o.label === r.target, bad = wrong.includes(i), c = PAL[(i + round) % PAL.length];
+        const right = solved && o.label === r.target, bad = wrong.includes(i), gone = this.state.hidden.includes(i), c = PAL[(i + round) % PAL.length];
         const shown = this.state.modelled && !solved && o.label === r.target;
         const anim = right ? 'wpPop .6s cubic-bezier(.34,1.56,.64,1) forwards'
           : bad ? 'wpShake .5s ease-in-out'
@@ -447,9 +459,9 @@ class App extends Component {
           const a = k / 8 * Math.PI * 2;
           return h('span', { key:'s' + k, style: { position:'absolute', left:'50%', top:'50%', width:18, height:18, margin:-9, borderRadius:'50%', background: PAL[k % 5].bg, '--dx': `${Math.round(Math.cos(a) * 130)}px`, '--dy': `${Math.round(Math.sin(a) * 130)}px`, animation:'wpSpark .7s cubic-bezier(.22,1,.36,1) forwards' } });
         }) : [];
-        return h('div', { key: `${round}-${i}`, style: { position:'relative', width:size, height:size, animation:`wpIn 1.1s cubic-bezier(.22,1,.36,1) ${(i * 0.14).toFixed(2)}s both` } },
+        return h('div', { key: `${round}-${i}`, style: { position:'relative', width:size, height:size, animation:`wpIn 1.1s cubic-bezier(.22,1,.36,1) ${(i * 0.14).toFixed(2)}s both`, pointerEvents: gone ? 'none' : 'auto' } },
           right && h('span', { style: { position:'absolute', inset:0, borderRadius:'50%', border:`8px solid ${c.bg}`, animation:'wpRing .6s ease-out forwards' } }),
-          L.mode === 'word' && !right && heartParts(o.label).some(p => p.tricky) && h('span', { className: 'heart-badge', 'aria-hidden': 'true', style: { opacity: bad ? 0.3 : 1 } }, '♥'),
+          L.mode === 'word' && !right && heartParts(o.label).some(p => p.tricky) && h('span', { className: 'heart-badge', 'aria-hidden': 'true', style: { opacity: bad || gone ? 0.3 : 1 } }, '♥'),
           ...sparks,
           h('button', {
             key: bad ? 'bad' : 'ok',
@@ -457,6 +469,7 @@ class App extends Component {
             'aria-label': o.label,
             style: {
               width:'100%', height:'100%', borderRadius:'50%', border:'7px solid #fff', cursor: bad ? 'default' : 'pointer',
+              opacity: gone ? 0.12 : 1, transition: 'opacity .4s',  // taken away by the hint ladder
               background: bad ? '#E6E1EE' : c.bg, color: bad ? '#9A93AE' : c.fg, boxShadow:`0 9px 0 ${bad ? '#CFC8DB' : c.sh}${shown ? ', 0 0 0 10px #FFC23C' : ''}`,
               display:'flex', alignItems:'center', justifyContent:'center',
               fontFamily:"'Fredoka',system-ui,sans-serif", fontWeight:700, fontSize: Math.round(size * (L.mode === 'word' ? (o.label.length > 6 ? 0.17 : 0.23) : (o.label.length > 2 || L.mode === 'name' ? 0.38 : 0.5))),
@@ -495,7 +508,7 @@ class App extends Component {
     });
 
     const matchOptions = isPlay && L.kind === 'match' && r ? r.options.map((o, i) => {
-      const right = solved && o.w === r.target.w, bad = wrong.includes(i), c = P[(i * 2 + round) % 5];
+      const right = solved && o.w === r.target.w, bad = wrong.includes(i) || this.state.hidden.includes(i), c = P[(i * 2 + round) % 5];
       const shown = this.state.modelled && !solved && o.w === r.target.w;
       // Rhyme time shows the word under each picture; blend and read levels don't, since the word is the answer
       return { pic: picSrc(o.w), word: L.mode === 'rhyme' ? o.w : '', bg: right ? '#2EC4A6' : '#fff', fg: right ? '#fff' : c.sh, sh: right ? '#17977F' : '#E8DCC8',
@@ -533,6 +546,7 @@ class App extends Component {
       canPrev: ms > 0, canNext: ms < STAGES.length - 1,
       prevStage: () => this.setState({ mapStage: ms - 1 }), nextStage: () => this.setState({ mapStage: ms + 1 }),
       levelNum: L.n, levelTitle: L.title, roundNum: Math.min(round + 1, rounds.length), roundCount: rounds.length, isBonus: !!(r && r.bonus),
+      hintPic: isPlay && !solved && this.state.hintPic ? picSrc(this.state.hintPic) : '',
       reveal: isPlay && solved && r ? (rv => rv && { pic: rv.pic ? picSrc(rv.pic) : '', words: rv.words.map(segs => segs.map(x =>
         ({ t: x.t, heart: !!x.heart, on: x.on || this.state.cue === 'all' || (x.k !== null && x.k === this.state.cue) })) ) })(revealFor(L, r)) : null,
       progress: rounds.map((_, k) => ({ color: k < round || (k === round && solved) ? '#FFC23C' : '#E6E1EE' })),
@@ -743,6 +757,7 @@ class App extends Component {
               </div>
             </div>
           </div>`}
+        ${v.hintPic && html`<div class="reveal hint" aria-label="Hint"><img src=${v.hintPic} alt="" /></div>`}
         ${v.reveal && html`
           <div class="reveal" aria-live="polite">
             ${v.reveal.pic && html`<img src=${v.reveal.pic} alt="" />`}

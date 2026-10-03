@@ -250,3 +250,10 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 4px s
 .tricky { text-decoration: underline; text-decoration-thickness: .09em; text-underline-offset: .14em; }
 .heart-badge { position: absolute; top: 2%; right: 6%; z-index: 2; width: 30%; height: 30%; max-width: 44px; max-height: 44px; border-radius: 50%; background: #fff; color: #F2544A; display: flex; align-items: center; justify-content: center; font-size: clamp(14px, 3vh, 24px); box-shadow: 0 3px 0 #E8DCC8; pointer-events: none; }
 .reveal-heart { color: #F2544A; font-size: 40px; line-height: 1; }
+
+/* hint ladder: the keyword picture after a first miss, in the corner so it never covers an answer (#35) */
+.reveal.hint { left: auto; right: 10px; top: 10px; bottom: auto; transform: none; padding: 8px; border-radius: 24px; animation: hint-in .3s ease-out; }
+.reveal.hint img { width: 72px; height: 72px; }
+@keyframes hint-in { from { opacity: 0; transform: scale(.8); } }
+.layout-phone .reveal.hint img, .layout-phone-landscape .reveal.hint img { width: 48px; height: 48px; }
+@media (prefers-reduced-motion: reduce) { .reveal.hint { animation: none; } }
