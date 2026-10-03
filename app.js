@@ -665,7 +665,7 @@ class App extends Component {
             <li>National Reading Panel (2000), <i>Teaching Children to Read</i></li>
             <li>Foorman et al. (2016), <i>Foundational Skills to Support Reading for Understanding in Kindergarten Through 3rd Grade</i>, What Works Clearinghouse, U.S. Department of Education</li>
             <li>Ehri (2005, 2014): phases of word reading and orthographic mapping</li>
-            <li>Castles, Rastle &amp; Nation (2018), "Ending the Reading Wars"</li>
+            <li>Castles, Rastle & Nation (2018), "Ending the Reading Wars"</li>
             <li>Teaching order modelled on <i>Letters and Sounds</i> (Department for Education and Skills, 2007)</li>
             <li>Sight words from Fry's Instant Word List (1980)</li>
           </ul>

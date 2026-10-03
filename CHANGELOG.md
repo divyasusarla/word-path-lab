@@ -3,6 +3,8 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- About screen: "Castles, Rastle & Nation" showed as "&amp;amp;"; fixed, with a check that no HTML codes show as text.
+- Backlog: research questions R1–R7 (including a literature review); picture decisions moved to testing.
 - Checks run automatically on every pull request and push (GitHub Actions, headless Chrome); the site only publishes from `main` when every check passes. Replaces the publish-only workflow.
 - Voice: prefers voices built into the device over online ones (which can clip short words), and says sight words in the same sentence as the prompt ("Pop the word: said.") instead of on their own. A voice chosen in settings still wins.
 - About and credits screen (from Grown-up settings): what the game covers, the research behind it, a no-affiliation note, asset licences, and a privacy note.

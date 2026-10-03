@@ -206,6 +206,7 @@ async function runAll() {
     await waitFor(() => w.wp.state().screen === 'about', 1000, 'the about screen');
     for (const t of ['About Word Path', 'National Reading Panel', 'Foorman', 'Ehri', 'Letters and Sounds', 'Noto Emoji', 'Apache', 'Fredoka', 'SIL Open Font', 'Lucide', 'Preact', 'isn\'t affiliated'])
       expect(text().includes(t), `missing "${t}"`);
+    expect(!/&[a-z]+;/.test(text()), 'an HTML entity shows as text (htm doesn\'t decode entities: type the character itself)');
   });
   await check('Settings: speed slider changes the label, and nothing is saved', async () => {
     const w = await load('screen=settings');
