@@ -3,6 +3,11 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+
+## v4.0 — 2026-10-03 (first group test)
+The version sent to the first group of testers. Highlights: the whole game speaks in a recorded voice (69 sounds and 721 words and lines); heart words (tricky letters marked, Word pop follows the sounds taught); a hint ladder; the word shown after each answer; letter mix-ups and no same-sound wrong answers; more words (decodable words in Word pop, rotating First sounds pairs, 28 new pictures); bonus rounds; a progress report behind a grown-up gate; smaller audio files. Playable copy: versions/v4.0. Details below.
+
+- **Last recordings for v4.0:** the 4 new "First sounds" level lines (levels 3, 8, 14 and 20). The 4 old ones ("Level 3. First sounds: s or p." and so on) are removed, since nothing uses them.
 - **Word pool breadth (#36):**
   - **Word pop mixes in the stage's decodable words** (sat, tip, mop, rug, chip, rope, seed…): the child hears the word and pops it from near misses (sip: sit / sat / tip), so it has to be read, not guessed. 14 to 58 extra words per stage.
   - **First sounds changes its letter pair.** The first play uses the level's own pair (s or p); after that, each play picks two letters taught so far that make different sounds and have at least 4 clear pictures (e.g. p or t), with 4–5 pictures each. These levels are now called "First sounds" (4 new level lines to record). Each bin shows a picture for its letter, never one of the pictures to sort (a fix: "j" had no keyword picture).
