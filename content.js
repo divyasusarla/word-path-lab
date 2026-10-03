@@ -133,7 +133,8 @@ export const STAGES = [
 ];
 
 // Every level in play order, numbered from 1, with its stage and sticker
-export const LEVELS = STAGES.flatMap((st, si) => st.levels.map(l => ({ ...l, stage: si }))).map((l, i) => ({ ...l, n: i + 1, sticker: STICKERS[i] }));
+// id: stable name for saved progress (stage + level type, e.g. "s2-blend"), so adding or reordering levels keeps progress right
+export const LEVELS = STAGES.flatMap((st, si) => st.levels.map(l => ({ ...l, stage: si, id: `s${si + 1}-${l.type}` }))).map((l, i) => ({ ...l, n: i + 1, sticker: STICKERS[i] }));
 STAGES.forEach((st, si) => { st.first = LEVELS.findIndex(l => l.stage === si); st.count = st.levels.length; });
 
 // ---- When each sound is taught, and which words a child can decode by then -----------------------
@@ -163,47 +164,58 @@ export function soundSimilarity(a, b) {
 }
 
 // ---- Coverage check: run by tests/ and shown in test mode ----------------------------------------
-// Returns a list of problems (empty when everything is covered and in order).
-export function coverage() {
+// Returns a list of problems (empty when everything is covered and in order). The unit tests pass in
+// deliberately broken content to prove each rule catches its mistake.
+export function coverage({ levels = LEVELS, graphemes = GRAPHEMES, pics = PICS, words = WORDS, stickers = STICKERS, fry = FRY } = {}) {
   const problems = [];
-  const taughtBy = TAUGHT_BY;
-  const named = new Set(LEVELS.filter(l => l.type === 'names').flatMap(l => l.pool));
+  const phon = w => (words[w] || '').split(' ').filter(Boolean);
+  const taughtBy = {};
+  levels.forEach(l => { if (l.type === 'sounds') l.pool.forEach(gr => { if (!(gr in taughtBy)) taughtBy[gr] = l.stage; }); });
+  const stageOfSound = gr => {
+    if (!graphemes[gr]) return undefined;
+    if (!graphemes[gr].helper) return taughtBy[gr];
+    const base = Object.entries(graphemes).find(([k, v]) => !v.helper && v.clip === graphemes[gr].clip);
+    return base ? taughtBy[base[0]] : undefined;
+  };
+  const named = new Set(levels.filter(l => l.type === 'names').flatMap(l => l.pool));
 
   for (const ch of 'abcdefghijklmnopqrstuvwxyz') {
     if (!Object.keys(taughtBy).some(gr => gr.replace('_', '').includes(ch))) problems.push(`No letter-sounds level teaches "${ch}"`);
     if (!named.has(ch)) problems.push(`No letter-names level covers "${ch}"`);
   }
-  for (const [gr, info] of Object.entries(GRAPHEMES)) {
+  for (const [gr, info] of Object.entries(graphemes)) {
     if (!SOUND_IDS.has(info.clip)) problems.push(`Sound "${gr}" uses recording "${info.clip}", which isn't in sounds.js`);
     if (!info.helper && !(gr in taughtBy)) problems.push(`Sound "${gr}" is never taught in a letter-sounds level`);
   }
-  if (LEVELS.length !== STICKERS.length) problems.push(`${LEVELS.length} levels but ${STICKERS.length} stickers`);
+  if (levels.length !== stickers.length) problems.push(`${levels.length} levels but ${stickers.length} stickers`);
+  const ids = levels.map(l => l.id);
+  for (const id of new Set(ids)) if (ids.filter(x => x === id).length > 1) problems.push(`Level id "${id}" is used more than once (saved progress would mix them up)`);
 
-  for (const l of LEVELS) {
+  for (const l of levels) {
     const where = `Level ${l.n} (${l.title})`;
-    const words = l.type === 'blend' || l.type === 'read' ? l.words : l.type === 'sort' ? l.items.map(x => x.w) : l.type === 'rhyme' ? l.pairs.map(p => p.w) : [];
-    for (const w of words) if (!PICS[w]) problems.push(`${where}: no picture for "${w}"`);
+    const ws = l.type === 'blend' || l.type === 'read' ? l.words : l.type === 'sort' ? l.items.map(x => x.w) : l.type === 'rhyme' ? l.pairs.map(p => p.w) : [];
+    for (const w of ws) if (!pics[w]) problems.push(`${where}: no picture for "${w}"`);
     if (l.type === 'blend' || l.type === 'read') {
       if (l.words.length < 3) problems.push(`${where}: needs at least 3 words`);
       for (const w of l.words) {
-        const ph = phonemes(w);
+        const ph = phon(w);
         if (!ph.length) { problems.push(`${where}: "${w}" has no sounds listed in WORDS`); continue; }
         for (const gr of ph) {
-          if (!GRAPHEMES[gr]) { problems.push(`${where}: "${w}" uses unknown sound "${gr}"`); continue; }
-          const st = soundStage(gr);
+          if (!graphemes[gr]) { problems.push(`${where}: "${w}" uses unknown sound "${gr}"`); continue; }
+          const st = stageOfSound(gr);
           if (st === undefined || st > l.stage) problems.push(`${where}: "${w}" uses "${gr}", which isn't taught until ${st === undefined ? 'never' : 'stage ' + (st + 1)}`);
         }
       }
     }
     if (l.type === 'sort') for (const b of l.bins) {
-      if (!GRAPHEMES[b]) { problems.push(`${where}: unknown sound "${b}"`); continue; }
+      if (!graphemes[b]) { problems.push(`${where}: unknown sound "${b}"`); continue; }
       // the bin shows its example word's picture, so that word can't also be one of the pictures to sort
-      if (l.items.some(x => x.w === GRAPHEMES[b].ex)) problems.push(`${where}: "${GRAPHEMES[b].ex}" is both the "${b}" bin picture and a picture to sort`);
+      if (l.items.some(x => x.w === graphemes[b].ex)) problems.push(`${where}: "${graphemes[b].ex}" is both the "${b}" bin picture and a picture to sort`);
     }
-    if (l.type === 'sounds') for (const gr of l.pool) if (!GRAPHEMES[gr]) problems.push(`${where}: unknown sound "${gr}"`);
+    if (l.type === 'sounds') for (const gr of l.pool) if (!graphemes[gr]) problems.push(`${where}: unknown sound "${gr}"`);
     if (l.type === 'sight' && l.pool.length < l.tiles) problems.push(`${where}: fewer words than tiles`);
   }
-  if (FRY.length !== 300) problems.push(`Fry list has ${FRY.length} words, expected 300`);
+  if (fry.length !== 300) problems.push(`Fry list has ${fry.length} words, expected 300`);
   return problems;
 }
 

@@ -41,6 +41,7 @@
 </main>
 <script type="module">
 import { SOUNDS } from '../sounds.js';
+import { tests as unitTests } from './unit/engine.test.js';
 import { LEVELS, STAGES, STICKERS, coverage, allPictureFiles, decodableBy, phonemes, soundSimilarity } from '../content.js';
 const levelOf = type => LEVELS.find(l => l.type === type).n;
 const usedClips = new Map();   // clip id -> where the game got it ('recording' or 'voice')
@@ -132,6 +133,7 @@ async function runAll() {
   runBtn.disabled = true; list.innerHTML = ''; passed = failed = 0; usedClips.clear();
   summary.className = ''; summary.textContent = 'Running…';
 
+  for (const [name, fn] of unitTests) await check(`Unit: ${name}`, async () => { await fn(); });
   await check('Content: every letter and sound is taught, every word has a picture, words only use sounds already taught', async () => {
     const problems = coverage();
     expect(!problems.length, problems.join('\n'));

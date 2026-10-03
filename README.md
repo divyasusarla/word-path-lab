@@ -15,7 +15,8 @@ A plain static site with no build step: the browser loads `index.html`, which ru
 
 - `content.js` decides **what** children learn: stages, levels, sounds, words, pictures and stickers.
 - `sounds.js` lists every **recorded** sound; `audio/` holds the recordings.
-- `app.js` is the **game**: it reads both files, runs the levels, plays recordings (falling back to the browser's voice) and draws the screens.
+- `engine.js` holds the **game rules**: building rounds, choosing wrong options, unlocking, what's spoken, saved progress. Plain functions with no screen code, so they're unit-tested.
+- `app.js` is the **game screens**: it uses the engine, plays recordings (falling back to the browser's voice) and draws everything.
 - Progress and settings are saved in the browser (localStorage), per device.
 
 ## Files
@@ -23,13 +24,15 @@ A plain static site with no build step: the browser loads `index.html`, which ru
 | Path | What it is |
 |---|---|
 | `index.html` | Page shell that loads the game |
-| `app.js` | The game: gameplay, speech and recordings, screens, test mode (Preact + htm) |
+| `app.js` | The game screens: drawing, audio playback, test mode (Preact + htm) |
+| `engine.js` | The game rules as plain, unit-tested functions |
 | `content.js` | **What children learn**: the teaching order, words, pictures, sight words, stickers, and `coverage()`, which checks it. Edit this to change content |
 | `sounds.js` | The 69 recorded sounds (43 speech sounds + 26 letter names) and how to say each |
 | `styles.css` | Base styles, hover states and animations |
 | `audio/` | The recordings (`<id>.wav`) and `manifest.json`, which lists those that exist |
 | `vendor/` | Third-party files kept locally so nothing loads from outside servers: Preact/htm, icon font, Fredoka font, Noto Emoji pictures (see `vendor/README.md`) |
-| `tests/` | Automatic checks that play every level in the browser (`index.html`), and `run-checks.mjs`, which runs them headlessly on GitHub (see `TESTING.md`) |
+| `tests/` | Browser checks that play every level (`index.html`; `run-checks.mjs` runs them headlessly on GitHub) and unit tests for the rules (`unit/`; `node tests/unit/run.mjs`) (see `TESTING.md`) |
+| `package.json` | Only tells Node the `.js` files are modules, for the unit tests. There's no build step or dependencies |
 | `tools/record.html` | The recorder for all 69 sounds |
 | `tools/pictures.html` | Review page: every picture with its word, the levels using it, and flags for pictures a child might name differently |
 | `tools/serve.py` | Local development server that disables caching |

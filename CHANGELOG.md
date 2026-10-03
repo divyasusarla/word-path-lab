@@ -3,6 +3,9 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- Game rules moved into `engine.js` (rounds, wrong options, unlocking, speech, saved progress) as plain functions; `app.js` now only draws the screens and plays audio.
+- 27 unit tests for the rules and the content check (`tests/unit/`), run in Node on every pull request and shown on the checks page. Several deliberately break a copy of the content to prove the content check catches each kind of mistake.
+- Saved progress is now the list of finished level ids, not positions, so adding or reordering levels keeps a child's progress. Existing saves migrate automatically. The content check rejects duplicate ids.
 - Layout for every device, following the approved designs ("Word Path layouts" canvas): four layouts chosen from the screen size: wide (tablet landscape, desktop, Chromebook), tablet portrait, phone portrait and phone landscape.
   - Map: the path runs across in landscape and down in portrait; on phones "Next up" moves to a bar at the bottom and the header shrinks.
   - Play screens: top bar (back, level, progress), answers sized to the screen, and Hear again always in the same place (bottom-left; a full-width bar on phones).
