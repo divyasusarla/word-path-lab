@@ -43,7 +43,7 @@
 import { SOUNDS } from '../sounds.js';
 import { tests as unitTests } from './unit/engine.test.js';
 import { LEVELS, STAGES, STICKERS, coverage, allPictureFiles, decodableBy, phonemes, soundSimilarity } from '../content.js';
-import { PICTURE_WORDS } from '../engine.js?v=dev';
+import { PICTURE_WORDS, codecOffset, KEEP_LEAD } from '../engine.js?v=dev';
 import { SCRIPT, SCRIPT_IDS } from '../script.js?v=dev';
 const levelOf = type => LEVELS.find(l => l.type === type).n;
 const usedClips = new Map();   // clip id -> where the game got it ('recording' or 'voice')
@@ -497,7 +497,11 @@ async function runAll() {
     for (const id of sample) {
       const wav = await decode(`../audio/${id}.wav`);
       let small; try { small = await decode(`../audio/${id}.m4a`); } catch (e) { aac = false; continue; }
-      expect(Math.abs(small.duration - wav.duration) < 0.03, `${id}: ${small.duration.toFixed(3)}s compressed vs ${wav.duration.toFixed(3)}s`);
+      // after skipping any codec padding (as the game does), the sound starts and lasts as in the original
+      const lead = b => { const x = b.getChannelData(0); let i = 0; while (i < x.length && Math.abs(x[i]) < 0.01) i++; return i / b.sampleRate; };
+      const skip = codecOffset(small.getChannelData(0), small.sampleRate);
+      expect(Math.abs((lead(small) - skip) - Math.min(lead(wav), KEEP_LEAD)) < 0.03, `${id}: starts ${(lead(small) - skip).toFixed(3)}s in, original ${lead(wav).toFixed(3)}s`);
+      expect(Math.abs((small.duration - skip) - (wav.duration - Math.max(0, lead(wav) - KEEP_LEAD))) < 0.12, `${id}: ${(small.duration - skip).toFixed(3)}s compressed vs ${wav.duration.toFixed(3)}s`);
     }
     frame.src = 'about:blank'; await sleep(30);
     frame.src = '../?test&think=0&level=1';

@@ -6,7 +6,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
-  sayId, wordId, slug, mixUpFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
+  sayId, wordId, slug, codecOffset, KEEP_LEAD, mixUpFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, FRY, CONFUSIONS, confusedWith, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
@@ -112,6 +112,14 @@ export const tests = [
   ['report: item labels say what kind of item it is', () => {
     eq(itemLabel('name:b'), { kind: 'name', kindName: 'letter name', text: 'B' }, 'letter name');
     eq(itemLabel('sound:sh').kindName, 'letter sound', 'sound'); eq(itemLabel('word:said').text, 'said', 'sight word');
+  }],
+
+  // ---- compressed recordings (#27b)
+  ['codec padding: silence at the start beyond 40 ms is skipped; a normal start is left alone', () => {
+    const rate = 22050, clip = (lead, len = 0.3) => Float32Array.from({ length: Math.round((lead + len) * rate) }, (_, i) => i < lead * rate ? 0 : 0.3);
+    ok(Math.abs(codecOffset(clip(0.135), rate) - (0.135 - KEEP_LEAD)) < 0.001, 'padded clip');
+    eq(codecOffset(clip(0.02), rate), 0, 'clip that starts on time');
+    eq(codecOffset(clip(0), rate), 0, 'clip with no lead-in');
   }],
 
   // ---- grown-up gate (#18)
