@@ -1,6 +1,6 @@
 // Word Path game rules, kept free of screen code so they can be unit-tested (tests/unit/).
 // app.js draws the screens and plays the audio; everything it decides comes from here.
-import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, PICS, WORDS, phonemes, soundSimilarity, confusedWith } from './content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, PICS, PICTURE_FLAGS, WORDS, phonemes, soundSimilarity, confusedWith } from './content.js?v=dev';
 
 // Every level from content.js, plus the screen kind (pop / match / sort) and mode the game uses
 export const LV = LEVELS.map(l => ({ ...l,
@@ -82,11 +82,14 @@ export function cycle(pool, n, rng = Math.random) {
 }
 // Every word that has a picture and its sounds listed
 export const PICTURE_WORDS = Object.keys(WORDS).filter(w => PICS[w]);
+// Pictures that can be wrong answers: not ones a child would likely call something else (nap → "sleep"), which
+// would make a sound-alike pair (map / nap) confusing. They can still be right answers.
+export const OPTION_WORDS = PICTURE_WORDS.filter(w => PICTURE_FLAGS[w]?.[0] !== 'high');
 // Blend it / Read it: the two wrong options that sound most like the answer (cat → cap, can), so the first sound
 // alone isn't enough. They come from every picture word, not just ones the child can read yet: the child only has
 // to blend or read the answer, and a bigger pool keeps the pictures varied. A little randomness varies ties.
 export function nearOptions(w, stage, rng = Math.random) {
-  return PICTURE_WORDS.filter(x => x !== w)
+  return OPTION_WORDS.filter(x => x !== w)
     .map(x => [x, soundSimilarity(w, x) + rng() * 0.6]).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([x]) => x);
 }
 // ---- Choosing what a play practises (coverage and cumulative review) ------------------------------
@@ -139,7 +142,9 @@ export const mixUpFor = (L, t) => L.kind === 'pop' && L.mode !== 'word'
 export function makeRound(L, t, flags = {}, rng = Math.random) {
   if (L.kind === 'pop') {
     const tiles = Math.min(L.tiles || 4, L.pool.length), mix = mixUpFor(L, t);
-    const others = shuffle(L.pool.filter(x => x !== t && x !== mix), rng).slice(0, tiles - 1 - (mix ? 1 : 0));
+    // never a wrong answer that makes the same sound as the right one (c / k / ck, a_e / ai)
+    const same = x => L.mode === 'sound' && GRAPHEMES[x]?.clip === GRAPHEMES[t]?.clip;
+    const others = shuffle(L.pool.filter(x => x !== t && x !== mix && !same(x)), rng).slice(0, tiles - 1 - (mix ? 1 : 0));
     return { target: t, ...flags,
       options: shuffle([t, ...(mix ? [mix] : []), ...others], rng)
         .map(label => ({ label, bob: (rng() * 1.5).toFixed(2), dur: (2.6 + rng()).toFixed(2) })) };

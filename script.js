@@ -2,14 +2,14 @@
 // worked out from the levels so the list never falls behind the game. Used by the recorder (tools/record.html)
 // and the checks. Each clip is first needed in one stage; the recorder offers them stage by stage (batches).
 import { LV, mixUpFor, prompt, praiseParts, modelParts, missParts, finishParts, heroParts, levelLine, reviewItems,
-  sayId, PICTURE_WORDS, TRY_AGAIN, BONUS, LOCKED } from './engine.js?v=dev';
-import { STAGES, FRY, soundSimilarity } from './content.js?v=dev';
+  sayId, word, PICTURE_WORDS, OPTION_WORDS, TRY_AGAIN, BONUS, LOCKED } from './engine.js?v=dev';
+import { STAGES, FRY, soundSimilarity, decodableBy } from './content.js?v=dev';
 import { SOUND_IDS } from './sounds.js?v=dev';
 
 const FRY_SET = new Set(FRY);
 // Wrong pictures nearOptions could offer for w: the two closest, give or take its random 0.6
 function possibleNear(w) {
-  const scored = PICTURE_WORDS.filter(x => x !== w).map(x => [x, soundSimilarity(w, x)]).sort((a, b) => b[1] - a[1]);
+  const scored = OPTION_WORDS.filter(x => x !== w).map(x => [x, soundSimilarity(w, x)]).sort((a, b) => b[1] - a[1]);
   const cut = (scored[1]?.[1] ?? 0) - 0.6;
   return scored.filter(([, v]) => v >= cut).map(([x]) => x);
 }
@@ -68,6 +68,11 @@ export const BATCHES = (() => {
     const had = seen.get(c.id);
     if (had) { had.lead ||= c.lead; continue; }
     seen.set(c.id, c); batches[L.stage].clips.push(c);
+  }
+  // every picture word keeps a slot, even one no level says today (kept for word games), in the stage it becomes readable
+  for (const w of PICTURE_WORDS) for (const c of clipsIn([word(w)])) if (!seen.has(c.id)) {
+    const st = STAGES.findIndex((_, i) => decodableBy(i).includes(w));
+    seen.set(c.id, c); batches[st < 0 ? STAGES.length - 1 : st].clips.push(c);
   }
   const order = Object.fromEntries(SCRIPT_GROUPS.map((g, i) => [g.key, i]));
   for (const b of batches) b.clips.sort((a, c) => order[a.kind] - order[c.kind]);

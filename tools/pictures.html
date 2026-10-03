@@ -36,32 +36,8 @@
   <div class="grid" id="grid"></div>
 </main>
 <script type="module">
-import { PICS, LEVELS, picSrc } from '../content.js';
+import { PICS, LEVELS, picSrc, PICTURE_FLAGS as FLAGS } from '../content.js';
 
-// Pictures a child might name differently. high = likely; mild = possible. Edit as decisions are made.
-const FLAGS = {
-  tap:  ['high', 'Likely "water" or "sink".'],
-  nap:  ['high', 'Likely "sleep" or "tired".'],
-  cash: ['high', 'Likely "money".'],
-  jet:  ['high', 'Likely "plane" or "airplane".'],
-  net:  ['high', 'Likely "goal" (it\'s a sports goal).'],
-  log:  ['high', 'Likely "wood".'],
-  dish: ['high', 'Likely "plate".'],
-  cube: ['high', 'Likely "ice".'],
-  game: ['high', 'Likely "controller" or "video game".'],
-  king: ['high', 'The picture is a prince (no crown shape a child would read as "king").'],
-  pan:  ['mild', 'Shows a fried egg in a pan: may be called "egg".'],
-  can:  ['mild', 'May be called "soup".'],
-  cup:  ['mild', 'A cup with a straw: may be called "drink" or "soda".'],
-  feet: ['mild', 'Shows one foot: "foot", not "feet".'],
-  sock: ['mild', 'Shows two socks: may be called "socks".'],
-  pin:  ['mild', 'A pushpin: may be called "tack".'],
-  rose: ['mild', 'May be called "flower".'],
-  bath: ['mild', 'May be called "tub" or "bathtub".'],
-  ten:  ['mild', 'A number tile: fine if children recognise 10 as "ten".'],
-  six:  ['mild', 'A number tile: fine if children recognise 6 as "six".'],
-  five: ['mild', 'A number tile: fine if children recognise 5 as "five".']
-};
 
 const usedIn = w => LEVELS.filter(l =>
   (l.words || []).includes(w) || (l.items || []).some(x => x.w === w) || (l.pairs || []).some(p => p.w === w)

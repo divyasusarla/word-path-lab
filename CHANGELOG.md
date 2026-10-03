@@ -3,6 +3,9 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- From the second round of testing:
+  - **No same-sound wrong answers:** when the answer is "c", the bubbles never include "k" or "ck" (they make the same sound), and likewise for a_e / ai and other spellings of one sound.
+  - **No unclear pictures as wrong answers:** the 10 pictures children are likely to call something else (tap, nap, cash, jet, net, log, dish, cube, game, king) are never offered as wrong answers, so pairs like map / nap don't appear. They can still be the right answer until the picture decisions (#3, R2). The flags moved from the picture page into `content.js` (`PICTURE_FLAGS`).
 - **Smaller audio files (#27b):** every recording now has a compressed copy (AAC, `.m4a`): 5.4 MB in all instead of 27 MB, so level 1 loads about 1 MB instead of 5. The game plays the small copy and falls back to the original WAV (kept as the master) if a browser can't decode it. The importer makes the copies automatically on a Mac.
 - Backlog reorganised: **Next up** (ranked), **Later** (teacher and classroom items: export/import, usage data, group mode, grown-up prompts, child profiles, adaptive difficulty), and **Shipped**. New items: show the word after the answer (#34), hint ladder (#35), word pool breadth (#36). iPhone sound (#7c) confirmed.
 - **Screen matches the voice:** level complete now reads "You did it!" and "You earned the Fox sticker!" (it said "Level 9 complete!" and "You got the Fox sticker"), and the sorting question on screen is "Does it start with…" / "Does it have…" (it said "Which sound?"). A check now compares the two.

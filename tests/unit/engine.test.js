@@ -6,9 +6,9 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
-  sayId, wordId, slug, mixUpFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
+  sayId, wordId, slug, mixUpFor, OPTION_WORDS, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
-import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, FRY, CONFUSIONS, confusedWith, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, PICS, PICTURE_FLAGS, WORDS, FRY, CONFUSIONS, confusedWith, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
 import { SCRIPT, SCRIPT_IDS, BATCHES } from '../../script.js?v=dev';
 
@@ -69,7 +69,7 @@ export const tests = [
   }],
   ['nearOptions: picture words, never the answer, share a sound when possible', () => {
     for (const L of LV.filter(l => l.mode === 'blend' || l.mode === 'read')) {
-      const pool = PICTURE_WORDS;
+      const pool = OPTION_WORDS;
       for (const w of L.words) {
         const near = nearOptions(w, L.stage, seeded(4));
         ok(!near.includes(w), `"${w}" offered as its own wrong option`);
@@ -123,6 +123,26 @@ export const tests = [
     }
     const q = { a: 6, b: 13, answer: 78 };
     ok(gateOk(q, '78'), 'right answer'); ok(!gateOk(q, '87'), 'wrong answer'); ok(!gateOk(q, ''), 'empty');
+  }],
+
+  // ---- wrong answers that would confuse (first group of testers' notes)
+  ['wrong answers never make the same sound as the right one (c / k / ck)', () => {
+    let checked = 0;
+    for (const L of LV.filter(l => l.kind === 'pop' && l.mode === 'sound'))
+      for (const r of buildRounds(L, 8, seeded(L.n))) for (const o of r.options) if (o.label !== r.target) {
+        ok(GRAPHEMES[o.label].clip !== GRAPHEMES[r.target].clip, `level ${L.n}: "${o.label}" offered against "${r.target}" (same sound)`); checked++;
+      }
+    const L = LV.find(l => l.mode === 'sound' && l.pool.includes('ck'));
+    for (let k = 1; k < 30; k++) { const labels = buildRounds(L, 8, seeded(k)).filter(r => r.target === 'c').flatMap(r => r.options.map(o => o.label));
+      ok(!labels.includes('k') && !labels.includes('ck'), `c offered with k or ck: ${labels.join(' ')}`); }
+    ok(checked > 100, 'too few options checked');
+  }],
+  ['pictures likely to be misnamed are never wrong answers', () => {
+    const unclear = Object.keys(PICTURE_FLAGS).filter(w => PICTURE_FLAGS[w][0] === 'high');
+    ok(unclear.includes('nap') && unclear.every(w => !OPTION_WORDS.includes(w)), 'unclear pictures in the option list');
+    for (const L of LV.filter(l => l.mode === 'blend' || l.mode === 'read')) for (let k = 1; k < 6; k++)
+      for (const r of buildRounds(L, 8, seeded(L.n * 10 + k))) for (const o of r.options) if (o.w !== r.target.w)
+        ok(!unclear.includes(o.w), `level ${L.n}: "${o.w}" offered as a wrong answer for "${r.target.w}"`);
   }],
 
   // ---- letter mix-ups (#17)
