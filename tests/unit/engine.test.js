@@ -6,7 +6,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
-  sayId, wordId, slug, mixUpFor, gateQuestion, gateOk, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
+  sayId, wordId, slug, mixUpFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, FRY, CONFUSIONS, confusedWith, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
@@ -78,6 +78,40 @@ export const tests = [
         if (pool.some(x => x !== w && shares(x))) ok(near.some(shares), `"${w}" got ${near.join(', ')}`);
       }
     }
+  }],
+
+  // ---- teacher report (#19)
+  ['report: empty when nothing has been played', () => {
+    const r = progressReport(none, {});
+    eq([r.finished, r.known, r.practised, r.tries, r.levels.length, r.practice.length, r.last], [0, 0, 0, 0, 0, 0, ''], 'empty report');
+  }],
+  ['report: levels, known items, first-try rate and last day come from the mastery store', () => {
+    const L = level('blend'), [w1, w2] = L.words, idx = LV.indexOf(L), done = none.map((_, i) => i === idx);
+    let st = {};
+    for (const day of ['2026-10-01', '2026-10-01', '2026-10-02']) st = recordAttempt(st, `blend:${w1}`, true, day);   // known
+    st = recordAttempt(st, `blend:${w2}`, false, '2026-10-02'); st = recordAttempt(st, `blend:${w2}`, false, '2026-10-03');  // needs practice
+    const r = progressReport(done, st), row = r.levels.find(l => l.n === L.n);
+    eq([r.finished, r.known, r.practised, r.tries, r.right, r.last], [1, 1, 2, 5, 3, '2026-10-03'], 'totals');
+    eq([row.done, row.known, row.total, row.tries, row.right, row.last], [true, 1, L.words.length, 5, 3, '2026-10-03'], 'level row');
+    eq(r.levels.length, 1, 'only played levels are listed');
+    eq(r.practice.map(p => p.text), [w2], 'needs practice');
+  }],
+  ['report: needs practice = under half right, at least 2 tries, not known; worst first, capped', () => {
+    let st = {};
+    const add = (key, oks) => oks.forEach((ok, i) => { st = recordAttempt(st, key, ok, `2026-10-0${i + 1}`); });
+    add('sound:s', [false, false]);          // 0/2: in
+    add('sound:a', [true, false, false]);    // 1/3: in, after s
+    add('sound:t', [true, false]);           // 1/2: half, not under: out
+    add('sound:p', [false]);                 // one try: out
+    add('word:the', [true, true, true]);     // known: out
+    eq(progressReport(none, st).practice.map(p => p.key), ['sound:s', 'sound:a'], 'practice list');
+    for (let i = 0; i < PRACTICE_RULE.show + 3; i++) add(`word:w${i}`, [false, false]);
+    const r = progressReport(none, st);
+    eq([r.practice.length, r.morePractice], [PRACTICE_RULE.show, 5], 'capped with a count of the rest');
+  }],
+  ['report: item labels say what kind of item it is', () => {
+    eq(itemLabel('name:b'), { kind: 'name', kindName: 'letter name', text: 'B' }, 'letter name');
+    eq(itemLabel('sound:sh').kindName, 'letter sound', 'sound'); eq(itemLabel('word:said').text, 'said', 'sight word');
   }],
 
   // ---- grown-up gate (#18)

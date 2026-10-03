@@ -31,7 +31,7 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 16 | ✅ ~~**Cumulative review**: mix earlier sounds and words into later levels, weighted to ones not yet mastered~~ | | | Shipped (CHANGELOG) |
 | 17 | ✅ ~~**Letter confusions as wrong options**: b/d, p/q, m/n, short e/i, once both are taught~~ | | | Shipped (CHANGELOG) |
 | 18 | ✅ ~~**Grown-up gate on Settings**: hold for 3 seconds, or a simple sum~~ (a single digit times a teen, on a number pad) | | | Shipped (CHANGELOG) |
-| 19 | **Teacher report**: behind the gate; accuracy by level, mastered and struggling words, printable page | M | Product | Needs #12 and #18 |
+| 19 | ✅ ~~**Teacher report**: behind the gate; accuracy by level, mastered and struggling words~~ (one screen to screenshot, not a printable page) | | | Shipped (CHANGELOG) |
 | 20 | **Export / import progress**: a file or code to move a child between devices or collect a class's results | M | Product | Pairs with #19 |
 | 21 | **Usage data**: decide which questions to answer (finishing levels? where children get stuck?), then pick the lightest approach (see FUTURE.md) | S + M | Product · decision | Needs #12 to have data worth looking at |
 | 22 | **Teacher-led group mode**: big-screen layout, teacher picks the level, the group answers together, no stickers or progress saved | M | Product | Second use case alongside individual play |

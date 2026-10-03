@@ -200,3 +200,36 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 4px s
 .layout-phone-landscape .gate-card { flex-direction: row; flex-wrap: wrap; justify-content: center; max-width: 760px; padding: 16px 20px; }
 .layout-phone-landscape .gate-pad { grid-template-columns: repeat(6, 64px); }
 .layout-phone-landscape .gate-pad button { height: 52px; }
+
+/* teacher report: one screen to screenshot; rows wrap on phones */
+.report-card { display: flex; flex-direction: column; gap: 20px; padding: 28px 32px; background: #fff; border-radius: 36px; box-shadow: 0 8px 0 #E8DCC8; max-width: 960px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+.report-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.report-title { font-size: clamp(26px, 5vw, 36px); font-weight: 700; line-height: 1.1; }
+.report-sub { color: #5C5677; font-size: 16px; margin-top: 4px; }
+.report-back { height: 48px; padding: 0 18px 0 14px; border: 0; border-radius: 999px; background: #F3EEFF; color: #2A2350; font: inherit; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; }
+.report-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.report-stat { background: #FFF7EA; border-radius: 20px; padding: 12px 14px; font-size: 14px; color: #5C5677; }
+.report-big { font-size: 28px; font-weight: 700; color: #2A2350; line-height: 1.15; }
+.report-heading { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.report-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.report-chip { background: #FFE9E7; color: #8A2A22; border-radius: 999px; padding: 6px 12px; font-size: 15px; }
+.report-chip b { font-size: 17px; color: #2A2350; }
+.report-chip.more { background: #F3EEFF; color: #2A2350; }
+.report-none, .report-empty { color: #5C5677; font-size: 16px; margin: 0; }
+.report-rows { display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
+.report-stage { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #5C5677; margin: 8px 0 2px; }
+.report-row { display: grid; grid-template-columns: 32px minmax(0, 1.4fr) minmax(60px, 1fr) 96px 104px 64px; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #F1EDF6; }
+.report-n { font-weight: 700; color: #5C5677; }
+.report-name { font-weight: 600; }
+.report-name i { color: #17977F; }
+.report-bar { height: 10px; border-radius: 999px; background: #F1EDF6; overflow: hidden; }
+.report-bar > span { display: block; height: 100%; background: #2EC4A6; }
+.report-last { color: #5C5677; text-align: right; }
+.report-note { margin: 0; font-size: 13px; color: #5C5677; }
+.layout-phone .report-card { padding: 20px 16px; border-radius: 28px; }
+.layout-phone .report-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.layout-phone .report-row { grid-template-columns: 28px minmax(0, 1fr) 80px; gap: 6px 8px; }
+.layout-phone .report-bar { grid-column: 2 / 4; grid-row: 2; }
+.layout-phone .report-first, .layout-phone .report-last { display: none; }
+.layout-phone-landscape .report-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+

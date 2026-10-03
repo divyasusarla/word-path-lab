@@ -6,7 +6,7 @@ import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speech
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
   sayId, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED, gateQuestion, gateOk,
-  SESSION_CHOICES, sessionOver } from './engine.js?v=dev';
+  SESSION_CHOICES, sessionOver, progressReport } from './engine.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
 const CONFIG = {
@@ -16,16 +16,27 @@ const CONFIG = {
 };
 
 // Test mode: add ?test to the address. Nothing is saved, every level is open, and a test panel shows.
-// Options (combine with &): level=1-38, screen=map|play|done|stickers|settings, done=N (first N levels finished),
-// rounds=N, think=seconds, mute (no voice; spoken lines still show as captions). See TESTING.md.
+// Options (combine with &): level=1-38, screen=map|play|done|stickers|settings|gate|report|about, done=N (first N
+// levels finished), rounds=N, think=seconds, mute (no voice; spoken lines still show as captions), demo (sample
+// progress for the report: 9 levels finished, some items known, some missed). See TESTING.md.
 const Q = new URLSearchParams(location.search);
 const TEST = Q.has('test');
 const num = (k, lo, hi) => { const n = parseInt(Q.get(k), 10); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : null; };
 const T = TEST ? {
   level: num('level', 1, LEVELS.length), screen: Q.get('screen'), done: num('done', 0, LEVELS.length),
   session: Q.has('session') ? Math.max(0, parseFloat(Q.get('session')) || 0) : null,
-  rounds: num('rounds', 1, 20), think: Q.has('think') ? Math.max(0, parseFloat(Q.get('think')) || 0) : null, mute: Q.has('mute')
+  rounds: num('rounds', 1, 20), think: Q.has('think') ? Math.max(0, parseFloat(Q.get('think')) || 0) : null, mute: Q.has('mute'),
+  demo: Q.has('demo')
 } : null;
+// Sample progress for ?test&demo: levels 1–9 finished; items alternate between known, still learning and often missed
+function demoMastery() {
+  let st = {};
+  LV.slice(0, 10).forEach((L, li) => levelItems(L).forEach((k, i) => {
+    const pattern = [[1, 1, 1], [1, 0, 1], [0, 0, 1], [1, 1, 0, 1]][(i + li) % 4];
+    pattern.forEach((ok, j) => { st = recordAttempt(st, k, ok, today(new Date(2026, 8, 20 + li + j))); });
+  }));
+  return st;
+}
 if (TEST) {
   CONFIG.unlockAll = true;
   if (T.rounds) CONFIG.rounds = T.rounds;
@@ -50,7 +61,7 @@ class App extends Component {
 
   // In test mode nothing is read from or written to storage
   load() {
-    if (TEST) return Array.from({ length: LV.length }, (_, i) => i < (T.done || 0));
+    if (TEST) return Array.from({ length: LV.length }, (_, i) => i < (T.demo ? 9 : T.done || 0));
     try {
       const ids = JSON.parse(localStorage.getItem(KEY));
       if (Array.isArray(ids)) return doneFromIds(ids);
@@ -64,6 +75,7 @@ class App extends Component {
     return { voice:'', vol:0.6, rate:0.85, session: TEST && T.session !== null ? T.session : 15 };
   }
   loadMastery() {
+    if (TEST && T.demo) return demoMastery();
     if (!TEST) try { const m = JSON.parse(localStorage.getItem(MKEY)); if (m && typeof m === 'object') return m; } catch (e) {}
     return {};
   }
@@ -110,6 +122,7 @@ class App extends Component {
     else if (sc === 'settings') this.setState({ settings:true });
     else if (sc === 'gate') this.openSettings();
     else if (sc === 'about') this.setState({ screen:'about' });
+    else if (sc === 'report') this.setState({ screen:'report' });
     // Hook for the automated checks in tests/ and for poking around in the browser console
     window.wp = {
       state: () => {
@@ -133,6 +146,7 @@ class App extends Component {
       played: () => this.playedClips.slice(),
       // Simulates iOS refusing to start sound (no tap yet, or interrupted), to check the voice fallback
       blockAudio: () => { this.audioBlocked = true; return 'blocked'; },
+      report: () => progressReport(this.state.done, this.state.mastery),
       gate: () => this.state.gate && { answer: this.state.gate.q.answer, typed: this.state.gate.typed, wrong: this.state.gate.wrong },
       replay: () => { const L = LV[this.state.lvl], r = this.state.rounds[this.state.round]; if (r) this.speak(this.prompt(L, r, false)); },
       clearSpoken: () => { this.spoken = []; }
@@ -273,6 +287,27 @@ class App extends Component {
       if (gateOk(g.q, g.typed)) { this.grownUp = true; return { gate: null, settings: true }; }
       return { gate: { q: gateQuestion(), typed: '', wrong: true } };  // a new sum, so guessing doesn't pay
     });
+  }
+
+  // The teacher report: one screen, laid out to screenshot (see progressReport in engine.js)
+  reportView() {
+    const r = progressReport(this.state.done, this.state.mastery);
+    const day = d => { if (!d) return ''; const [y, m, dd] = d.split('-').map(Number); return new Date(y, m - 1, dd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+    const pct = (a, b) => b ? `${Math.round(100 * a / b)}%` : '–';
+    let stage = 0;
+    return {
+      date: day(today()), last: day(r.last),
+      stats: [
+        { big: `${r.finished}/${r.levelCount}`, label: 'levels finished' },
+        { big: `${r.known}`, label: r.practised ? `known, of ${r.practised} practised` : 'words and sounds known' },
+        { big: pct(r.right, r.tries), label: 'right first time (recent)' },
+        { big: r.last ? day(r.last) : '–', label: 'last played' }
+      ],
+      practice: r.practice.map(p => ({ text: p.text, kind: p.kindName, score: `${p.right}/${p.tries}` })), morePractice: r.morePractice,
+      levels: r.levels.map(l => ({ ...l, stageHead: l.stage !== stage && (stage = l.stage), knownPct: `${Math.round(100 * l.known / l.total)}%`,
+        firstTry: pct(l.right, l.tries), lastDay: day(l.last) })),
+      empty: !r.levels.length
+    };
   }
 
   unlocked(i) { return unlocked(i, this.state.done, CONFIG.unlockAll); }
@@ -453,8 +488,10 @@ class App extends Component {
     return {
       goMap, goStickers,
       stickerCount: done.filter(Boolean).length, stickerTotal: LV.length,
-      isMap: screen === 'map', isPlay, isDone: screen === 'done', isStickers: screen === 'stickers', isAbout: screen === 'about',
+      isMap: screen === 'map', isPlay, isDone: screen === 'done', isStickers: screen === 'stickers', isAbout: screen === 'about', isReport: screen === 'report', report: screen === 'report' ? this.reportView() : null,
       openAbout: () => { this.stop(); this.setState({ screen:'about', settings:false }); },
+      openReport: () => { this.stop(); this.setState({ screen:'report', settings:false }); },
+      backToSettings: () => this.setState({ screen:'map', settings:true }),
       heroTitle: nextIdx < 0 ? 'You finished every level!' : `Level ${nextIdx + 1}: ${LV[nextIdx].title}`,
       hasNext: nextIdx >= 0,
       heroPlay: () => this.start(nextIdx),
@@ -706,6 +743,44 @@ class App extends Component {
         </div>
       </section>`}
 
+    ${v.isReport && html`
+      <section class="report-card">
+        <div class="report-head">
+          <div>
+            <div class="report-title">Progress report</div>
+            <div class="report-sub">Word Path · ${v.report.date}</div>
+          </div>
+          <button class="report-back" onClick=${v.backToSettings}><i class="icon-arrow-left"></i>Settings</button>
+        </div>
+        ${v.report.empty ? html`<p class="report-empty">Nothing played yet on this device. The report fills in as levels are played.</p>` : html`
+          <div class="report-stats">
+            ${v.report.stats.map(st => html`<div class="report-stat"><div class="report-big">${st.big}</div><div>${st.label}</div></div>`)}
+          </div>
+          <div class="report-section">
+            <div class="report-heading">Needs practice</div>
+            ${v.report.practice.length ? html`<div class="report-chips">
+              ${v.report.practice.map(p => html`<span class="report-chip"><b>${p.text}</b> ${p.kind} · ${p.score}</span>`)}
+              ${v.report.morePractice > 0 && html`<span class="report-chip more">+${v.report.morePractice} more</span>`}
+            </div>` : html`<div class="report-none">Nothing stands out: no word or sound has been missed more often than not.</div>`}
+          </div>
+          <div class="report-section">
+            <div class="report-heading">Levels</div>
+            <div class="report-rows">
+              ${v.report.levels.map(l => html`
+                ${l.stageHead && html`<div class="report-stage">Stage ${l.stage}</div>`}
+                <div class="report-row">
+                  <span class="report-n">${l.n}</span>
+                  <span class="report-name">${l.title}${l.done && html` <i class="icon-check" aria-label="finished"></i>`}</span>
+                  <span class="report-bar" title=${`${l.known} of ${l.total} known`}><span style=${`width:${l.knownPct}`}></span></span>
+                  <span class="report-known">${l.known}/${l.total} known</span>
+                  <span class="report-first">${l.firstTry} first try</span>
+                  <span class="report-last">${l.lastDay}</span>
+                </div>`)}
+            </div>
+          </div>`}
+        <p class="report-note">Known: right first time in 3 of the last 4 tries, on at least 2 different days. Needs practice: under half right in recent first tries. Saved on this device only.</p>
+      </section>`}
+
     ${v.isAbout && html`
       <section class="about-card">
         <div style="font-size:clamp(30px,6vw,44px);font-weight:700;line-height:1.1">About Word Path</div>
@@ -809,6 +884,7 @@ class App extends Component {
               </select>
               <span class="settings-hint">About 15 minutes suits most 5–8 year olds. The game never stops a child; it suggests a break at the end of a level.</span>
             </label>
+            <button class="settings-link" onClick=${v.openReport}>Progress report<i class="icon-chevron-right"></i></button>
             <button class="settings-link" onClick=${v.openAbout}>About and credits<i class="icon-chevron-right"></i></button>
           </div>
         </div>
