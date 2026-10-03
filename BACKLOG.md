@@ -40,7 +40,7 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 24 | **Spelling levels**: build the word from letter tiles | M | Learning | Spelling strongly reinforces reading |
 | 25 | **Heart words**: teach decodable high-frequency words as decoding once their sounds are taught; drill only the irregular parts | M | Learning | Better sight-word method |
 | 26 | **Early phonological awareness**: syllable clapping, first/last sound matching for the K band | M | Learning | Fills the start of the sequence |
-| 27 | **One voice for everything**: pre-made audio for prompts and words, cloned voice (C) or standard AI voice (D). Start with whole words (300 sight words and about 100 picture words) | M–L | Audio · decision | First child test (2026-10-03): device voices are hard to understand on short words ("at", "are"); slowing them down only helps a little. Suggest moving up |
+| 27 | **One voice for everything**: decided: record ourselves (2026-10-03). Recorder support shipped (534 words and lines in 7 stage batches; see RECORDING.md). Remaining: record the batches (yours, in parallel). Revisit a generated voice at #32 (sentences), where clip counts pass 1,000 | M–L | Audio · parallel | First child test: device voices are hard to understand on short words ("at", "are") |
 | 28 | **Child profiles**: name and avatar; several children per device | M | Product | Classroom sharing |
 | 29 | **Drag to sort**, as well as tapping | S | Product | Nice to have |
 | 30 | **Accessibility pass**: screen-reader labels, contrast, captions for spoken prompts | M | Product | Wider reach; captions help in noisy classrooms |

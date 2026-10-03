@@ -31,6 +31,13 @@
   .group small { display: block; font-weight: 400; color: #5C5677; font-size: 15px; margin-top: 2px; }
   .sound { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
   .big { font-size: 120px; font-weight: 700; line-height: 1; min-width: 120px; }
+  .big.word { font-size: 88px; }
+  .big.line { font-size: 40px; line-height: 1.2; max-width: 100%; }
+  .batches { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 24px 16px; max-width: 1200px; margin: 0 auto; }
+  .batches button { height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: #fff; color: #2A2350; font-size: 15px; font-weight: 600; box-shadow: 0 3px 0 #E8DCC8; }
+  .batches button.current { background: #7B61FF; color: #fff; box-shadow: 0 3px 0 #5940D6; }
+  .batches button small { font-weight: 400; margin-left: 6px; opacity: .8; }
+  .batches button.complete::after { content: ' ✓'; }
   .how { font-size: 26px; font-weight: 600; }
   .example { font-size: 19px; color: #5C5677; margin-top: 6px; }
   .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
@@ -62,20 +69,22 @@
 <body>
 <header>
   <h1>Word Path recorder</h1>
-  <div class="progress"><span id="count">0 / 69 recorded</span><div class="bar"><span id="bar" style="width:0"></span></div></div>
+  <div class="progress"><span id="count">0 recorded</span><div class="bar"><span id="bar" style="width:0"></span></div></div>
 </header>
 
 <div id="setup" class="card">
   <div class="how">Before you start</div>
   <div style="font-size:18px;line-height:1.55">
     <p>Find a quiet room with soft things around (curtains, a sofa, a rug) to cut echo. Sit about a hand's width from your laptop, with the microphone near the keyboard.</p>
-    <p>Each sound shows how to say it. Record, listen back, and redo it if it's not right. Your recordings are kept in this browser as you go, so you can stop and come back later. When you're done, press <b>Download all</b>.</p>
+    <p>The recordings come in batches: letter sounds first, then one batch per stage with the words and lines that stage needs. The game uses each recording as soon as it's added, and the device voice says anything not recorded yet, so do a batch at a time.</p>
+    <p>Each card shows how to say it. Record, listen back, and redo it if it's not right. Your recordings are kept in this browser as you go, so you can stop and come back later. When you're done, press <b>Download all</b>.</p>
     <p>Your browser will ask to use the microphone. Choose <b>Allow</b>. On a Mac, if nothing is heard, check System Settings → Privacy &amp; Security → Microphone and make sure your browser is switched on.</p>
   </div>
   <div class="controls"><button class="btn next" id="begin"><i class="icon-mic"></i>Start recording</button></div>
   <div class="status warn" id="setupMsg"></div>
 </div>
 
+<div class="batches" id="batches" hidden aria-label="Batches"></div>
 <div class="layout" id="main" hidden>
   <nav id="nav" aria-label="All sounds"></nav>
   <div class="side">
@@ -99,7 +108,7 @@
     </section>
     <section class="panel">
       <h3>When you're done</h3>
-      <p>Download every recording as one file. It lands in your Downloads folder; tell Claude it's there.</p>
+      <p>Download every recording as one file (all batches you've done, so it's fine to download after each batch). It lands in your Downloads folder; tell Claude it's there.</p>
       <div class="row">
         <button class="btn next small" id="download"><i class="icon-download"></i>Download all</button>
         <button class="btn soft small" id="playAll"><i class="icon-list-music"></i>Play all in this group</button>
@@ -110,10 +119,23 @@
 </div>
 
 <script type="module">
-import { SOUNDS, GROUPS } from '../sounds.js';
+import { SOUNDS, GROUPS } from '../sounds.js?v=dev';
+import { BATCHES, SCRIPT, SCRIPT_GROUPS } from '../script.js?v=dev';
+
+// Everything to record: letter sounds (sounds.js), then words and lines batched by stage (script.js)
+const HOW = { line: c => c.lead ? 'Leave out the word or sound that follows, and keep your voice up at the end.' : 'Say the whole line.',
+  level: () => 'Say the whole line.', word: () => 'Say the word once.', sight: () => 'Say the word once.' };
+const ITEMS = [
+  ...SOUNDS.map(x => ({ ...x, batch: 'sounds' })),
+  ...SCRIPT.map(c => ({ id: c.id, show: c.text + (c.lead ? ' …' : ''), label: c.text.length > 26 ? c.text.slice(0, 24) + '…' : c.text,
+    group: c.kind, kind: c.kind === 'line' || c.kind === 'level' ? 'phrase' : 'word', how: HOW[c.kind](c), example: '', batch: c.batch }))
+];
+const ALL_GROUPS = [...GROUPS, ...SCRIPT_GROUPS];
+const BATCH_LIST = [{ key: 'sounds', title: 'Letter sounds and names' }, ...BATCHES.map(b => ({ key: b.key, title: b.title }))];
 
 const RATE = 22050;                 // saved sample rate: plenty for speech, keeps files small
 const SKIP = 0.25;                  // seconds ignored at the start of each take (start-key click)
+const SKIP_END = 0.12;              // and at the end (stop-key click)
 const $ = id => document.getElementById(id);
 const fmtDur = s => `${s.toFixed(1)}s`;
 let idx = 0, stream = null, actx = null, analyser = null, recorder = null, chunks = [], recording = false, raf = 0, player = null;
@@ -152,7 +174,7 @@ async function processBlob(blob, kind) {
   const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(decoded.duration * RATE)), RATE);
   const src = off.createBufferSource(); src.buffer = decoded; src.connect(off.destination); src.start();
   // Ignore the first quarter-second: it holds the click of the key or button that started recording
-  const x = (await off.startRendering()).getChannelData(0).slice(Math.round(RATE * SKIP));
+  const x = (await off.startRendering()).getChannelData(0).slice(Math.round(RATE * SKIP), -Math.round(RATE * SKIP_END) || undefined);
 
   let rawPeak = 0; for (const v of x) rawPeak = Math.max(rawPeak, Math.abs(v));
   const win = Math.round(RATE * 0.01), n = Math.floor(x.length / win), env = new Float32Array(n);
@@ -179,6 +201,8 @@ async function processBlob(blob, kind) {
   else if (kind === 'hold' && dur < 0.9) warn = 'Try holding the sound longer, for about two seconds.';
   else if (kind === 'short' && dur > 0.75) warn = 'Keep it short and crisp, with no "uh" at the end.';
   else if ((kind === 'vowel' || kind === 'name') && dur > 1.8) warn = 'A little shorter would be better.';
+  else if (kind === 'word' && dur > 1.6) warn = 'A little quicker would be better: say the word once.';
+  else if (kind === 'phrase' && dur > 5) warn = 'That\'s long. Check there\'s no extra talking at the end.';
   return { wav: encodeWav(y, RATE), dur, warn };
 }
 
@@ -216,42 +240,65 @@ async function makeZip(files) {
 }
 
 // ---- UI ----
-const cur = () => SOUNDS[idx];
+const cur = () => ITEMS[idx];
+const inBatch = key => ITEMS.filter(x => x.batch === key);
 function status(msg, cls = '') { const el = $('status'); el.textContent = msg; el.className = 'status ' + cls; }
+function renderBatches() {
+  $('batches').innerHTML = '';
+  for (const bt of BATCH_LIST) {
+    const items = inBatch(bt.key), done = items.filter(x => clips[x.id]).length;
+    const b = document.createElement('button');
+    b.className = (bt.key === cur().batch ? 'current' : '') + (done === items.length ? ' complete' : '');
+    b.append(bt.title); const sm = document.createElement('small'); sm.textContent = `${done}/${items.length}`; b.append(sm);
+    b.onclick = () => { const first = items.find(x => !clips[x.id]) || items[0]; go(ITEMS.indexOf(first)); };
+    $('batches').append(b);
+  }
+}
 function renderNav() {
   $('nav').innerHTML = '';
-  for (const g of GROUPS) {
+  const batch = cur().batch;
+  for (const g of ALL_GROUPS) {
+    const members = ITEMS.filter(x => x.batch === batch && x.group === g.key);
+    if (!members.length) continue;
     const h = document.createElement('h2'); h.textContent = g.title; $('nav').append(h);
     const box = document.createElement('div'); box.className = 'chips';
-    SOUNDS.forEach((snd, i) => {
-      if (snd.group !== g.key) return;
-      const b = document.createElement('button');
-      b.textContent = snd.show + (snd.id === 'th-this' ? ' (this)' : snd.id === 'th-thin' ? ' (thin)' : snd.id === 'oo-book' ? ' (book)' : snd.id === 'oo-moon' ? ' (moon)' : snd.id.endsWith('-long') ? ' (long)' : '');
-      b.title = snd.example ? `${snd.show} as in ${snd.example}` : snd.how;
+    for (const snd of members) {
+      const i = ITEMS.indexOf(snd), b = document.createElement('button');
+      b.textContent = snd.label || snd.show + (snd.id === 'th-this' ? ' (this)' : snd.id === 'th-thin' ? ' (thin)' : snd.id === 'oo-book' ? ' (book)' : snd.id === 'oo-moon' ? ' (moon)' : snd.id.endsWith('-long') ? ' (long)' : '');
+      b.title = snd.example ? `${snd.show} as in ${snd.example}` : snd.show;
       b.className = (clips[snd.id] ? (clips[snd.id].warn ? 'warn' : 'done') : '') + (i === idx ? ' current' : '');
       b.onclick = () => go(i);
       box.append(b);
-    });
+    }
     $('nav').append(box);
   }
-  const done = SOUNDS.filter(x => clips[x.id]).length;
-  $('count').textContent = `${done} / ${SOUNDS.length} recorded`;
-  $('bar').style.width = `${(100 * done / SOUNDS.length).toFixed(1)}%`;
+  const items = inBatch(batch), done = items.filter(x => clips[x.id]).length, all = ITEMS.filter(x => clips[x.id]).length;
+  $('count').textContent = `${done} / ${items.length} in this batch · ${all} / ${ITEMS.length} in all`;
+  $('bar').style.width = `${(100 * done / items.length).toFixed(1)}%`;
+  renderBatches();
 }
 function renderCard() {
-  const snd = cur(), g = GROUPS.find(x => x.key === snd.group), c = clips[snd.id];
-  $('group').innerHTML = ''; $('group').append(`${g.title} · ${SOUNDS.filter(x => x.group === g.key).indexOf(snd) + 1} of ${SOUNDS.filter(x => x.group === g.key).length}`);
+  const snd = cur(), g = ALL_GROUPS.find(x => x.key === snd.group), c = clips[snd.id];
+  const members = ITEMS.filter(x => x.batch === snd.batch && x.group === g.key);
+  $('group').innerHTML = ''; $('group').append(`${g.title} · ${members.indexOf(snd) + 1} of ${members.length}`);
   const small = document.createElement('small'); small.textContent = g.note; $('group').append(small);
   $('show').textContent = snd.show;
+  $('show').className = 'big' + (snd.group === 'line' || snd.group === 'level' ? ' line' : snd.kind === 'word' ? ' word' : '');
   $('how').textContent = snd.how;
   $('example').textContent = snd.example ? `as in "${snd.example}"` : '';
   $('play').disabled = !c;
   $('clearOne').disabled = !c;
   if (c) status(c.warn ? c.warn : `Recorded (${fmtDur(c.dur)}). Play it back, or redo it.`, c.warn ? 'warn' : 'ok');
-  else status('Not recorded yet. Press Record, say the sound, then press Stop.');
+  else status(snd.batch === 'sounds' ? 'Not recorded yet. Press Record, say the sound, then press Stop.' : 'Not recorded yet. Press Record, say it, then press Stop.');
   renderNav();
 }
-function go(i) { if (recording) return; idx = (i + SOUNDS.length) % SOUNDS.length; renderCard(); }
+// Next and back stay inside the current batch
+function go(i) {
+  if (recording) return;
+  const from = ITEMS[idx]?.batch, to = ITEMS[(i + ITEMS.length) % ITEMS.length].batch;
+  if (from && to !== from && Math.abs(i - idx) === 1) { const items = inBatch(from); i = ITEMS.indexOf(items[i > idx ? 0 : items.length - 1]); }
+  idx = (i + ITEMS.length) % ITEMS.length; renderCard();
+}
 
 function playBlob(blob) {
   return new Promise(res => {
@@ -314,8 +361,8 @@ $('begin').onclick = async () => {
   analyser = actx.createAnalyser(); analyser.fftSize = 1024;
   actx.createMediaStreamSource(stream).connect(analyser);
   meterLoop();
-  $('setup').hidden = true; $('main').hidden = false;
-  const firstMissing = SOUNDS.findIndex(x => !clips[x.id]);
+  $('setup').hidden = true; $('main').hidden = false; $('batches').hidden = false;
+  const firstMissing = ITEMS.findIndex(x => !clips[x.id]);
   go(firstMissing < 0 ? 0 : firstMissing);
 };
 $('rec').onclick = () => recording ? stopRec() : startRec();
@@ -326,13 +373,12 @@ $('clearOne').onclick = async () => {
   delete clips[cur().id]; await dbDel(cur().id); renderCard();
 };
 $('playAll').onclick = async () => {
-  for (const snd of SOUNDS.filter(x => x.group === cur().group)) if (clips[snd.id]) { idx = SOUNDS.indexOf(snd); renderCard(); await playBlob(clips[snd.id].blob); await new Promise(r => setTimeout(r, 300)); }
+  const { group, batch } = cur();
+  for (const snd of ITEMS.filter(x => x.group === group && x.batch === batch)) if (clips[snd.id]) { idx = ITEMS.indexOf(snd); renderCard(); await playBlob(clips[snd.id].blob); await new Promise(r => setTimeout(r, 300)); }
 };
 $('download').onclick = async () => {
-  const files = SOUNDS.filter(x => clips[x.id]).map(x => ({ name: `${x.id}.wav`, blob: clips[x.id].blob }));
+  const files = ITEMS.filter(x => clips[x.id]).map(x => ({ name: `${x.id}.wav`, blob: clips[x.id].blob }));
   if (!files.length) { status('Nothing recorded yet.', 'warn'); return; }
-  const missing = SOUNDS.length - files.length;
-  if (missing && !confirm(`${missing} sounds aren't recorded yet. Download the ${files.length} you have?`)) return;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(await makeZip(files));
   a.download = `word-path-audio-${new Date().toISOString().slice(0, 10)}.zip`;
@@ -357,7 +403,7 @@ if (new URLSearchParams(location.search).has('selftest')) {
 
 Object.assign(clips, await dbAll());
 renderNav();
-window.recorderReady = { sounds: SOUNDS.length, recorded: Object.keys(clips).length };
+window.recorderReady = { sounds: SOUNDS.length, clips: ITEMS.length, batches: BATCH_LIST.length, recorded: Object.keys(clips).length };
 </script>
 </body>
 </html>

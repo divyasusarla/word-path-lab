@@ -33,27 +33,35 @@ export const stagePath = (pts, down) => {
 export const gsnd = gr => ({ t: GRAPHEMES[gr].say, rate: GRAPHEMES[gr].rate, clip: GRAPHEMES[gr].clip });
 export const nsnd = l => ({ t: NAME_SAY[l], rate: 0.8, clip: `name-${l}` });
 export const showG = gr => gr;  // how a sound is written on a tile (a_e stays a_e)
+// Recordings for words and lines (see script.js and RECORDING.md). A word is its own clip (word-cat); a line's
+// clip is named after its exact text (say-try-again), so rewording a line never plays an out-of-date recording:
+// the browser voice says the new wording until it's re-recorded. Plain strings in a speech list are lines.
+export const slug = t => t.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+export const sayId = t => `say-${slug(t)}`;
+export const wordId = w => `word-${slug(w)}`;
+export const word = (w, rate = 0.8) => ({ t: w, rate, clip: wordId(w) });
+export const levelLine = L => `Level ${L.n}. ${L.title}.`;
 
 // The spoken question for a round. Parts: strings, {t, rate, clip}, or numbers (pause in ms).
 // n: the round number (0-based). Sorting questions shorten after the first two rounds, once the child knows the game.
 export const FULL_ROUNDS = 2;
 // Sight words are said slowly, on their own, twice: the device voice can be hard to make out on short words
-const slowWord = w => ({ t: w, rate: 0.6 });
+const slowWord = w => word(w, 0.6);
 export function prompt(L, r, first, n = 0) {
-  const pre = first ? [`Level ${L.n}. ${L.title}.`, 700] : [];
+  const pre = first ? [levelLine(L), 700] : [];
   if (L.kind === 'pop') {
-    if (L.mode === 'sound') { const gr = GRAPHEMES[r.target]; return [...pre, r.target.length > 1 ? 'Find the letters that say' : 'Find the letter that says', 500, gsnd(r.target), 500, 'like in', { t: gr.ex, rate: 0.8 }]; }
+    if (L.mode === 'sound') { const gr = GRAPHEMES[r.target]; return [...pre, r.target.length > 1 ? 'Find the letters that say' : 'Find the letter that says', 500, gsnd(r.target), 500, 'like in', word(gr.ex)]; }
     if (L.mode === 'name') return [...pre, 'Find the letter', 400, nsnd(r.target)];
     return [...pre, 'Pop the word.', 400, slowWord(r.target), 700, slowWord(r.target)];
   }
   if (L.kind === 'match') {
     if (L.mode === 'blend') return [...pre, 'Listen.', 500, ...phonemes(r.target.w).flatMap(p => [gsnd(p), 450]), 400, 'What word is that?'];
-    if (L.mode === 'rhyme') return [...pre, 'Which picture rhymes with', 400, { t: r.target.cue, rate: 0.7 }];
+    if (L.mode === 'rhyme') return [...pre, 'Which picture rhymes with', 400, word(r.target.cue, 0.7)];
     return [...pre, 'Read the word. Then tap its picture.'];
   }
   const [A, B] = L.bins;
-  if (n >= FULL_ROUNDS && !first) return [{ t: r.w, rate: 0.7 }, 600, gsnd(A), 300, 'or', 300, gsnd(B)];
-  return [...pre, { t: r.w, rate: 0.7 }, 700, L.ask === 'has' ? 'Does it have' : 'Does it start with', 300, gsnd(A), 400, 'or', 300, gsnd(B)];
+  if (n >= FULL_ROUNDS && !first) return [word(r.w, 0.7), 600, gsnd(A), 300, 'or', 300, gsnd(B)];
+  return [...pre, word(r.w, 0.7), 700, L.ask === 'has' ? 'Does it have' : 'Does it start with', 300, gsnd(A), 400, 'or', 300, gsnd(B)];
 }
 
 // "Sound it out": each sound in the word, slowly, without the word itself (the child does the blending)
@@ -221,14 +229,14 @@ export const masteredIn = (L, store, rule = MASTERY_RULE) => levelItems(L).filte
 export const modelAfter = L => L.kind === 'sort' ? 1 : 2;
 // What's said when the answer is shown; the child then taps it
 export function modelParts(L, r) {
-  if (L.kind === 'sort') return ['Listen.', 300, { t: r.w, rate: 0.7 }, 300, L.ask === 'has' ? 'has' : 'starts with', 300, gsnd(L.bins[r.bin]), 500, 'Tap that one.'];
+  if (L.kind === 'sort') return ['Listen.', 300, word(r.w, 0.7), 300, L.ask === 'has' ? 'has' : 'starts with', 300, gsnd(L.bins[r.bin]), 500, 'Tap that one.'];
   if (L.kind === 'pop') {
     if (L.mode === 'sound') return ['Here it is.', 300, gsnd(r.target), 500, 'Tap it.'];
     if (L.mode === 'name') return ['Here it is.', 300, nsnd(r.target), 500, 'Tap it.'];
-    return [{ t: `Here it is: ${r.target}.`, rate: 0.85 }, 400, 'Tap it.'];
+    return ['Here it is.', 300, slowWord(r.target), 400, 'Tap it.'];
   }
-  if (L.mode === 'rhyme') return [{ t: `${r.target.cue} rhymes with ${r.target.w}.`, rate: 0.85 }, 400, 'Tap it.'];
-  return [{ t: `Here it is: ${r.target.w}.`, rate: 0.85 }, 400, 'Tap it.'];
+  if (L.mode === 'rhyme') return [word(r.target.cue), 200, 'rhymes with', 200, word(r.target.w), 400, 'Tap it.'];
+  return ['Here it is.', 300, word(r.target.w), 400, 'Tap it.'];
 }
 // Praise that says what was right (informational, per the rewards research), plus news of a newly mastered item
 // After the first few rounds the explanation is dropped ("Yes!"), so the sound isn't repeated every time.
@@ -237,15 +245,31 @@ export function praiseParts(L, r, { modelled = false, mastered = false, n = 0 } 
   if (modelled) return ['That\'s it.'];
   const extra = mastered ? [400, 'You know that one now!'] : [];
   const short = n >= FULL_PRAISE_ROUNDS;
-  if (L.kind === 'sort') return short ? ['Yes!', ...extra] : ['Yes!', 300, L.ask === 'has' ? `${r.w} has` : `${r.w} starts with`, 300, gsnd(L.bins[r.bin]), ...extra];
+  if (L.kind === 'sort') return short ? ['Yes!', ...extra] : ['Yes!', 300, word(r.w), 200, L.ask === 'has' ? 'has' : 'starts with', 300, gsnd(L.bins[r.bin]), ...extra];
   if (L.kind === 'pop') {
     if (L.mode === 'sound') return short ? ['Yes!', ...extra] : ['Yes! That says', 300, gsnd(r.target), ...extra];
     if (L.mode === 'name') return ['Yes! That\'s', 300, nsnd(r.target), ...extra];
     return ['Yes!', 300, slowWord(r.target), ...extra];
   }
-  if (L.mode === 'rhyme') return ['Yes!', 300, `${r.target.cue}, ${r.target.w}.`, ...extra];
-  return [`${r.target.w}!`, ...extra];
+  if (L.mode === 'rhyme') return ['Yes!', 300, word(r.target.cue), 300, word(r.target.w), ...extra];
+  return ['Yes!', 300, word(r.target.w), ...extra];
 }
+// What's said after a wrong tap, before "Try again" or the answer. option: the tile, picture word, or bin tapped
+export function missParts(L, r, option) {
+  if (L.kind === 'sort') return [L.ask === 'has' ? 'Listen to the middle sound.' : 'Listen to the first sound.', 500, word(r.w, 0.6)];
+  if (L.kind === 'pop') return L.mode === 'sound' ? ['That one says', 300, gsnd(option.label)]
+    : L.mode === 'name' ? ['That letter is', 300, nsnd(option.label)] : ['That word is', 300, word(option.label)];
+  if (L.mode === 'rhyme') return [word(option.w), 200, 'doesn\'t rhyme with', 200, word(r.target.cue)];
+  return ['That one is', 300, word(option.w)];
+}
+export const TRY_AGAIN = 'Try again.', BONUS = 'Bonus round!', LOCKED = 'That level is locked. Finish the one before it.';
+// Level complete: what was earned, then a break or practise-again suggestion
+export function finishParts(L, { stageDone = false, rest = false, again = false } = {}) {
+  return ['You did it!', 400, `You earned the ${L.sticker.name} sticker!`, ...(stageDone ? [500, `You finished stage ${L.stage + 1}!`] : []),
+    ...(rest ? [500, 'Great work today! Time for a break.'] : again ? [500, 'Let\'s practise this one again.'] : [])];
+}
+// The map's "Hear it" button: the next level to play, or the end of the game
+export const heroParts = nextIdx => nextIdx < 0 ? ['You finished every level! Look at your stickers.'] : [levelLine(LV[nextIdx]), 500, 'Press play.'];
 // Suggest practising a level again when fewer than half the first taps were right
 export const shouldPractiseAgain = firstTries => firstTries.length > 0 && firstTries.filter(Boolean).length / firstTries.length < 0.5;
 

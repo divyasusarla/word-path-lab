@@ -28,9 +28,9 @@ jobs:
       - name: Unit tests (game rules and content check), with coverage of engine.js and content.js
         run: |
           # c8 can't map the ?v=dev cache-busting suffix to files, so strip it in this throwaway checkout
-          sed -i "s/?v=dev//g" engine.js content.js tests/unit/engine.test.js
-          npx --yes c8@10.1.3 --reporter=text --include=engine.js --include=content.js node tests/unit/run.mjs
-          git checkout -- engine.js content.js tests/unit/engine.test.js
+          sed -i "s/?v=dev//g" engine.js content.js script.js tests/unit/engine.test.js
+          npx --yes c8@10.1.3 --reporter=text --include=engine.js --include=content.js --include=script.js node tests/unit/run.mjs
+          git checkout -- engine.js content.js script.js tests/unit/engine.test.js
       - name: Install Playwright (uses the runner's installed Chrome)
         run: npm install --no-save --no-package-lock playwright@1.48.2
       - name: Serve the site
@@ -84,7 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Stamp file versions so browsers fetch the new files
-        run: sed -i "s/?v=dev/?v=${GITHUB_SHA::7}/g" index.html app.js content.js engine.js tools/checklist.html
+        run: sed -i "s/?v=dev/?v=${GITHUB_SHA::7}/g" index.html app.js content.js engine.js script.js tools/checklist.html tools/record.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -81,3 +81,9 @@ Why Word Path is built the way it is. Each entry: the decision, why, what else w
 - **Decision:** levels keep 8 rounds. When a level has fewer items, each comes up once, then the rest are labelled bonus rounds and bring back what was missed in this play (else still being learned), never the item just played.
 - **Why:** random repeats made children think a letter had been skipped. Fewer rounds would feel too short. Bringing back a missed item soon is the cheapest form of the spaced, corrective practice in LEARNING_DESIGN.md.
 - **Revisit:** with #14 (bands), which may change level sizes.
+
+### 17. Record words and lines ourselves, keyed by their text (2026-10-03)
+- **Decision:** record every word (word-cat) and instruction line (say-try-again) in the same voice as the letter sounds. Lines never contain a word; words are separate clips said after a short pause. A line's clip is named after its exact text.
+- **Why:** the first child test showed device voices are hard to understand on short words. Keeping words out of lines keeps the script to about 37 lines plus one clip per word (534 in all). Naming a clip after its text means a reworded line can never play a stale recording; the device voice covers it until it's re-recorded.
+- **Limits:** splicing a line and a word sounds slightly less natural than one recording. Decodable sentences (#32) can't be spliced that way, which would push past 1,000 clips.
+- **Revisit:** at #32, or when designing the bands (#14): count new words per band and consider a generated voice.
