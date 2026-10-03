@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- Play-through checklist page (`tools/checklist.html`): 13 sections and about 80 items covering sound, every kind of level, progress, layout, pictures and playing with a child. Mark ✓/✗, add notes, saved per device; **Copy my notes** makes a summary to share. Level numbers come from the content, so the list stays accurate.
 - Rumble filter on recordings: removes sound below 80 Hz from every clip, and below 300 Hz (steeper) from voiceless sounds (s, f, sh, th, h, p, t, k, ch, x). Low rumble in s dropped from 12% of the clip's energy to under 1%, in f from 18% to 2%. All 69 clips re-imported with it.
 - Game rules moved into `engine.js` (rounds, wrong options, unlocking, speech, saved progress) as plain functions; `app.js` now only draws the screens and plays audio.
 - 27 unit tests for the rules and the content check (`tests/unit/`), run in Node on every pull request and shown on the checks page. Several deliberately break a copy of the content to prove the content check catches each kind of mistake.

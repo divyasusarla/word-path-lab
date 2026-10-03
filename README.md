@@ -7,6 +7,7 @@ The tinkering copy of Word Path, an early-reading game with spoken prompts. 38 l
 - Automatic checks: https://divyasusarla.github.io/word-path-lab/tests/
 - Recorder: https://divyasusarla.github.io/word-path-lab/tools/record.html
 - Picture review: https://divyasusarla.github.io/word-path-lab/tools/pictures.html
+- Play-through checklist: https://divyasusarla.github.io/word-path-lab/tools/checklist.html
 - Class version (kept separate, don't change): https://divyasusarla.github.io/word-path/ (repo `divyasusarla/word-path`)
 
 ## How it fits together
@@ -34,6 +35,7 @@ A plain static site with no build step: the browser loads `index.html`, which ru
 | `tests/` | Browser checks that play every level (`index.html`; `run-checks.mjs` runs them headlessly on GitHub) and unit tests for the rules (`unit/`; `node tests/unit/run.mjs`) (see `TESTING.md`) |
 | `package.json` | Only tells Node the `.js` files are modules, for the unit tests. There's no build step or dependencies |
 | `tools/record.html` | The recorder for all 69 sounds |
+| `tools/checklist.html` | Play-through checklist: ✓/✗ per item, notes, saved per device, copy notes to share |
 | `tools/pictures.html` | Review page: every picture with its word, the levels using it, and flags for pictures a child might name differently |
 | `tools/serve.py` | Local development server that disables caching |
 | `tools/import_audio.py` | Brings the recorder's zip into `audio/`, removing clicks and silence and evening out volume |

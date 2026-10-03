@@ -60,6 +60,8 @@ To leave test mode, click **Exit test mode** or remove `?test` from the address.
 
 ## 3. Hands-on checklist (on the device children will use)
 
+**Use the play-through checklist page:** https://divyasusarla.github.io/word-path-lab/tools/checklist.html. It has 13 sections (getting started, sound, every kind of level, finishing levels, progress, layout, pictures, playing with a child). Mark each item ✓ or ✗ and add notes; it remembers your marks per device. **Copy my notes** gives you a summary to paste to Claude. The list below is the short version.
+
 Use the normal address, without `?test`, with sound on. Test on every device you plan to use:
 
 | Device | Browser | Notes |

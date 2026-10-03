@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Stamp file versions so browsers fetch the new files
-        run: sed -i "s/?v=dev/?v=${GITHUB_SHA::7}/g" index.html app.js content.js engine.js
+        run: sed -i "s/?v=dev/?v=${GITHUB_SHA::7}/g" index.html app.js content.js engine.js tools/checklist.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

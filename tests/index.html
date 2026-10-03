@@ -289,7 +289,10 @@ async function runAll() {
       const issues = [];
       for (const q of ['done=8', 'level=1', 'level=3', 'level=9', 'level=10', 'level=11', 'level=30']) {
         const w = await load(q);
-        await sleep(w.wp.state().kind === 'pop' ? 1800 : 150);  // bubbles fly in from below; measure once they've landed
+        // measure where things end up, not mid-animation (bubbles fly in from below; hidden tabs pause animations)
+        const still = doc().createElement('style'); still.textContent = '*, *::before, *::after { animation: none !important; transition: none !important; }';
+        doc().head.append(still);
+        await sleep(150);
         if (w.wp.layout() !== name) issues.push(`${q}: layout ${w.wp.layout()}`);
         const de = doc().documentElement;
         if (de.scrollWidth > wd + 1) issues.push(`${q}: scrolls sideways (${de.scrollWidth}px wide)`);
@@ -328,6 +331,14 @@ async function runAll() {
     expect(!unknown.length, `the game uses sounds with no recording slot: ${unknown.join(', ')}`);
     const rec = [...usedClips].filter(([, src]) => src === 'recording').length;
     return `${usedClips.size} different sounds used across all levels (3 rounds each); ${rec} played from recordings, ${usedClips.size - rec} from the browser voice`;
+  });
+  await check('Play-through checklist page: loads every section with level numbers from the content', async () => {
+    frame.src = '../tools/checklist.html';
+    const w = await waitFor(() => frame.contentWindow.checklistReady && frame.contentWindow, 6000, 'the checklist to load');
+    expect(w.checklistReady.sections >= 13, `only ${w.checklistReady.sections} sections`);
+    expect(doc().querySelectorAll('.item').length === w.checklistReady.items, 'not every item rendered');
+    expect(!/undefined|NaN/.test(text()), 'a level number didn\'t resolve');
+    return `${w.checklistReady.sections} sections, ${w.checklistReady.items} items`;
   });
   await check('Picture review page: shows every picture', async () => {
     frame.src = '../tools/pictures.html';

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word Path play-through checklist</title>
+<link rel="stylesheet" href="../vendor/fredoka/fredoka.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #FFF7EA; color: #2A2350; font-family: 'Fredoka', system-ui, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  .lede { color: #5C5677; font-size: 16px; line-height: 1.5; margin: 0 0 16px; }
+  .bar { position: sticky; top: 0; z-index: 2; background: #FFF7EA; padding: 10px 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 2px solid #E8DCC8; margin-bottom: 16px; }
+  .bar label { font-weight: 600; font-size: 15px; }
+  select, button, textarea { font-family: inherit; }
+  select { height: 44px; padding: 0 12px; border: 2px solid #E8DCC8; border-radius: 12px; background: #fff; color: #2A2350; font-size: 16px; }
+  .btn { height: 44px; padding: 0 18px; border: 0; border-radius: 999px; font-size: 16px; font-weight: 600; cursor: pointer; }
+  .primary { background: #7B61FF; color: #fff; }
+  .soft { background: #F3EEFF; color: #2A2350; }
+  .count { font-size: 15px; color: #5C5677; margin-left: auto; }
+  details { background: #fff; border-radius: 20px; margin-bottom: 12px; box-shadow: 0 4px 0 #E8DCC8; }
+  summary { cursor: pointer; padding: 16px 20px; font-size: 20px; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+  summary::-webkit-details-marker { display: none; }
+  summary .tally { font-size: 14px; font-weight: 600; color: #5C5677; white-space: nowrap; }
+  .section-body { padding: 0 20px 16px; }
+  .how { font-size: 14px; color: #5C5677; margin: 0 0 10px; }
+  .how a { color: #5940D6; }
+  .item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid #F1EDF6; }
+  .item:first-of-type { border-top: 0; }
+  .item p { margin: 0; flex: 1; font-size: 16px; line-height: 1.4; }
+  .item small { display: block; color: #5C5677; font-size: 13px; margin-top: 2px; }
+  .marks { display: flex; gap: 6px; flex-shrink: 0; }
+  .mark { width: 44px; height: 44px; border: 2px solid #E8DCC8; border-radius: 12px; background: #fff; font-size: 20px; cursor: pointer; color: #9A93AE; }
+  .mark.ok[aria-pressed="true"] { background: #D5F5EC; border-color: #2EC4A6; color: #17977F; }
+  .mark.bad[aria-pressed="true"] { background: #FFE9E7; border-color: #F2544A; color: #B0322A; }
+  .mark:focus-visible, .btn:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #7B61FF; outline-offset: 2px; }
+  textarea { width: 100%; min-height: 64px; margin-top: 8px; padding: 10px 12px; border: 2px solid #E8DCC8; border-radius: 12px; font-size: 15px; color: #2A2350; resize: vertical; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #2A2350; color: #fff; padding: 12px 20px; border-radius: 999px; font-weight: 600; display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Play-through checklist</h1>
+  <p class="lede">Work through these while you play. Mark each item ✓ (works) or ✗ (problem) and add notes. Your marks are kept on this device, per device you choose below. When you're done, press <b>Copy my notes</b> and paste them to Claude.</p>
+  <div class="bar">
+    <label for="device">Device</label>
+    <select id="device">
+      <option>MacBook (Chrome)</option><option>iPad (Safari)</option><option>iPhone (Safari)</option>
+      <option>Android tablet</option><option>Android phone</option><option>Chromebook</option><option>Other</option>
+    </select>
+    <button class="btn primary" id="copy">Copy my notes</button>
+    <button class="btn soft" id="clear">Clear this device</button>
+    <span class="count" id="count"></span>
+  </div>
+  <div id="sections"></div>
+</main>
+<div class="toast" id="toast"></div>
+<script type="module">
+import { LEVELS } from '../content.js?v=dev';
+const LAB = 'https://divyasusarla.github.io/word-path-lab/';
+// Level numbers come from content.js so this list never drifts from the game
+const nums = (pred) => LEVELS.filter(pred).map(l => l.n).join(', ');
+const first = (pred) => LEVELS.find(pred).n;
+// [section title, how to get there (html), items: [text, optional detail]]
+const SECTIONS = [
+  ['1. Getting started', `Open <a href="${LAB}" target="_blank">the lab site</a> (no <code>?test</code>) on a fresh device or after Reset progress.`, [
+    ['The map opens on Stage 1 with "Next up: Level 1 · Letter sounds"'],
+    ['Only level 1 is open; the others show a lock'],
+    ['Tapping a locked level says it\'s locked (and doesn\'t start it)'],
+    ['"Hear it" says the next level\'s name'],
+    ['The sticker counter shows 0/38'],
+    ['Nothing on the page needs scrolling sideways'],
+  ]],
+  ['2. Sound and voice', 'Sound on. On iPhone, silent switch off.', [
+    ['The very first tap starts sound (no silent first level)', 'iPad/iPhone: Safari only allows sound after a tap'],
+    ['Letter sounds come from your recordings (natural, your voice)', 'In test mode, captions show 🎙 for recordings'],
+    ['"s" and "f" sound clean, with no rumble or hum'],
+    ['Quick sounds (b, d, t, p, k) have no "uh" after them'],
+    ['Held sounds (m, s, f, n) are held, not clipped'],
+    ['Sight words are clear and not cut off ("Pop the word: said.")'],
+    ['Instructions and words in the browser voice are understandable'],
+    ['The switch between your voice and the browser voice is acceptable', 'Note how it feels on each device'],
+    ['Pressing Hear again quickly never makes two voices talk at once'],
+    ['Leaving the app (home screen or another tab) and coming back: sound still works'],
+    ['Settings → Volume changes recordings and the voice'],
+    ['Settings → Talking speed changes the voice'],
+    ['Settings → Test voice plays'],
+  ]],
+  ['3. Letter sounds and letter names', `Letter sounds: levels ${nums(l => l.type === 'sounds')}. Letter names: ${nums(l => l.type === 'names')}. Test mode: <code>?test&amp;level=1</code>.`, [
+    ['The question says the sound, then "like in …" with an example word'],
+    ['Bubbles float in; tapping the right one pops it with sparkles'],
+    ['Tapping a wrong one shakes it, greys it out, says what it was, and repeats the question'],
+    ['Letter names: tiles show capital and small letter (Ss); the name is said ("ess")'],
+    [`Magic e and vowel teams (levels ${first(l => l.title === 'Magic e')} and ${first(l => l.title === 'Vowel teams')}) show a_e, ee, oa… clearly`],
+  ]],
+  ['4. Sorting by sound', `First sound: levels ${nums(l => l.type === 'sort' && l.ask === 'start')}. Sound inside the word: ${nums(l => l.type === 'sort' && l.ask === 'has')}.`, [
+    ['The picture in the middle is said aloud, then the question'],
+    ['Each bin shows its letter and an example picture'],
+    ['The example pictures don\'t also appear as pictures to sort'],
+    ['Right bin: the picture lands in it, with praise'],
+    ['Wrong bin: "Listen to the first sound" (or middle sound), then try again'],
+    [`Levels ${nums(l => l.type === 'sort' && l.ask === 'has')} ask "Does it have …?" and make sense for short/long vowels`],
+  ]],
+  ['5. Blend it', `Levels ${nums(l => l.type === 'blend')}. Test mode: <code>?test&amp;level=${first(l => l.type === 'blend')}</code>.`, [
+    ['The sounds are said separately with clear gaps, then "What word is that?"'],
+    ['The wrong pictures sound like the answer (cat → cap, can), so the first sound isn\'t enough'],
+    ['Every picture is the word you\'d expect (note any that aren\'t)', 'Also see tools/pictures.html'],
+    ['Wrong answer: says what that picture is, then repeats the sounds'],
+  ]],
+  ['6. Read it', `Levels ${nums(l => l.type === 'read')}.`, [
+    ['The word is big and easy to read'],
+    ['"Sound it out" says each sound, but not the whole word'],
+    ['The wrong pictures are similar-sounding words'],
+  ]],
+  ['7. Rhyme time', `Level ${nums(l => l.type === 'rhyme')}.`, [
+    ['The cue word is said clearly ("Which picture rhymes with fun?")'],
+    ['Each picture has its word underneath'],
+    ['Wrong answer explains it doesn\'t rhyme'],
+  ]],
+  ['8. Sight words', `Levels ${nums(l => l.type === 'sight')}.`, [
+    ['The word is said clearly within the sentence'],
+    ['Long words fit inside their bubble'],
+    ['Wrong answer says which word that was'],
+  ]],
+  ['9. Finishing levels and stages', 'Play a level to the end.', [
+    ['After a right answer there\'s a short pause, then the next round'],
+    ['The stars (or "3 of 8" on phones) fill in as rounds are finished'],
+    ['Level complete: the sticker pops in and is named'],
+    ['Finishing the last level of a stage says "You finished stage N!"'],
+    ['Next level starts the next level; Map returns to the map'],
+    ['The next level is now open on the map'],
+    ['After finishing a stage, the map moves to the next stage'],
+  ]],
+  ['10. Progress, stickers and settings', '', [
+    ['Reloading the page keeps progress and stickers'],
+    ['Sticker book shows earned stickers grouped by stage, the rest locked'],
+    ['Stage arrows on the map move between stages'],
+    ['Settings → Reset progress clears everything (after a confirmation)'],
+    ['Settings → About and credits opens and reads well'],
+    ['Lab progress doesn\'t affect the class link (divyasusarla.github.io/word-path), and vice versa'],
+  ]],
+  ['11. Layout on this device', 'Try both orientations. Rotate in the middle of a level too.', [
+    ['Map fits the screen without scrolling; all stops and labels are visible'],
+    ['Map path runs across in landscape, down in portrait'],
+    ['Play screens fit without scrolling'],
+    ['Hear again is always in the same place and never covers an answer'],
+    ['Buttons are easy to tap with a finger'],
+    ['Text is readable at arm\'s length'],
+    ['Rotating mid-level re-arranges cleanly and keeps the round'],
+    ['Sticker book, settings and About look OK on this device', 'These get their own layout pass next (#7b); note what looks off'],
+  ]],
+  ['12. Pictures (research R2)', 'Ask a child (or imagine one) to name each picture before you say the word.', [
+    ['Pictures in Blend it and Read it are named as intended', 'Note any that get a different name'],
+    ['Flagged pictures checked: tap, nap, cash, jet, net, log, dish, cube, game, king', 'tools/pictures.html shows them all'],
+    ['"Worth a look" pictures checked: pan, can, cup, feet, sock, pin, rose, bath, ten, six, five'],
+  ]],
+  ['13. With a child', 'Watch without helping at first.', [
+    ['They can start a level without help'],
+    ['They understand what each kind of level asks'],
+    ['They wait for the question before tapping (or note if they tap straight away)'],
+    ['They don\'t get stuck guessing (note where they do)'],
+    ['They stay interested for a whole level (note when attention drops)'],
+    ['The stickers motivate them'],
+  ]],
+];
+
+const KEY = 'wordpath-checklist.v1';
+let store = {};
+try { store = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} };
+const deviceSel = document.getElementById('device');
+deviceSel.value = store.lastDevice || deviceSel.options[0].text;
+const dev = () => (store[deviceSel.value] ||= { marks: {}, notes: {} });
+
+function render() {
+  const d = dev(), box = document.getElementById('sections');
+  box.innerHTML = '';
+  let total = 0, ok = 0, bad = 0;
+  SECTIONS.forEach(([title, how, items], si) => {
+    const det = document.createElement('details');
+    if (si === 0 || store.open?.[si]) det.open = true;
+    det.ontoggle = () => { (store.open ||= {})[si] = det.open; save(); };
+    const sum = document.createElement('summary');
+    const t = document.createElement('span'); t.textContent = title;
+    const tally = document.createElement('span'); tally.className = 'tally';
+    sum.append(t, tally); det.append(sum);
+    const body = document.createElement('div'); body.className = 'section-body';
+    if (how) { const p = document.createElement('p'); p.className = 'how'; p.innerHTML = how; body.append(p); }
+    let sOk = 0, sBad = 0;
+    items.forEach(([text, detail], ii) => {
+      const id = `${si}.${ii}`, m = d.marks[id];
+      total++; if (m === 'ok') { ok++; sOk++; } if (m === 'bad') { bad++; sBad++; }
+      const row = document.createElement('div'); row.className = 'item';
+      const p = document.createElement('p'); p.textContent = text;
+      if (detail) { const sm = document.createElement('small'); sm.textContent = detail; p.append(sm); }
+      const marks = document.createElement('div'); marks.className = 'marks';
+      for (const [val, label, cls] of [['ok', '✓', 'ok'], ['bad', '✗', 'bad']]) {
+        const b = document.createElement('button'); b.className = `mark ${cls}`; b.textContent = label;
+        b.setAttribute('aria-label', `${val === 'ok' ? 'Works' : 'Problem'}: ${text}`);
+        b.setAttribute('aria-pressed', m === val);
+        b.onclick = () => { d.marks[id] = d.marks[id] === val ? undefined : val; save(); render(); };
+        marks.append(b);
+      }
+      row.append(p, marks); body.append(row);
+    });
+    const ta = document.createElement('textarea'); ta.placeholder = 'Notes for this section (what happened, which level, screenshots taken…)';
+    ta.value = d.notes[si] || ''; ta.oninput = () => { d.notes[si] = ta.value; save(); };
+    body.append(ta); det.append(body);
+    tally.textContent = `${sOk + sBad}/${items.length}${sBad ? ` · ${sBad} ✗` : ''}`;
+    box.append(det);
+  });
+  document.getElementById('count').textContent = `${ok + bad}/${total} checked · ${bad} problem${bad === 1 ? '' : 's'}`;
+}
+
+deviceSel.onchange = () => { store.lastDevice = deviceSel.value; save(); render(); };
+document.getElementById('clear').onclick = () => { if (confirm(`Clear all marks and notes for ${deviceSel.value}?`)) { delete store[deviceSel.value]; save(); render(); } };
+document.getElementById('copy').onclick = async () => {
+  const lines = [`Word Path play-through notes (${new Date().toISOString().slice(0, 10)})`];
+  for (const [device, d] of Object.entries(store)) {
+    if (!d || !d.marks) continue;
+    const any = Object.values(d.marks).some(Boolean) || Object.values(d.notes).some(n => n && n.trim());
+    if (!any) continue;
+    lines.push('', `## ${device}`);
+    SECTIONS.forEach(([title, , items], si) => {
+      const problems = items.map(([text], ii) => d.marks[`${si}.${ii}`] === 'bad' ? `  ✗ ${text}` : null).filter(Boolean);
+      const done = items.filter((_, ii) => d.marks[`${si}.${ii}`]).length;
+      const note = (d.notes[si] || '').trim();
+      if (!done && !note) return;
+      lines.push(`${title} (${done}/${items.length} checked)`, ...problems);
+      if (note) lines.push(`  Notes: ${note}`);
+    });
+  }
+  const text = lines.join('\n');
+  try { await navigator.clipboard.writeText(text); toast('Copied. Paste it to Claude.'); }
+  catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Copied.'); }
+};
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.style.display = 'block'; setTimeout(() => { t.style.display = 'none'; }, 2200); }
+
+render();
+window.checklistReady = { sections: SECTIONS.length, items: SECTIONS.reduce((n, s) => n + s[2].length, 0) };
+</script>
+</body>
+</html>
