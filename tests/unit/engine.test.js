@@ -2,7 +2,9 @@
 // Each test is [name, fn]; fn throws on failure. Run in the browser by tests/index.html and in Node by
 // tests/unit/run.mjs (GitHub Actions).
 import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuffle, unlocked, nextLevel,
-  stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2, prompt, soundOutParts } from '../../engine.js?v=dev';
+  stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2, prompt, soundOutParts,
+  MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
+  modelAfter, modelParts, praiseParts, shouldPractiseAgain } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 
 const ok = (cond, msg) => { if (!cond) throw new Error(msg); };
@@ -127,6 +129,70 @@ export const tests = [
   }],
   ['every level has a unique id', () => {
     eq(new Set(LV.map(l => l.id)).size, LV.length, 'unique ids');
+  }],
+
+  // ---- mastery
+  ['mastery: 3 first-try correct of the last 4, across 2 days', () => {
+    eq(MASTERY_RULE, { correct: 3, of: 4, days: 2 }, 'rule');
+    const a = (day, ok) => ({ day, ok });
+    ok(!isMastered([a('d1', true), a('d1', true), a('d1', true)]), 'three right on one day is not enough');
+    ok(isMastered([a('d1', true), a('d1', true), a('d2', true)]), 'three right over two days');
+    ok(isMastered([a('d1', true), a('d1', false), a('d2', true), a('d2', true)]), 'one slip in the last four is fine');
+    ok(!isMastered([a('d1', true), a('d1', false), a('d2', false), a('d2', true)]), 'two slips is not');
+    ok(!isMastered([a('d1', true), a('d1', true), a('d2', true), a('d3', false), a('d3', false)]), 'only the last four count');
+    ok(!isMastered([]), 'no attempts');
+  }],
+  ['mastery: recordAttempt keeps a short history and never changes the old store', () => {
+    let st = {};
+    for (let i = 0; i < 12; i++) st = recordAttempt(st, 'blend:cat', i % 2 === 0, `d${i}`);
+    eq(st['blend:cat'].length, 8, 'keeps the last 8');
+    const before = JSON.stringify(st), after = recordAttempt(st, 'blend:cat', true, 'd99');
+    eq(JSON.stringify(st), before, 'old store untouched');
+    ok(after['blend:cat'].at(-1).day === 'd99', 'new attempt added');
+  }],
+  ['mastery: every round has a key, and it is one of its level\'s items', () => {
+    for (const L of LV) {
+      const items = new Set(levelItems(L));
+      for (const r of buildRounds(L, 6, seeded(L.n))) ok(items.has(itemKey(L, r)), `level ${L.n}: ${itemKey(L, r)} not in its items`);
+    }
+  }],
+  ['mastery: keys say what was practised', () => {
+    eq(itemKey(level('sounds'), { target: 'sh' }), 'sound:sh', 'sound');
+    eq(itemKey(level('sight'), { target: 'said' }), 'word:said', 'sight word');
+    eq(itemKey(level('blend'), { target: { w: 'cat' } }), 'blend:cat', 'blend');
+    eq(itemKey(level('sort'), { w: 'sock', bin: 0 }), 'sort:sock', 'sort');
+  }],
+  ['mastery: masteredIn counts only that level\'s mastered items', () => {
+    const L = level('blend'), [w1, w2] = L.words;
+    let st = {};
+    for (const day of ['d1', 'd1', 'd2']) st = recordAttempt(st, `blend:${w1}`, true, day);
+    st = recordAttempt(st, `blend:${w2}`, true, 'd1');
+    eq(masteredIn(L, st), [`blend:${w1}`], 'mastered');
+  }],
+  ['today() gives a calendar date', () => ok(/^\d{4}-\d{2}-\d{2}$/.test(today()), today())],
+
+  // ---- feedback
+  ['feedback: answer shown after 2 misses, or 1 in a sort', () => {
+    eq(modelAfter(level('blend')), 2, 'blend'); eq(modelAfter(level('sight')), 2, 'sight'); eq(modelAfter(level('sort')), 1, 'sort');
+  }],
+  ['feedback: showing the answer names it', () => {
+    const B = level('blend'); ok(modelParts(B, { target: { w: 'cat' } }).some(p => p.t && p.t.includes('cat')), 'blend names the word');
+    const S = level('sounds'); ok(modelParts(S, { target: 'm' }).some(p => p.clip === 'm'), 'sound plays the sound');
+    const T = level('sort'); ok(modelParts(T, T.items[0]).some(p => p.clip === GRAPHEMES[T.bins[T.items[0].bin]].clip), 'sort plays the right sound');
+  }],
+  ['feedback: praise says what was right; "You know that one now" only when newly mastered', () => {
+    const S = level('sounds');
+    ok(praiseParts(S, { target: 'sh' }).some(p => p.clip === 'sh'), 'sound praise plays the sound');
+    ok(!praiseParts(S, { target: 'sh' }).includes('You know that one now!'), 'no mastery news by default');
+    ok(praiseParts(S, { target: 'sh' }, { mastered: true }).includes('You know that one now!'), 'mastery news');
+    eq(praiseParts(S, { target: 'sh' }, { modelled: true }), ["That's it."], 'after the answer was shown');
+    ok(praiseParts(level('sight'), { target: 'said' })[0].t.includes('said'), 'sight word praise says the word');
+  }],
+  ['feedback: practise again below half right first time', () => {
+    ok(shouldPractiseAgain([false, false, true]), '1 of 3');
+    ok(!shouldPractiseAgain([true, false]), '1 of 2 is half, not under');
+    ok(!shouldPractiseAgain([true, true, false]), '2 of 3');
+    ok(!shouldPractiseAgain([]), 'nothing played');
   }],
 
   // ---- layout

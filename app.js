@@ -3,7 +3,8 @@
 import { h, html, render, Component } from './vendor/preact-htm.module.js';
 import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage } from './content.js?v=dev';
 import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
-  unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2 } from './engine.js?v=dev';
+  unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
+  itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain } from './engine.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
 const CONFIG = {
@@ -32,17 +33,17 @@ const PAL = [
   { bg:'#F2544A', sh:'#C83A31', fg:'#fff' }, { bg:'#FFC23C', sh:'#DB9A0A', fg:'#2A2350' },
   { bg:'#2EC4A6', sh:'#17977F', fg:'#2A2350' }, { bg:'#7B61FF', sh:'#5940D6', fg:'#fff' }, { bg:'#4DB3FF', sh:'#2188D6', fg:'#2A2350' }
 ];
-const PRAISE = ['Yes!', 'Great job!', 'You got it!', 'Nice work!', 'Super!'];
 // Own storage keys so the lab never touches progress saved by the class version (same github.io origin)
 const KEY = 'wordpath-lab.v3';  // v3: finished level ids. v2 (true/false by position) is migrated once
 const KEY_V2 = 'wordpath-lab.v2';
 const AKEY = 'wordpath-lab.audio';
+const MKEY = 'wordpath-lab.mastery.v1';  // first-try attempts per word and sound (see MASTERY_RULE in engine.js)
 
 class App extends Component {
   sid = 0; run = 0; tms = []; voices = []; spoken = [];
   recorded = new Set(); buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
 
-  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
+  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), mastery:this.loadMastery(), answered:false, misses:0, modelled:false, firstTries:[], settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
 
   // In test mode nothing is read from or written to storage
   load() {
@@ -58,6 +59,20 @@ class App extends Component {
   loadAudio() {
     if (!TEST) try { const a = JSON.parse(localStorage.getItem(AKEY)); if (a) return { voice: a.voice || '', vol: a.vol ?? 0.6, rate: a.rate ?? 0.85 }; } catch (e) {}
     return { voice:'', vol:0.6, rate:0.85 };
+  }
+  loadMastery() {
+    if (!TEST) try { const m = JSON.parse(localStorage.getItem(MKEY)); if (m && typeof m === 'object') return m; } catch (e) {}
+    return {};
+  }
+  // Only the first tap of each round counts towards mastery; guesses after a miss don't
+  record(L, r, ok) {
+    this.justMastered = false;
+    if (this.state.answered) return;
+    const key = itemKey(L, r), before = isMastered(this.state.mastery[key]);
+    const mastery = recordAttempt(this.state.mastery, key, ok, TEST && Q.get('day') ? Q.get('day') : today());
+    this.justMastered = ok && !before && isMastered(mastery[key]);
+    if (!TEST) try { localStorage.setItem(MKEY, JSON.stringify(mastery)); } catch (e) {}
+    this.setState(s => ({ mastery, answered: true, firstTries: s.firstTries.concat(!!ok) }));
   }
   save(done) { if (!TEST) try { localStorage.setItem(KEY, JSON.stringify(idsFromDone(done))); } catch (e) {} }
   setAudio(patch) {
@@ -94,7 +109,7 @@ class App extends Component {
       state: () => {
         const s = this.state, L = LV[s.lvl], r = s.rounds[s.round];
         return { screen: s.screen, level: L.n, stage: L.stage + 1, type: L.type, kind: L.kind, mode: L.mode, ask: L.ask, round: s.round, rounds: s.rounds.length, solved: s.solved,
-          target: r ? (r.target?.w ?? r.target ?? r.w) : null, options: r && r.options ? r.options.map(o => o.w ?? o.label) : null, mapStage: this.mapStage(), settings: s.settings, done: s.done.slice() };
+          target: r ? (r.target?.w ?? r.target ?? r.w) : null, modelled: s.modelled, misses: s.misses, firstTries: s.firstTries.slice(), options: r && r.options ? r.options.map(o => o.w ?? o.label) : null, mapStage: this.mapStage(), settings: s.settings, done: s.done.slice() };
       },
       right: () => this.answer(true),
       wrong: () => this.answer(false),
@@ -107,6 +122,8 @@ class App extends Component {
       recorded: () => [...this.recorded],
       audioState: () => this.actx ? this.actx.state : 'not started',
       layout: () => layoutFor(this.state.vw, this.state.vh),
+      mastery: () => JSON.parse(JSON.stringify(this.state.mastery)),
+      masteredIn: n => masteredIn(LV[n - 1], this.state.mastery),
       played: () => this.playedClips.slice(),
       clearSpoken: () => { this.spoken = []; }
     };
@@ -229,7 +246,7 @@ class App extends Component {
     if (!this.unlocked(i)) { this.speak(['That level is locked. Finish the one before it.']); return; }
     this.stop();
     const L = LV[i], rounds = this.build(L);
-    this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null });
+    this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false, misses:0, modelled:false, firstTries:[] });
     this.speak(this.prompt(L, rounds[0], true));
   }
 
@@ -239,14 +256,21 @@ class App extends Component {
       const done = this.state.done.slice(); done[lvl] = true; this.save(done);
       const stageDone = stageComplete(L.stage, done);
       this.setState({ screen:'done', done });
-      this.speak(['You did it!', 400, `You earned the ${L.sticker.name} sticker!`, ...(stageDone ? [500, `You finished stage ${L.stage + 1}!`] : [])]);
+      const again = shouldPractiseAgain(this.state.firstTries);
+      this.speak(['You did it!', 400, `You earned the ${L.sticker.name} sticker!`, ...(stageDone ? [500, `You finished stage ${L.stage + 1}!`] : []), ...(again ? [500, 'Let\'s practise this one again.'] : [])]);
       return;
     }
-    this.setState({ round: round + 1, wrong:[], solved:false, binWrong:null });
+    this.setState({ round: round + 1, wrong:[], solved:false, binWrong:null, answered:false, misses:0, modelled:false });
     this.speak(this.prompt(L, rounds[round + 1], false));
   }
 
-  praise() { return PRAISE[Math.floor(Math.random() * PRAISE.length)]; }
+  // Count a miss; after enough misses, show and say the answer instead of letting guessing win
+  miss(L, r, said) {
+    const misses = this.state.misses + 1, model = misses >= modelAfter(L);
+    this.setState({ misses, modelled: this.state.modelled || model });
+    this.speak(model ? [...said, 600, ...modelParts(L, r)] : [...said, 600, 'Try again.', 700, ...this.prompt(L, r, false)]);
+  }
+  praise(L, r) { return praiseParts(L, r, { modelled: this.state.modelled, mastered: this.justMastered }); }
 
   async win(say) {
     const run = this.run;
@@ -259,32 +283,33 @@ class App extends Component {
   pickPop(i) {
     const { rounds, round, solved, lvl, wrong } = this.state; if (solved || wrong.includes(i)) return;
     const L = LV[lvl], r = rounds[round], o = r.options[i];
-    if (isRight(L, r, o)) return this.win([this.praise()]);
+    this.record(L, r, isRight(L, r, o));
+    if (isRight(L, r, o)) return this.win(this.praise(L, r));
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
-    const say = L.mode === 'sound' ? ['That one says', 300, gsnd(o.label)]
+    this.miss(L, r, L.mode === 'sound' ? ['That one says', 300, gsnd(o.label)]
       : L.mode === 'name' ? ['That letter is', 300, nsnd(o.label)]
-      : [{ t: `That word is: ${o.label}.`, rate: 0.85 }];
-    this.speak([...say, 600, 'Try again.', 700, ...this.prompt(L, r, false)]);
+      : [{ t: `That word is: ${o.label}.`, rate: 0.85 }]);
   }
 
   pickMatch(i) {
     const { rounds, round, solved, lvl, wrong } = this.state; if (solved || wrong.includes(i)) return;
     const L = LV[lvl], r = rounds[round], o = r.options[i];
-    if (isRight(L, r, o)) return this.win(L.mode === 'rhyme' ? ['Yes!', 300, `${r.target.cue}, ${o.w}.`] : [`${o.w}!`, 300, this.praise()]);
+    this.record(L, r, isRight(L, r, o));
+    if (isRight(L, r, o)) return this.win(this.praise(L, r));
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
-    if (L.mode === 'rhyme') this.speak([`${o.w} does not rhyme with ${r.target.cue}.`, 500, 'Try again.']);
-    else this.speak([`That is a ${o.w}.`, 500, 'Try again.', ...(L.mode === 'blend' ? [700, ...this.prompt(L, r, false)] : [])]);
+    this.miss(L, r, L.mode === 'rhyme' ? [`${o.w} does not rhyme with ${r.target.cue}.`] : [`That is a ${o.w}.`]);
   }
 
   pickBin(b) {
     const { rounds, round, solved, lvl } = this.state; if (solved) return;
     const L = LV[lvl], item = rounds[round];
+    this.record(L, item, isRight(L, item, b));
     if (isRight(L, item, b)) {
       this.setState(s => { const sorted = [s.sorted[0].slice(), s.sorted[1].slice()]; sorted[b].push(item); return { sorted, binWrong:null }; });
-      return this.win(['Yes!', 300, L.ask === 'has' ? `${item.w} has` : `${item.w} starts with`, 300, gsnd(L.bins[b])]);
+      return this.win(this.praise(L, item));
     }
     this.setState({ binWrong: b });
-    this.speak([L.ask === 'has' ? 'Listen to the middle sound.' : 'Listen to the first sound.', 500, { t: item.w, rate: 0.6 }, 600, 'Try again.']);
+    this.miss(L, item, [L.ask === 'has' ? 'Listen to the middle sound.' : 'Listen to the first sound.', 500, { t: item.w, rate: 0.6 }]);
   }
 
   // Says each sound in the word, slowly, but not the word itself: the child does the blending
@@ -303,8 +328,10 @@ class App extends Component {
     return h('div', { style: field },
       r.options.map((o, i) => {
         const right = solved && o.label === r.target, bad = wrong.includes(i), c = PAL[(i + round) % PAL.length];
+        const shown = this.state.modelled && !solved && o.label === r.target;
         const anim = right ? 'wpPop .6s cubic-bezier(.34,1.56,.64,1) forwards'
           : bad ? 'wpShake .5s ease-in-out'
+          : shown ? 'wpGlow 1s ease-in-out infinite alternate'
           : `wpBob ${o.dur}s ease-in-out ${o.bob}s infinite alternate`;
         const sparks = right ? [0,1,2,3,4,5,6,7].map(k => {
           const a = k / 8 * Math.PI * 2;
@@ -319,7 +346,7 @@ class App extends Component {
             'aria-label': o.label,
             style: {
               width:'100%', height:'100%', borderRadius:'50%', border:'7px solid #fff', cursor: bad ? 'default' : 'pointer',
-              background: bad ? '#E6E1EE' : c.bg, color: bad ? '#9A93AE' : c.fg, boxShadow:`0 9px 0 ${bad ? '#CFC8DB' : c.sh}`,
+              background: bad ? '#E6E1EE' : c.bg, color: bad ? '#9A93AE' : c.fg, boxShadow:`0 9px 0 ${bad ? '#CFC8DB' : c.sh}${shown ? ', 0 0 0 10px #FFC23C' : ''}`,
               display:'flex', alignItems:'center', justifyContent:'center',
               fontFamily:"'Fredoka',system-ui,sans-serif", fontWeight:700, fontSize: Math.round(size * (L.mode === 'word' ? (o.label.length > 6 ? 0.17 : 0.23) : (o.label.length > 2 || L.mode === 'name' ? 0.38 : 0.5))),
               animation: anim
@@ -356,15 +383,16 @@ class App extends Component {
 
     const matchOptions = isPlay && L.kind === 'match' && r ? r.options.map((o, i) => {
       const right = solved && o.w === r.target.w, bad = wrong.includes(i), c = P[(i * 2 + round) % 5];
+      const shown = this.state.modelled && !solved && o.w === r.target.w;
       // Rhyme time shows the word under each picture; blend and read levels don't, since the word is the answer
       return { pic: picSrc(o.w), word: L.mode === 'rhyme' ? o.w : '', bg: right ? '#2EC4A6' : '#fff', fg: right ? '#fff' : c.sh, sh: right ? '#17977F' : '#E8DCC8',
-        opacity: bad ? 0.35 : 1, transform: right ? 'scale(1.08) rotate(-2deg)' : 'scale(1)', onClick: () => this.pickMatch(i) };
+        opacity: bad ? 0.35 : 1, transform: right ? 'scale(1.08) rotate(-2deg)' : 'scale(1)', shown, onClick: () => this.pickMatch(i) };
     }) : [];
 
     const binC = [P[0], P[3]];
     const bins = isPlay && L.kind === 'sort' ? L.bins.map((b, k) => ({
       label: showG(b), anchor: picSrc(GRAPHEMES[b].ex), aria: L.ask === 'has' ? `Has ${b}` : `Starts with ${b}`, order: k === 0 ? 0 : 2,
-      bg: binC[k].bg, sh: binC[k].sh, transform: binWrong === k ? 'scale(.96)' : 'scale(1)',
+      bg: binC[k].bg, sh: binC[k].sh, transform: binWrong === k ? 'scale(.96)' : 'scale(1)', shown: this.state.modelled && !solved && r && r.bin === k,
       items: sorted[k].map(x => ({ pic: picSrc(x.w) })), onClick: () => this.pickBin(k)
     })) : [];
 
@@ -402,9 +430,16 @@ class App extends Component {
       sortAsk: L.ask === 'has' ? 'Which sound is in it?' : 'Which sound?',
       sortTransform: solved ? 'scale(1.1) rotate(-4deg)' : 'scale(1)',
       doneSticker, doneName: dl.sticker.name,
+      doneKnown: (() => {
+        const n = masteredIn(dl, this.state.mastery).length, of = levelItems(dl).length;
+        const what = dl.kind === 'pop' ? (dl.mode === 'word' ? 'words' : dl.mode === 'name' ? 'letter names' : 'sounds') : dl.kind === 'sort' ? 'pictures' : 'words';
+        return n ? `You know ${n} of the ${of} ${what} in this level` : '';
+      })(),
       doneStage: stageDone ? `You finished stage ${dl.stage + 1}!` : '',
       hasNextAfter: lvl + 1 < LV.length,
       playNext: () => this.start(lvl + 1),
+      practiseAgain: screen === 'done' && shouldPractiseAgain(this.state.firstTries),
+      playAgain: () => this.start(lvl),
       stickerGroups: STAGES.map((stg, k) => ({
         title: `${stg.title}: ${stg.sounds.split(' ').map(showG).join(' ')}`,
         items: LV.map((l, i) => [l, i]).filter(([l]) => l.stage === k).map(([l, i]) => {
@@ -423,7 +458,7 @@ class App extends Component {
       onVol: e => this.setAudio({ vol: parseFloat(e.target.value) }),
       onRate: e => this.setAudio({ rate: parseFloat(e.target.value) }),
       testVoice: () => this.speak(['Hi! Let\'s play with letters.', 500, 'This letter says', 400, gsnd('s')]),
-      resetAll: () => { if (window.confirm('Reset all progress and stickers?')) { const d = Array(LV.length).fill(false); this.save(d); this.setState({ done: d, settings: false, mapStage: null }); } }
+      resetAll: () => { if (window.confirm('Reset all progress and stickers?')) { const d = Array(LV.length).fill(false); this.save(d); if (!TEST) try { localStorage.removeItem(MKEY); } catch (e) {} this.setState({ done: d, mastery: {}, settings: false, mapStage: null }); } }
     };
   }
 
@@ -452,7 +487,7 @@ class App extends Component {
         ${s.screen === 'play' && html`<div style=${row}>
           <button onClick=${() => this.answer(true)} style=${b}>✓ Answer right</button>
           <button onClick=${() => this.answer(false)} style=${b}>✗ Answer wrong</button>
-          <span style="font-size:12px;color:#5C5677">Round ${s.round + 1}/${s.rounds.length}</span></div>`}
+          <span style="font-size:12px;color:#5C5677">Round ${s.round + 1}/${s.rounds.length} · mastered here ${masteredIn(LV[s.lvl], s.mastery).length}/${levelItems(LV[s.lvl]).length}</span></div>`}
         <div style=${label}>Screens</div>
         <div style=${row}>
           <button onClick=${() => goScreen('map')} style=${b + (s.screen === 'map' ? ';' + on : '')}>Map</button>
@@ -555,7 +590,7 @@ class App extends Component {
               <div class="read-word" style="align-self:center;padding:8px 40px 16px;background:#fff;border-radius:36px;font-weight:700;line-height:1;box-shadow:0 8px 0 #E8DCC8">${v.readWord}</div>`}
             <div class="match-grid">
               ${v.matchOptions.map(o => html`
-                <button class="hv-bright match-card" onClick=${o.onClick} aria-label="Picture choice" style=${`border:0;border-radius:40px;background:${o.bg};color:${o.fg};opacity:${o.opacity};transform:${o.transform};box-shadow:0 10px 0 ${o.sh};cursor:pointer;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;transition:transform .45s cubic-bezier(.34,1.56,.64,1),background .2s,opacity .3s`}>
+                <button class=${`hv-bright match-card${o.shown ? ' shown' : ''}`} onClick=${o.onClick} aria-label="Picture choice" style=${`border:0;border-radius:40px;background:${o.bg};color:${o.fg};opacity:${o.opacity};transform:${o.transform};box-shadow:0 10px 0 ${o.sh};cursor:pointer;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;transition:transform .45s cubic-bezier(.34,1.56,.64,1),background .2s,opacity .3s`}>
                   <img src=${o.pic} alt="" />
                   ${o.word && html`<span style="font-size:clamp(28px,5vh,48px);font-weight:700;line-height:1;color:#2A2350">${o.word}</span>`}
                 </button>`)}
@@ -565,7 +600,7 @@ class App extends Component {
         ${v.isSort && html`
           <div class="sort-grid">
             ${v.bins.map(b => html`
-              <button class="hv-bright2 bin" onClick=${b.onClick} aria-label=${b.aria} style=${`order:${b.order};display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;border:0;border-radius:40px;background:${b.bg};color:#fff;box-shadow:0 10px 0 ${b.sh};cursor:pointer;transform:${b.transform};transition:transform .3s cubic-bezier(.34,1.56,.64,1)`}>
+              <button class=${`hv-bright2 bin${b.shown ? ' shown' : ''}`} onClick=${b.onClick} aria-label=${b.aria} style=${`order:${b.order};display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;border:0;border-radius:40px;background:${b.bg};color:#fff;box-shadow:0 10px 0 ${b.sh};cursor:pointer;transform:${b.transform};transition:transform .3s cubic-bezier(.34,1.56,.64,1)`}>
                 <div class="bin-head" style="display:flex;align-items:center;gap:16px">
                   <span class="bin-label" style="font-weight:700;font-size:100px;line-height:1">${b.label}</span>
                   <span class="bin-anchor" style="width:96px;height:96px;flex-shrink:0;border-radius:50%;background:#fff;color:#2A2350;display:flex;align-items:center;justify-content:center">${b.anchor && html`<img src=${b.anchor} alt="" style="width:60px;height:60px" />`}</span>
@@ -601,10 +636,13 @@ class App extends Component {
             <div style="font-size:22px;font-weight:600;color:#5940D6">Level ${v.levelNum} complete!</div>
             <div style="font-size:60px;font-weight:700;line-height:1.05">You got the ${v.doneName} sticker</div>
             ${v.doneStage && html`<div style="font-size:28px;font-weight:700;color:#17977F;margin-top:8px">${v.doneStage}</div>`}
+            ${v.doneKnown && html`<div class="done-known" style="font-size:20px;font-weight:600;color:#5C5677;margin-top:8px">${v.doneKnown}</div>`}
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:12px">
+            ${v.practiseAgain && html`
+              <button onClick=${v.playAgain} style="height:80px;padding:0 36px 0 28px;border:0;border-radius:999px;background:#FFC23C;color:#2A2350;font-size:28px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 6px 0 #DB9A0A"><i class="icon-rotate-ccw" style="font-size:30px;line-height:1"></i>Practise again</button>`}
             ${v.hasNextAfter && html`
-              <button onClick=${v.playNext} style="height:80px;padding:0 36px 0 28px;border:0;border-radius:999px;background:#FFC23C;color:#2A2350;font-size:28px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 6px 0 #DB9A0A"><i class="icon-play" style="font-size:30px;line-height:1"></i>Next level</button>`}
+              <button onClick=${v.playNext} style=${v.practiseAgain ? softBtn : 'height:80px;padding:0 36px 0 28px;border:0;border-radius:999px;background:#FFC23C;color:#2A2350;font-size:28px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 6px 0 #DB9A0A'}><i class="icon-play" style="font-size:30px;line-height:1"></i>Next level</button>`}
             <button onClick=${v.goStickers} style=${softBtn}><i class="icon-sticker" style="font-size:28px;line-height:1"></i>Stickers</button>
             <button onClick=${v.goMap} style=${softBtn}><i class="icon-map" style="font-size:28px;line-height:1"></i>Map</button>
           </div>

@@ -110,7 +110,7 @@ async function playLevel(n) {
     if (r === 0) {
       wp.clearSpoken();
       expect(wp.wrong(), 'could not pick a wrong answer');
-      await waitFor(() => wp.spoken().some(t => /Try again/.test(t)), 3000, 'wrong-answer feedback');
+      await waitFor(() => wp.spoken().some(t => /Try again|Tap it|Tap that one/.test(t)), 3000, 'wrong-answer feedback');
       expect(!wp.state().solved, 'a wrong answer was marked as solved');
     }
     expect(wp.right(), 'could not pick the right answer');
@@ -315,6 +315,72 @@ async function runAll() {
       }
       expect(!issues.length, issues.join('\n'));
     } finally { frame.style.width = ''; frame.style.height = ''; frame.style.aspectRatio = ''; }
+  });
+  await check('Mastery: only the first tap of each round is recorded', async () => {
+    const n = LEVELS.find(l => l.type === 'blend').n;
+    const w = await load(`level=${n}&rounds=3`);
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    const keys = [];
+    for (let r = 0; r < 3; r++) {
+      keys.push(`blend:${w.wp.state().target}`);
+      if (r === 0) { w.wp.wrong(); await sleep(50); w.wp.wrong(); await sleep(50); }
+      w.wp.right();
+      if (r < 2) await waitFor(() => w.wp.state().round === r + 1, 4000, `round ${r + 2}`);
+    }
+    await waitFor(() => w.wp.state().screen === 'done', 4000, 'level complete');
+    const m = w.wp.mastery();
+    const all = Object.values(m).flat();
+    expect(all.length === 3, `expected 3 recorded attempts, got ${all.length}: ${JSON.stringify(m)}`);
+    expect(m[keys[0]][0].ok === false, 'a wrong first tap should record as not right');
+    expect(m[keys[1]].at(-1).ok === true && m[keys[2]].at(-1).ok === true, 'right first taps should record as right');
+    return `${keys.join(', ')} → ${all.map(a => a.ok ? '✓' : '✗').join(' ')}`;
+  });
+  await check('Feedback: after two misses the answer is shown and said, then tapping it counts as not first-try', async () => {
+    const n = LEVELS.find(l => l.type === 'sight').n;
+    const w = await load(`level=${n}&rounds=2`);
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    w.wp.clearSpoken();
+    w.wp.wrong(); await sleep(60);
+    expect(!w.wp.state().modelled, 'shown after only one miss');
+    w.wp.wrong();
+    await waitFor(() => w.wp.state().modelled, 1000, 'the answer to be shown');
+    await waitFor(() => w.wp.spoken().some(t => /Here it is/.test(t)), 2000, '"Here it is"');
+    const glowing = [...doc().querySelectorAll('.play-main button')].filter(b => getComputedStyle(b).boxShadow.includes('255, 194, 60'));
+    expect(glowing.length === 1 && glowing[0].innerText.trim() === w.wp.state().target, 'the answer should be the one highlighted');
+    w.wp.right();
+    await waitFor(() => w.wp.spoken().some(t => /That's it/.test(t)), 2000, '"That\'s it"');
+    expect(w.wp.state().firstTries[0] === false, 'the round should count as not first-try');
+  });
+  await check('Feedback: a sort level shows the right bin after one miss', async () => {
+    const n = LEVELS.find(l => l.type === 'sort').n;
+    const w = await load(`level=${n}`);
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    w.wp.wrong();
+    await waitFor(() => w.wp.state().modelled, 1000, 'the answer to be shown');
+    expect(doc().querySelectorAll('.bin.shown').length === 1, 'one bin should be highlighted');
+  });
+  await check('Feedback: praise says what was right', async () => {
+    const n = LEVELS.find(l => l.type === 'sounds').n;
+    const w = await load(`level=${n}&rounds=1`);
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    w.wp.clearSpoken(); w.wp.right();
+    await waitFor(() => w.wp.spoken().some(t => /Yes! That says/.test(t)), 2000, '"Yes! That says …"');
+    const d = w.wp.spokenDetail(); const i = d.findIndex(x => /Yes! That says/.test(x.t));
+    expect(d[i + 1] && d[i + 1].clip, 'the sound should follow the praise');
+  });
+  await check('Level complete: offers "Practise again" when under half the first taps were right', async () => {
+    const n = LEVELS.find(l => l.type === 'blend').n;
+    const w = await load(`level=${n}&rounds=3`);
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    for (let r = 0; r < 3; r++) {
+      w.wp.wrong(); await sleep(40); w.wp.right();
+      if (r < 2) await waitFor(() => w.wp.state().round === r + 1, 4000, `round ${r + 2}`);
+    }
+    await waitFor(() => w.wp.state().screen === 'done', 4000, 'level complete');
+    const btns = [...doc().querySelectorAll('button')].map(b => b.innerText.trim());
+    expect(btns.includes('Practise again'), `no Practise again button: ${btns.join(', ')}`);
+    expect(btns.includes('Next level'), 'Next level should still be offered');
+    await waitFor(() => w.wp.spoken().some(t => /practise this one again/.test(t)), 2000, 'the spoken suggestion');
   });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
