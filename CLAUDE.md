@@ -15,3 +15,4 @@
 - Speech sounds: `snd(pair, clipId)` plays `audio/<clipId>.wav` when `audio/manifest.json` lists it, else the browser voice says the fallback text. Every clip id must exist in `sounds.js` (the checks enforce this). New sounds go in `sounds.js` first.
 - Importing recordings: `python3 tools/import_audio.py <zip>` (see RECORDING.md). It rebuilds the manifest; don't hand-edit it. Recordings play through Web Audio, unlocked on the first tap for iOS Safari.
 - `versions/` holds frozen playable copies. Never edit them except to give each its own `wordpath-archive-<ver>.*` storage keys. When cutting a milestone, copy the current site into `versions/<ver>/` and add a card to `versions/index.html`.
+- Planned work lives in BACKLOG.md; tick items off there and record them in CHANGELOG.md when they ship.
