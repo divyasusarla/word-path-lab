@@ -10,7 +10,7 @@ Work top to bottom. "Parallel" items are mostly your time and can happen alongsi
 
 | # | Item | Size | Area | Why here |
 |---|---|---|---|---|
-| 9 | **Re-record 6 letter sounds** in the recorder's "Letter sounds and names" batch: s and f (background rumble), th (thin) and th (this) (0.3–0.4 s, mostly breath), sh and ng (0.6 s): hold each for about 2 seconds. Then Download all; only these re-imports | S | Audio · parallel | Yours |
+| 9 | **Re-record letter sounds** (done 2026-10-03: rumble gone from s and f). Optional: f, th (thin), th (this) and ng are still under a second (0.6–0.9 s); held for about 2 seconds they'd be clearer | S | Audio · parallel | Yours, optional |
 | 3 | **Picture naming review** (part 1 shipped: `tools/pictures.html`; part 2, the decisions, happens during testing: see Research R2): check pictures a child could name differently (tap → "water", cup → "drink", pan → "egg", nap → "sleep", cash → "money", king → "prince"); swap or rename; say a picture's name when it's pressed and held | S | Learning | A misnamed picture makes a right answer look wrong |
 | 14 | **Developmental bands**: regroup stages into K / grade 1 / grade 2 per `LEARNING_DESIGN.md`; add grade 2 content (endings -s -ed -ing, more vowel patterns, two-syllable words) | L | Learning | Fits the K–2 span properly; needs #5 and #11 |
 | 14b | **Consonant blends as a teaching step**: st, sp, sn, fr, tr, cl, -nd, -mp… with sorting, blending and reading levels; today some words (snake, star, spoon, tree) use blends that were never taught | M | Learning | Gap found in LEARNING_DESIGN.md; part of band B |
