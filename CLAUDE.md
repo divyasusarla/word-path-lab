@@ -7,7 +7,7 @@
 - Gameplay settings (rounds per level, think time, unlock all) are in `CONFIG` at the top of `app.js`.
 - All content lives in `content.js`: GRAPHEMES (sound → recording), PICS (word → Noto emoji), WORDS (word → sounds to blend), FRY (300 sight words), STAGES (the teaching order) and STICKERS (one per level). `coverage()` must return no problems: every letter taught and named, words only use sounds already taught, every word has a picture. New pictures: add the emoji to PICS, then download `2D/svg/<emojiFile>` from googlefonts/noto-emoji into `vendor/noto/`.
 - Progress is stored by level position under `wordpath-lab.v2`. Reordering or inserting levels shifts saved progress; bump the key if that matters.
-- Preview locally with `python3 -m http.server 8765`. Before every push, run http://127.0.0.1:8765/tests/?run in the browser (all checks must pass; `window.testResult` holds the totals) and look at the change in test mode (`?test`). See TESTING.md.
+- Preview locally with `python3 tools/serve.py`. Before every push, run http://127.0.0.1:8765/tests/?run in the browser (all checks must pass; `window.testResult` holds the totals) and look at the change in test mode (`?test`). See TESTING.md.
 - Test mode (`?test`) must never read or write localStorage. Keep `window.wp` and the test panel behind the TEST flag. When adding a level kind or screen, add checks for it in tests/index.html.
 - `.github/workflows/site.yml` runs `tests/run-checks.mjs` (Playwright + the runner's Chrome against `tests/?run`) on every pull request and push; on main it then publishes to Pages. Check a run with `gh run list --workflow site.yml --limit 1`. A failing check blocks publishing.
 - No outside servers at runtime: third-party files live in `vendor/` (see vendor/README.md). Don't add CDN links.
@@ -19,3 +19,5 @@
 - Planned work lives in BACKLOG.md; tick items off there and record them in CHANGELOG.md when they ship.
 - Workflow: every change goes on its own branch with a pull request for the user to review (`gh pr create`). Don't push to main directly. Merging to main publishes the site.
 - Content rules: no material from commercial programmes (e.g. UFLI): our own word lists, pictures and passages only. Credit research sources and asset licences. Longer-term decisions go in FUTURE.md.
+- Cache-busting: `index.html`, `app.js` and `content.js` reference their own files with `?v=dev`; the publish job replaces it with the commit id. Keep `?v=dev` on any new first-party import, and add the file to the sed line in site.yml.
+- Layout: `layoutFor(width, height)` in app.js picks wide / tablet-portrait / phone / phone-landscape and puts `layout-<name>` on the root; layout CSS lives at the bottom of styles.css. Designs: the "Word Path layouts" Claude Design canvas (https://claude.ai/artifact/H2ayQeQYaLPnnP9EywDzYB). The layout checks in tests/ cover all four sizes; add any new screen to them.

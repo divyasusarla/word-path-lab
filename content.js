@@ -4,7 +4,7 @@
 // Stages follow a standard phonics teaching order. Each stage only uses sounds taught in it or before it,
 // and coverage() (bottom of the file) reports anything missing or out of order.
 
-import { SOUND_IDS } from './sounds.js';
+import { SOUND_IDS } from './sounds.js?v=dev';
 
 // ---- Sounds a letter or letter group makes -------------------------------------------------------
 // clip: the recording in audio/ (see sounds.js). say/rate: what the browser voice says if there's no recording.

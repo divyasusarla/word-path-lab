@@ -8,7 +8,7 @@ There are three layers. Run the first two before every push. Run the third befor
 
 Open **`tests/`** in a browser and press **Run all checks**:
 
-- Local: http://127.0.0.1:8765/tests/ (start the local server first with `python3 -m http.server 8765`)
+- Local: http://127.0.0.1:8765/tests/ (start the local server first with `python3 tools/serve.py`)
 - Live: https://divyasusarla.github.io/word-path-lab/tests/
 
 Add `?run` to the address to start the checks straight away. They cover:
@@ -20,13 +20,14 @@ Add `?run` to the address to start the checks straight away. They cover:
 - **Every level, 1 to 38:** starts and announces itself, gives feedback on a wrong answer, accepts the right answer, moves through every round, and ends on the level complete screen with the right sticker.
 - **Level complete:** Next level starts the following level.
 - **Pictures:** every icon on every screen exists. A typo in an icon name fails the check.
+- **Layouts:** at four screen sizes (wide 1180×820, tablet portrait 820×1180, phone 390×844, phone landscape 844×390), the map and every kind of level fit without scrolling, map stops stay inside the map, Hear again stays on screen and never covers an answer, buttons are at least 40px and answers at least 64px.
 - **Recordings:** every speech sound a level uses has a slot in the recording list, each one plays from its recording if there is one (otherwise the browser voice), and the recorder page loads with all 69 sounds.
 
 The checks can't hear the voice. They check *what* the game says (the words and their order), not how it sounds.
 
 ## 2. Test mode (look and click around)
 
-Add **`?test`** to the address. Every level is open, nothing is saved, and a **TEST MODE** panel appears in the bottom-left corner. Click the panel's label to fold it away. The panel lets you:
+Add **`?test`** to the address. Every level is open, nothing is saved, and a **TEST MODE** panel appears in the bottom-right corner. Click the panel's label to fold it away. The panel lets you:
 
 - jump to any level, or answer the current round right or wrong
 - open any screen: Map, Stickers, Settings, Level complete
