@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- **Show the word after the answer (#34):** after a right answer, a card shows the written word with the letters for the sound lit up: First sounds "**s**ock", Letter sounds the keyword and picture ("**s**un"), Rhyme time "f**un** · s**un**". In Blend it and Read it, each letter lights up as its sound plays and then the whole word ("c… a… t… cat"), in the first 3 rounds; after that, just the word. No new recordings. The letters line up with the sounds through `spell()` in engine.js (e.g. "rose" is r · o · s · e with the s saying z).
 - From the second round of testing:
   - **No same-sound wrong answers:** when the answer is "c", the bubbles never include "k" or "ck" (they make the same sound), and likewise for a_e / ai and other spellings of one sound.
   - **No unclear pictures as wrong answers:** the 10 pictures children are likely to call something else (tap, nap, cash, jet, net, log, dish, cube, game, king) are never offered as wrong answers, so pairs like map / nap don't appear. They can still be the right answer until the picture decisions (#3, R2). The flags moved from the picture page into `content.js` (`PICTURE_FLAGS`).

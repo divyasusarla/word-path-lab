@@ -6,7 +6,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
-  sayId, wordId, slug, mixUpFor, OPTION_WORDS, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
+  sayId, wordId, slug, mixUpFor, OPTION_WORDS, spell, revealFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, PICTURE_FLAGS, WORDS, FRY, CONFUSIONS, confusedWith, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
@@ -123,6 +123,29 @@ export const tests = [
     }
     const q = { a: 6, b: 13, answer: 78 };
     ok(gateOk(q, '78'), 'right answer'); ok(!gateOk(q, '87'), 'wrong answer'); ok(!gateOk(q, ''), 'empty');
+  }],
+
+  // ---- showing the word after the answer (#34)
+  ['spell: every word\'s letters line up with its sounds', () => {
+    for (const w of Object.keys(WORDS)) { const sp = spell(w); ok(sp && sp.map(x => x.t).join('') === w, `"${w}" doesn't line up with ${WORDS[w]}`); }
+    eq(spell('cake').map(x => [x.t, x.g]), [['c', 'c'], ['a', 'a_e'], ['k', 'k'], ['e', 'a_e']], 'cake (split e)');
+    eq(spell('rose').map(x => x.t), ['r', 'o', 's', 'e'], 'rose (z spelled s)');
+    eq(spell('sock').map(x => x.t), ['s', 'o', 'ck'], 'sock'); eq(spell('nope'), null, 'unknown word');
+  }],
+  ['reveal: lights up the sound that was asked about', () => {
+    const on = rv => rv.words.map(ws => ws.filter(x => x.on).map(x => x.t).join('')).join(' ');
+    const start = LV.find(l => l.kind === 'sort' && l.ask !== 'has'), has = LV.find(l => l.kind === 'sort' && l.ask === 'has');
+    for (const it of start.items) eq(on(revealFor(start, it)), start.bins[it.bin], `${it.w} starts with`);
+    for (const it of has.items) ok(on(revealFor(has, it)).length > 0, `${it.w}: nothing lit for "${has.bins[it.bin]}"`);
+    const S = level('sounds'); eq(on(revealFor(S, { target: 's' })), 's', 'letter sound keyword');
+    const R = LV.find(l => l.mode === 'rhyme'); eq(on(revealFor(R, { target: { cue: 'fun', w: 'sun' } })), 'un un', 'rhyme ending');
+    eq(on(revealFor(level('blend'), { target: { w: 'cat' } })), '', 'blend: nothing lit until the sounds play');
+    eq(revealFor(level('sight'), { target: 'said' }), null, 'sight words: nothing extra'); eq(revealFor(level('names'), { target: 'b' }), null, 'letter names');
+  }],
+  ['reveal: Blend it praise cues each sound, then the whole word; later rounds just the word', () => {
+    const B = level('blend'), r = { target: { w: 'cat' } };
+    eq(praiseParts(B, r, { n: 0 }).filter(p => p && p.cue !== undefined).map(p => p.cue), [0, 1, 2, 'all'], 'early rounds');
+    eq(praiseParts(B, r, { n: FULL_PRAISE_ROUNDS }).filter(p => p && p.cue !== undefined).map(p => p.cue), ['all'], 'later rounds');
   }],
 
   // ---- wrong answers that would confuse (first group of testers' notes)

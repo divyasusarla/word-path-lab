@@ -6,7 +6,7 @@ import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speech
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
   sayId, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED, gateQuestion, gateOk,
-  SESSION_CHOICES, sessionOver, progressReport } from './engine.js?v=dev';
+  SESSION_CHOICES, sessionOver, progressReport, revealFor } from './engine.js?v=dev';
 import { SCRIPT, levelSpeech } from './script.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
@@ -58,7 +58,7 @@ class App extends Component {
   sid = 0; run = 0; tms = []; voices = []; spoken = [];
   recorded = new Set(); compressed = new Set(); clipSources = {}; buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
 
-  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), mastery:this.loadMastery(), answered:false, misses:0, modelled:false, firstTries:[], missed:[], settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
+  state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), mastery:this.loadMastery(), answered:false, misses:0, modelled:false, firstTries:[], missed:[], cue:null, settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
 
   // In test mode nothing is read from or written to storage
   load() {
@@ -152,6 +152,7 @@ class App extends Component {
       // Simulates iOS refusing to start sound (no tap yet, or interrupted), to check the voice fallback
       blockAudio: () => { this.audioBlocked = true; return 'blocked'; },
       report: () => progressReport(this.state.done, this.state.mastery),
+      reveal: () => { const el = document.querySelector('.reveal'); return el && { text: el.innerText.replace(/\s+/g, ' ').trim(), on: [...el.querySelectorAll('.on')].map(x => x.textContent) }; },
       gate: () => this.state.gate && { answer: this.state.gate.q.answer, typed: this.state.gate.typed, wrong: this.state.gate.wrong },
       replay: () => { const L = LV[this.state.lvl], r = this.state.rounds[this.state.round]; if (r) this.speak(this.prompt(L, r, false)); },
       clearSpoken: () => { this.spoken = []; }
@@ -277,11 +278,12 @@ class App extends Component {
       if (typeof p === 'number') { if (!mute) await this.wait(p); continue; }
       const o = typeof p === 'string' ? { t: p, clip: sayId(p) } : p;  // a plain line has a recording slot named after its text
       const rec = o.clip && this.recorded.has(o.clip);
-      if (mute) { if (TEST) this.caption(o.t, o.clip, o.clip ? (rec ? 'recording' : 'voice') : null); await this.wait(0); continue; }
+      if (mute) { if (TEST) this.caption(o.t, o.clip, o.clip ? (rec ? 'recording' : 'voice') : null); if (o.cue !== undefined) this.setState({ cue: o.cue }); await this.wait(0); continue; }
       // A recording only plays if sound is running; otherwise the browser voice says it, so there's never silence
       const buf = rec && await this.audioReady() ? await this.clipBuffer(o.clip) : null;
       if (id !== this.sid) return false;
       if (TEST) this.caption(o.t, o.clip, o.clip ? (buf ? 'recording' : rec ? 'fallback' : 'voice') : null);
+      if (o.cue !== undefined) this.setState({ cue: o.cue });  // lights up the letters for this sound (revealFor)
       if (buf) await this.playClip(buf); else if (ss) await this.utter(o);
     }
     return id === this.sid;
@@ -343,7 +345,7 @@ class App extends Component {
     this.stop();
     const L = LV[i], rounds = this.build(L);
     this.preloadLevel(L);
-    this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false, misses:0, modelled:false, firstTries:[], missed:[] });
+    this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false, misses:0, modelled:false, firstTries:[], missed:[], cue:null });
     this.speak(this.prompt(L, rounds[0], true));
   }
 
@@ -366,7 +368,7 @@ class App extends Component {
       upcoming = bonusRound(L, this.state.missed, prev, this.state.mastery);
       list = rounds.slice(); list[round + 1] = upcoming;
     }
-    this.setState({ round: round + 1, rounds: list, wrong:[], solved:false, binWrong:null, answered:false, misses:0, modelled:false });
+    this.setState({ round: round + 1, rounds: list, wrong:[], solved:false, binWrong:null, answered:false, misses:0, modelled:false, cue:null });
     this.speak([...(upcoming.bonus && !rounds[round].bonus ? [BONUS, 500] : []), ...this.prompt(L, upcoming, false, round + 1)]);
   }
 
@@ -524,6 +526,8 @@ class App extends Component {
       canPrev: ms > 0, canNext: ms < STAGES.length - 1,
       prevStage: () => this.setState({ mapStage: ms - 1 }), nextStage: () => this.setState({ mapStage: ms + 1 }),
       levelNum: L.n, levelTitle: L.title, roundNum: Math.min(round + 1, rounds.length), roundCount: rounds.length, isBonus: !!(r && r.bonus),
+      reveal: isPlay && solved && r ? (rv => rv && { pic: rv.pic ? picSrc(rv.pic) : '', words: rv.words.map(segs => segs.map(x =>
+        ({ t: x.t, on: x.on || this.state.cue === 'all' || (x.k !== null && x.k === this.state.cue) })) ) })(revealFor(L, r)) : null,
       progress: rounds.map((_, k) => ({ color: k < round || (k === round && solved) ? '#FFC23C' : '#E6E1EE' })),
       replay: () => r && this.speak(this.prompt(L, r, false)),
       soundOut: () => this.soundOut(),
@@ -731,6 +735,11 @@ class App extends Component {
                 <i class="icon-arrow-left" style="font-size:30px;line-height:1"></i><span>${v.sortAsk}</span><i class="icon-arrow-right" style="font-size:30px;line-height:1"></i>
               </div>
             </div>
+          </div>`}
+        ${v.reveal && html`
+          <div class="reveal" aria-live="polite">
+            ${v.reveal.pic && html`<img src=${v.reveal.pic} alt="" />`}
+            ${v.reveal.words.map((segs, i) => html`${i > 0 && html`<span class="reveal-dot">·</span>`}<span class="reveal-word">${segs.map(x => html`<span class=${x.on ? 'on' : ''}>${x.t}</span>`)}</span>`)}
           </div>`}
         </div>
 
