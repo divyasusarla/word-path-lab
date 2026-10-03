@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- Backlog reorganised: **Next up** (ranked), **Later** (teacher and classroom items: export/import, usage data, group mode, grown-up prompts, child profiles, adaptive difficulty), and **Shipped**. New items: show the word after the answer (#34), hint ladder (#35), word pool breadth (#36). iPhone sound (#7c) confirmed.
 - **Your recordings for every word and line:** all 535 (300 sight words, about 110 picture words, 121 instructions, level names and sticker lines) are in the game, so the device voice is now used only for "Test voice" in Settings. Checked before importing: every clip matched a current slot, none missing.
   - The importer now keeps words and lines whole: the first run cut 88 clips (the pause after "Level 9." ended the clip, and quiet starts like the "sh" in "ship" were trimmed). Words and lines are now only trimmed of silence, since the recorder already removed key clicks.
   - Recordings load per level: letter sounds and instructions when sound first starts, then each level's words and lines as it starts (115 of 604 for level 1), instead of all 27 MB on the first tap.
