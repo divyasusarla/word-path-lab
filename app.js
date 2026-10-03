@@ -529,7 +529,7 @@ class App extends Component {
       popField: isPlay && L.kind === 'pop' ? this.popField(L) : null,
       matchOptions, bins,
       sortPic: isPlay && L.kind === 'sort' && r ? picSrc(r.w) : '',
-      sortAsk: L.ask === 'has' ? 'Which sound is in it?' : 'Which sound?',
+      sortAsk: L.ask === 'has' ? 'Does it have…' : 'Does it start with…',  // the same words as the spoken question
       sortTransform: solved ? 'scale(1.1) rotate(-4deg)' : 'scale(1)',
       doneSticker, doneName: dl.sticker.name,
       doneKnown: (() => {
@@ -742,8 +742,8 @@ class App extends Component {
         ${v.doneSticker}
         <div class="done-body">
           <div>
-            <div style="font-size:22px;font-weight:600;color:#5940D6">Level ${v.levelNum} complete!</div>
-            <div class="done-title" style="font-size:58px;font-weight:700;line-height:1.05">You got the ${v.doneName} sticker</div>
+            <div style="font-size:22px;font-weight:600;color:#5940D6">You did it!</div>
+            <div class="done-title" style="font-size:58px;font-weight:700;line-height:1.05">You earned the ${v.doneName} sticker!</div>
             ${v.doneStage && html`<div style="font-size:26px;font-weight:700;color:#17977F;margin-top:8px">${v.doneStage}</div>`}
             ${v.restTime && html`<div class="rest-time" style="font-size:24px;font-weight:700;color:#5940D6;margin-top:10px">Great work today! Time for a break.</div>`}
             ${v.doneKnown && html`<div class="done-known" style="font-size:20px;font-weight:600;color:#5C5677;margin-top:8px">${v.doneKnown}</div>`}
