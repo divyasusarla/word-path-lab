@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word Path pictures</title>
+<link rel="stylesheet" href="../vendor/fredoka/fredoka.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #FFF7EA; color: #2A2350; font-family: 'Fredoka', system-ui, sans-serif; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 32px; margin: 0 0 4px; }
+  .lede { margin: 0 0 16px; color: #5C5677; font-size: 17px; line-height: 1.5; max-width: 760px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 20px; }
+  .filters button { font-family: inherit; height: 38px; padding: 0 16px; border: 0; border-radius: 999px; background: #fff; color: #2A2350; font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: 0 3px 0 #E8DCC8; }
+  .filters button[aria-pressed="true"] { background: #7B61FF; color: #fff; box-shadow: 0 3px 0 #5940D6; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+  .card { background: #fff; border-radius: 22px; padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: 0 4px 0 #E8DCC8; text-align: center; }
+  .card img { width: 96px; height: 96px; }
+  .word { font-size: 24px; font-weight: 700; }
+  .used { font-size: 13px; color: #5C5677; }
+  .flag { font-size: 13px; line-height: 1.35; border-radius: 12px; padding: 6px 8px; width: 100%; }
+  .flag.high { background: #FFE9E7; color: #8F2620; }
+  .flag.mild { background: #FFF0C7; color: #7A5200; }
+  .card.high { outline: 3px solid #F2544A; }
+  .card.mild { outline: 3px solid #FFC23C; }
+  .summary { font-size: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Word Path pictures</h1>
+  <p class="lede">Every word the game shows as a picture, with the levels that use it. A child should name each picture with exactly the word underneath. Red: a child would likely say something else. Yellow: worth a second look. Tell Claude which to swap, drop or keep.</p>
+  <div class="summary" id="summary"></div>
+  <div class="filters" id="filters"></div>
+  <div class="grid" id="grid"></div>
+</main>
+<script type="module">
+import { PICS, LEVELS, picSrc } from '../content.js';
+
+// Pictures a child might name differently. high = likely; mild = possible. Edit as decisions are made.
+const FLAGS = {
+  tap:  ['high', 'Likely "water" or "sink".'],
+  nap:  ['high', 'Likely "sleep" or "tired".'],
+  cash: ['high', 'Likely "money".'],
+  jet:  ['high', 'Likely "plane" or "airplane".'],
+  net:  ['high', 'Likely "goal" (it\'s a sports goal).'],
+  log:  ['high', 'Likely "wood".'],
+  dish: ['high', 'Likely "plate".'],
+  cube: ['high', 'Likely "ice".'],
+  game: ['high', 'Likely "controller" or "video game".'],
+  king: ['high', 'The picture is a prince (no crown shape a child would read as "king").'],
+  pan:  ['mild', 'Shows a fried egg in a pan: may be called "egg".'],
+  can:  ['mild', 'May be called "soup".'],
+  cup:  ['mild', 'A cup with a straw: may be called "drink" or "soda".'],
+  feet: ['mild', 'Shows one foot: "foot", not "feet".'],
+  sock: ['mild', 'Shows two socks: may be called "socks".'],
+  pin:  ['mild', 'A pushpin: may be called "tack".'],
+  rose: ['mild', 'May be called "flower".'],
+  bath: ['mild', 'May be called "tub" or "bathtub".'],
+  ten:  ['mild', 'A number tile: fine if children recognise 10 as "ten".'],
+  six:  ['mild', 'A number tile: fine if children recognise 6 as "six".'],
+  five: ['mild', 'A number tile: fine if children recognise 5 as "five".']
+};
+
+const usedIn = w => LEVELS.filter(l =>
+  (l.words || []).includes(w) || (l.items || []).some(x => x.w === w) || (l.pairs || []).some(p => p.w === w)
+).map(l => `${l.n} ${l.title}`);
+
+const words = Object.keys(PICS).sort();
+const counts = { high: words.filter(w => FLAGS[w]?.[0] === 'high').length, mild: words.filter(w => FLAGS[w]?.[0] === 'mild').length };
+document.getElementById('summary').textContent = `${words.length} pictures · ${counts.high} likely to be misnamed · ${counts.mild} worth a look`;
+
+let filter = 'all';
+const filters = [['all', 'All'], ['high', 'Likely misnamed'], ['mild', 'Worth a look'], ['ok', 'No concerns'], ['unused', 'Not used in a level']];
+const fbox = document.getElementById('filters');
+for (const [key, label] of filters) {
+  const b = document.createElement('button'); b.textContent = label; b.setAttribute('aria-pressed', key === filter);
+  b.onclick = () => { filter = key; [...fbox.children].forEach(c => c.setAttribute('aria-pressed', c === b)); render(); };
+  fbox.append(b);
+}
+
+function render() {
+  const grid = document.getElementById('grid'); grid.innerHTML = '';
+  for (const w of words) {
+    const flag = FLAGS[w], used = usedIn(w);
+    const kind = flag ? flag[0] : 'ok';
+    if (filter === 'unused' ? used.length : filter !== 'all' && filter !== kind) continue;
+    const card = document.createElement('div'); card.className = `card ${flag ? flag[0] : ''}`;
+    const img = document.createElement('img'); img.src = '../' + picSrc(w); img.alt = '';
+    const word = document.createElement('div'); word.className = 'word'; word.textContent = w;
+    const u = document.createElement('div'); u.className = 'used'; u.textContent = used.length ? `Levels ${used.map(x => x.split(' ')[0]).join(', ')}` : 'Only a sort anchor or sticker';
+    u.title = used.join('\n');
+    card.append(img, word, u);
+    if (flag) { const f = document.createElement('div'); f.className = `flag ${flag[0]}`; f.textContent = flag[1]; card.append(f); }
+    grid.append(card);
+  }
+}
+render();
+window.picturesReady = { pictures: words.length, ...counts };
+</script>
+</body>
+</html>
