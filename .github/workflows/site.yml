@@ -47,8 +47,7 @@ jobs:
 
   checks-webkit:
     name: Checks (Safari engine)
-    # Green on every run since 2026-10-03; a failure now shows as a red cross on the pull request.
-    # Merges are blocked by it only once it's added to the required checks in branch protection.
+    # Required to merge (branch protection), alongside Checks. Green on every run since 2026-10-03.
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
