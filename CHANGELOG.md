@@ -3,6 +3,13 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- From the first test with a child:
+  - **Bonus rounds:** levels with fewer items than rounds (level 1 has 6 letters in 8 rounds) now play every item once first, then label the rest "⭐ Bonus round". Bonus rounds bring back what the child missed in this play, otherwise something still being learned, and never the item just played.
+  - **Less repetition in sorting:** after the first two rounds, the question shortens to the word and the two sounds ("sock … s or m"). After round three, praise in sort and letter-sound levels is just "Yes!".
+  - **More varied pictures in Blend it and Read it:** wrong pictures now come from every picture word, not only the few the child can already read, so early levels no longer show the same 4 pictures every round. They still share the first or last sound with the answer.
+  - **Sight word levels renamed** "Word pop 1" to "Word pop 6" (the last stays "Word boss").
+  - **Sight words said slowly and twice**, on their own ("Pop the word. are … are"), so they're easier to make out in the device voice. Recorded or generated audio for whole words (#27) is the real fix.
+  - **Catherine (Australian English) is the default voice** where the device has it (Macs, iPads, iPhones), then other built-in voices. A voice chosen in Settings still wins.
 - Second layout pass, following the approved designs: level complete (sticker as the hero, one clear next step, Stickers and Map secondary; stacked with full-width buttons on phones), sticker book (a grid per stage with a count, 6 across on tablets, 4 in tablet portrait, 3 on phones), grown-up settings (grouped into Sound and Play, Reset set apart at the bottom; a two-column card on tablets, full screen on phones), and About (a readable single column). Layout checks now cover these screens at all four sizes.
 - `main` is protected: pull requests required, Checks must pass, no force-push or deletion (admins included).
 - Checks also run in WebKit (Safari's engine) on every pull request, as an informational job for now; the unit-test run reports coverage of `engine.js` and `content.js`.

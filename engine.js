@@ -1,6 +1,6 @@
 // Word Path game rules, kept free of screen code so they can be unit-tested (tests/unit/).
 // app.js draws the screens and plays the audio; everything it decides comes from here.
-import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, phonemes, decodableBy, soundSimilarity } from './content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, PICS, WORDS, phonemes, soundSimilarity } from './content.js?v=dev';
 
 // Every level from content.js, plus the screen kind (pop / match / sort) and mode the game uses
 export const LV = LEVELS.map(l => ({ ...l,
@@ -34,13 +34,17 @@ export const gsnd = gr => ({ t: GRAPHEMES[gr].say, rate: GRAPHEMES[gr].rate, cli
 export const nsnd = l => ({ t: NAME_SAY[l], rate: 0.8, clip: `name-${l}` });
 export const showG = gr => gr;  // how a sound is written on a tile (a_e stays a_e)
 
-// The spoken question for a round. Parts: strings, {t, rate, clip}, or numbers (pause in ms)
-export function prompt(L, r, first) {
+// The spoken question for a round. Parts: strings, {t, rate, clip}, or numbers (pause in ms).
+// n: the round number (0-based). Sorting questions shorten after the first two rounds, once the child knows the game.
+export const FULL_ROUNDS = 2;
+// Sight words are said slowly, on their own, twice: the device voice can be hard to make out on short words
+const slowWord = w => ({ t: w, rate: 0.6 });
+export function prompt(L, r, first, n = 0) {
   const pre = first ? [`Level ${L.n}. ${L.title}.`, 700] : [];
   if (L.kind === 'pop') {
     if (L.mode === 'sound') { const gr = GRAPHEMES[r.target]; return [...pre, r.target.length > 1 ? 'Find the letters that say' : 'Find the letter that says', 500, gsnd(r.target), 500, 'like in', { t: gr.ex, rate: 0.8 }]; }
     if (L.mode === 'name') return [...pre, 'Find the letter', 400, nsnd(r.target)];
-    return [...pre, { t: `Pop the word: ${r.target}.`, rate: 0.85 }];
+    return [...pre, 'Pop the word.', 400, slowWord(r.target), 700, slowWord(r.target)];
   }
   if (L.kind === 'match') {
     if (L.mode === 'blend') return [...pre, 'Listen.', 500, ...phonemes(r.target.w).flatMap(p => [gsnd(p), 450]), 400, 'What word is that?'];
@@ -48,6 +52,7 @@ export function prompt(L, r, first) {
     return [...pre, 'Read the word. Then tap its picture.'];
   }
   const [A, B] = L.bins;
+  if (n >= FULL_ROUNDS && !first) return [{ t: r.w, rate: 0.7 }, 600, gsnd(A), 300, 'or', 300, gsnd(B)];
   return [...pre, { t: r.w, rate: 0.7 }, 700, L.ask === 'has' ? 'Does it have' : 'Does it start with', 300, gsnd(A), 400, 'or', 300, gsnd(B)];
 }
 
@@ -67,10 +72,13 @@ export function cycle(pool, n, rng = Math.random) {
   while (o.length < n) o = o.concat(shuffle(pool, rng));
   return o.slice(0, n);
 }
-// Blend it / Read it: the two wrong options that sound most like the answer (cat → cap, can), drawn from every
-// word the child can decode by this stage, so the first sound alone isn't enough. A little randomness varies ties.
+// Every word that has a picture and its sounds listed
+export const PICTURE_WORDS = Object.keys(WORDS).filter(w => PICS[w]);
+// Blend it / Read it: the two wrong options that sound most like the answer (cat → cap, can), so the first sound
+// alone isn't enough. They come from every picture word, not just ones the child can read yet: the child only has
+// to blend or read the answer, and a bigger pool keeps the pictures varied. A little randomness varies ties.
 export function nearOptions(w, stage, rng = Math.random) {
-  return decodableBy(stage).filter(x => x !== w)
+  return PICTURE_WORDS.filter(x => x !== w)
     .map(x => [x, soundSimilarity(w, x) + rng() * 0.6]).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([x]) => x);
 }
 // ---- Choosing what a play practises (coverage and cumulative review) ------------------------------
@@ -114,26 +122,44 @@ export function pickReview(L, n, mastery = {}, rng = Math.random, rule = MASTERY
   return [...learning, ...known, ...unseen].slice(0, n);
 }
 
-// The rounds for one play of a level. mastery (optional) steers which items come up; review rounds are marked
+const keyFor = (L, x) => L.kind === 'pop' ? `${{ sound: 'sound', name: 'name', word: 'word' }[L.mode]}:${x}` : `${L.mode}:${x}`;
+// One round for a target: tiles for pop levels, a picture and two near misses for blend/read
+export function makeRound(L, t, flags = {}, rng = Math.random) {
+  if (L.kind === 'pop') {
+    const tiles = Math.min(L.tiles || 4, L.pool.length);
+    return { target: t, ...flags,
+      options: shuffle([t, ...shuffle(L.pool.filter(x => x !== t), rng).slice(0, tiles - 1)], rng)
+        .map(label => ({ label, bob: (rng() * 1.5).toFixed(2), dur: (2.6 + rng()).toFixed(2) })) };
+  }
+  return { target: { w: t }, ...flags, options: shuffle([{ w: t }, ...nearOptions(t, L.stage, rng).map(x => ({ w: x }))], rng) };
+}
+const targetOf = r => r.target?.w ?? r.target;
+
+// The rounds for one play of a level. mastery (optional) steers which items come up; review rounds are marked.
+// When a level has fewer items than rounds, every item comes up once, then the rest are bonus rounds at the end.
+// The app fills each bonus round as it arrives with something missed in this play (bonusTarget).
 export function buildRounds(L, count, rng = Math.random, mastery = {}) {
   if (L.kind === 'sort') return shuffle(L.items, rng);  // sort: every picture once
   if (L.mode === 'rhyme') return cycle(L.pairs, count, rng).map(t => ({ target: t, options: shuffle([t, ...shuffle(L.pairs.filter(x => x.w !== t.w), rng).slice(0, 2)], rng) }));
   const nReview = reviewCount(L, count);
   const own = L.kind === 'pop' ? L.pool : L.words;
-  const keyOf = x => L.kind === 'pop' ? `${{ sound: 'sound', name: 'name', word: 'word' }[L.mode]}:${x}` : `${L.mode}:${x}`;
-  const picks = [...pickTargets(own, keyOf, count - nReview, mastery, rng).map(t => ({ t, review: false })),
+  const nOwn = Math.min(own.length, count - nReview), nBonus = count - nReview - nOwn;
+  const picks = [...pickTargets(own, x => keyFor(L, x), nOwn, mastery, rng).map(t => ({ t, review: false })),
     ...pickReview(L, nReview, mastery, rng).map(t => ({ t, review: true }))];
-  const order = shuffle(picks, rng);
-  if (L.kind === 'pop') {
-    const tiles = Math.min(L.tiles || 4, L.pool.length);
-    return order.map(({ t, review }) => ({
-      target: t, review,
-      options: shuffle([t, ...shuffle(L.pool.filter(x => x !== t), rng).slice(0, tiles - 1)], rng)
-        .map(label => ({ label, bob: (rng() * 1.5).toFixed(2), dur: (2.6 + rng()).toFixed(2) }))
-    }));
-  }
-  return order.map(({ t: w, review }) => ({ target: { w }, review, options: shuffle([{ w }, ...nearOptions(w, L.stage, rng).map(x => ({ w: x }))], rng) }));
+  const rounds = shuffle(picks, rng).map(({ t, review }) => makeRound(L, t, { review }, rng));
+  for (let i = 0; i < nBonus; i++) rounds.push(bonusRound(L, [], targetOf(rounds[rounds.length - 1]), mastery, rng));
+  return rounds;
 }
+// A bonus round: something missed in this play if there is one (never the item just played), else an item still
+// being learned, else any item
+export function bonusTarget(L, missed, prev, mastery = {}, rng = Math.random) {
+  const own = L.kind === 'pop' ? L.pool : L.words;
+  const fromMissed = shuffle([...new Set(missed)].filter(x => x !== prev && own.includes(x)), rng);
+  if (fromMissed.length) return fromMissed[0];
+  const ordered = pickTargets(own, x => keyFor(L, x), own.length, mastery, rng).filter(x => x !== prev);
+  return ordered[0] ?? own[0];
+}
+export const bonusRound = (L, missed, prev, mastery = {}, rng = Math.random) => makeRound(L, bonusTarget(L, missed, prev, mastery, rng), { bonus: true }, rng);
 // Is this option the right answer for the round?
 export function isRight(L, r, option) {
   if (L.kind === 'sort') return option === r.bin;
@@ -205,14 +231,17 @@ export function modelParts(L, r) {
   return [{ t: `Here it is: ${r.target.w}.`, rate: 0.85 }, 400, 'Tap it.'];
 }
 // Praise that says what was right (informational, per the rewards research), plus news of a newly mastered item
-export function praiseParts(L, r, { modelled = false, mastered = false } = {}) {
+// After the first few rounds the explanation is dropped ("Yes!"), so the sound isn't repeated every time.
+export const FULL_PRAISE_ROUNDS = 3;
+export function praiseParts(L, r, { modelled = false, mastered = false, n = 0 } = {}) {
   if (modelled) return ['That\'s it.'];
   const extra = mastered ? [400, 'You know that one now!'] : [];
-  if (L.kind === 'sort') return ['Yes!', 300, L.ask === 'has' ? `${r.w} has` : `${r.w} starts with`, 300, gsnd(L.bins[r.bin]), ...extra];
+  const short = n >= FULL_PRAISE_ROUNDS;
+  if (L.kind === 'sort') return short ? ['Yes!', ...extra] : ['Yes!', 300, L.ask === 'has' ? `${r.w} has` : `${r.w} starts with`, 300, gsnd(L.bins[r.bin]), ...extra];
   if (L.kind === 'pop') {
-    if (L.mode === 'sound') return ['Yes! That says', 300, gsnd(r.target), ...extra];
+    if (L.mode === 'sound') return short ? ['Yes!', ...extra] : ['Yes! That says', 300, gsnd(r.target), ...extra];
     if (L.mode === 'name') return ['Yes! That\'s', 300, nsnd(r.target), ...extra];
-    return [{ t: `Yes! ${r.target}.`, rate: 0.85 }, ...extra];
+    return ['Yes!', 300, slowWord(r.target), ...extra];
   }
   if (L.mode === 'rhyme') return ['Yes!', 300, `${r.target.cue}, ${r.target.w}.`, ...extra];
   return [`${r.target.w}!`, ...extra];

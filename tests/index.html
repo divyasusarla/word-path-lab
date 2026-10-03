@@ -43,6 +43,7 @@
 import { SOUNDS } from '../sounds.js';
 import { tests as unitTests } from './unit/engine.test.js';
 import { LEVELS, STAGES, STICKERS, coverage, allPictureFiles, decodableBy, phonemes, soundSimilarity } from '../content.js';
+import { PICTURE_WORDS } from '../engine.js?v=dev';
 const levelOf = type => LEVELS.find(l => l.type === type).n;
 const usedClips = new Map();   // clip id -> where the game got it ('recording' or 'voice')
 const frame = document.getElementById('game');
@@ -253,12 +254,12 @@ async function runAll() {
     const notes = [];
     for (const L of LEVELS.filter(l => l.type === 'blend' || l.type === 'read')) {
       const w = await load(`level=${L.n}&rounds=8`);
-      const pool = decodableBy(L.stage);
+      const pool = PICTURE_WORDS;
       for (let r = 0; r < 8; r++) {
         const s = w.wp.state();
         const wrongs = s.options.filter(o => o !== s.target);
         expect(wrongs.length === 2, `level ${L.n}: expected 2 wrong options, got ${wrongs.length}`);
-        for (const o of wrongs) expect(pool.includes(o), `level ${L.n}: "${o}" uses sounds not yet taught`);
+        for (const o of wrongs) expect(pool.includes(o), `level ${L.n}: "${o}" has no picture`);
         const possible = pool.some(x => x !== s.target && shares(s.target, x));
         if (possible) expect(wrongs.some(o => shares(s.target, o)), `level ${L.n}: "${s.target}" got ${wrongs.join(', ')}, which share no first or last sound`);
         if (r === 0) notes.push(`${L.n}: ${s.target} → ${wrongs.join(', ')}`);
@@ -370,6 +371,32 @@ async function runAll() {
     const after = () => { const d = w.wp.spokenDetail(), i = d.findIndex(x => /Yes! That says/.test(x.t)); return i >= 0 && d[i + 1]; };
     const next = await waitFor(after, 2000, 'the praise and the sound after it');
     expect(next.clip, 'the sound should follow the praise');
+  });
+  await check('Bonus rounds: level 1 plays each letter once, then brings back the one missed, labelled "Bonus round"', async () => {
+    const L = LEVELS.find(l => l.type === 'sounds');
+    const w = await load(`level=${L.n}&rounds=8`);
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    const seen = [];
+    let missed = null;
+    for (let r = 0; r < 8; r++) {
+      const s = w.wp.state();
+      if (r < L.pool.length) expect(!s.bonus, `round ${r + 1} shouldn't be a bonus round yet`);
+      else {
+        expect(s.bonus, `round ${r + 1} should be a bonus round`);
+        expect(doc().querySelector('.progress-count.bonus')?.innerText.includes('Bonus round'), 'the "Bonus round" label should show');
+        expect(s.target !== seen.at(-1), `"${s.target}" came up twice in a row`);
+        if (r === L.pool.length) {
+          expect(s.target === missed, `the first bonus round should be the missed letter "${missed}", got "${s.target}"`);
+          expect(w.wp.spoken().includes('Bonus round!'), '"Bonus round!" should be said');
+        }
+      }
+      seen.push(s.target);
+      if (r === 1) { missed = s.target; w.wp.wrong(); await sleep(50); }
+      w.wp.right();
+      if (r < 7) await waitFor(() => w.wp.state().round === r + 1, 4000, `round ${r + 2}`);
+    }
+    expect(new Set(seen.slice(0, L.pool.length)).size === L.pool.length, `each letter once first: ${seen.join(' ')}`);
+    return seen.join(' ');
   });
   await check('Level complete: offers "Practise again" when under half the first taps were right', async () => {
     const n = LEVELS.find(l => l.type === 'blend').n;

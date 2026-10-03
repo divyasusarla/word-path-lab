@@ -5,6 +5,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2, prompt, soundOutParts,
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
+  bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 
@@ -63,13 +64,13 @@ export const tests = [
     ok(soundSimilarity('cat', 'hat') > soundSimilarity('cat', 'pig'), 'cat/hat vs cat/pig');
     ok(soundSimilarity('ship', 'shell') > soundSimilarity('ship', 'ring'), 'ship/shell vs ship/ring');
   }],
-  ['nearOptions: only decodable words, never the answer, share a sound when possible', () => {
+  ['nearOptions: picture words, never the answer, share a sound when possible', () => {
     for (const L of LV.filter(l => l.mode === 'blend' || l.mode === 'read')) {
-      const pool = decodableBy(L.stage);
+      const pool = PICTURE_WORDS;
       for (const w of L.words) {
         const near = nearOptions(w, L.stage, seeded(4));
         ok(!near.includes(w), `"${w}" offered as its own wrong option`);
-        for (const x of near) ok(pool.includes(x), `"${x}" isn't decodable by stage ${L.stage + 1}`);
+        for (const x of near) ok(PICS[x], `"${x}" has no picture`);
         const shares = x => { const A = phonemes(w), B = phonemes(x); return A[0] === B[0] || A.at(-1) === B.at(-1); };
         if (pool.some(x => x !== w && shares(x))) ok(near.some(shares), `"${w}" got ${near.join(', ')}`);
       }
@@ -242,7 +243,54 @@ export const tests = [
     ok(!praiseParts(S, { target: 'sh' }).includes('You know that one now!'), 'no mastery news by default');
     ok(praiseParts(S, { target: 'sh' }, { mastered: true }).includes('You know that one now!'), 'mastery news');
     eq(praiseParts(S, { target: 'sh' }, { modelled: true }), ["That's it."], 'after the answer was shown');
-    ok(praiseParts(level('sight'), { target: 'said' })[0].t.includes('said'), 'sight word praise says the word');
+    ok(praiseParts(level('sight'), { target: 'said' }).some(p => p.t === 'said'), 'sight word praise says the word');
+  }],
+  ['feedback: after the first few rounds, sort and letter-sound praise is just "Yes!"', () => {
+    const S = level('sounds'), T = level('sort');
+    ok(praiseParts(S, { target: 'sh' }, { n: FULL_PRAISE_ROUNDS - 1 }).some(p => p.clip === 'sh'), 'early rounds explain');
+    eq(praiseParts(S, { target: 'sh' }, { n: FULL_PRAISE_ROUNDS }), ['Yes!'], 'later sound praise');
+    eq(praiseParts(T, T.items[0], { n: FULL_PRAISE_ROUNDS }), ['Yes!'], 'later sort praise');
+    ok(praiseParts(S, { target: 'sh' }, { n: 7, mastered: true }).includes('You know that one now!'), 'mastery news still said');
+  }],
+  ['prompts: sort questions shorten after the first rounds but still say both sounds', () => {
+    const T = level('sort'), r = T.items[0];
+    ok(prompt(T, r, false, FULL_ROUNDS - 1).includes('Does it start with'), 'early rounds ask in full');
+    const later = prompt(T, r, false, FULL_ROUNDS);
+    ok(!later.includes('Does it start with'), 'later rounds drop the question');
+    eq(later.filter(p => p.clip).length, 2, 'both sounds');
+  }],
+  ['prompts: sight words are said on their own, slowly, twice', () => {
+    const words = prompt(level('sight'), { target: 'are' }, false).filter(p => p.t === 'are');
+    eq(words.length, 2, 'times said');
+    ok(words.every(p => p.rate <= 0.6), 'slow');
+  }],
+  ['sight levels are called Word pop 1, 2, 3…', () => {
+    const sight = LV.filter(l => l.type === 'sight');
+    sight.forEach((l, i) => ok(l.title === `Word pop ${i + 1}` || (i === sight.length - 1 && l.title === 'Word boss'), `level ${l.n}: "${l.title}"`));
+  }],
+  ['bonus rounds: a short level plays every item once before any bonus round', () => {
+    for (const L of LV.filter(l => (l.kind === 'pop' || l.mode === 'blend' || l.mode === 'read'))) {
+      const rounds = buildRounds(L, 8, seeded(L.n)), own = L.kind === 'pop' ? L.pool : L.words;
+      const first = rounds.filter(r => !r.bonus && !r.review).map(r => r.target.w ?? r.target);
+      const bonus = rounds.filter(r => r.bonus);
+      eq(rounds.length, 8, `level ${L.n} rounds`);
+      if (bonus.length) eq(new Set(first).size, own.length, `level ${L.n}: every item once first`);
+      else eq(new Set(first).size, first.length, `level ${L.n}: no repeats`);
+      ok(rounds.slice(rounds.length - bonus.length).every(r => r.bonus), `level ${L.n}: bonus rounds come last`);
+    }
+  }],
+  ['bonus rounds: bring back a missed item, never the one just played', () => {
+    const L = level('sounds');
+    for (let k = 1; k < 20; k++) {
+      eq(bonusTarget(L, [L.pool[0], L.pool[1]], L.pool[0], {}, seeded(k)), L.pool[1], 'missed, not just played');
+      ok(bonusTarget(L, [L.pool[0]], L.pool[0], {}, seeded(k)) !== L.pool[0], 'only missed item was just played');
+    }
+    ok(bonusTarget(L, [], L.pool[2], {}, seeded(3)) !== L.pool[2], 'nothing missed');
+    const r = bonusRound(L, [L.pool[3]], null, {}, seeded(2));
+    ok(r.bonus && r.target === L.pool[3] && r.options.some(o => o.label === L.pool[3]), 'bonus round has the answer');
+    let st = {}; st = recordAttempt(st, `sound:${L.pool[4]}`, false, 'd1');
+    for (const p of L.pool) if (p !== L.pool[4]) for (const d of ['d1', 'd1', 'd2']) st = recordAttempt(st, `sound:${p}`, true, d);
+    eq(bonusTarget(L, [], null, st, seeded(1)), L.pool[4], 'nothing missed: the item still being learned');
   }],
   ['feedback: practise again below half right first time', () => {
     ok(shouldPractiseAgain([false, false, true]), '1 of 3');
