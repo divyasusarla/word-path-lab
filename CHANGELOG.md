@@ -4,6 +4,7 @@ Each version is tagged in git, and the tags are listed under the repo's Tags on 
 
 ## Unreleased
 - Checks run automatically on every pull request and push (GitHub Actions, headless Chrome); the site only publishes from `main` when every check passes. Replaces the publish-only workflow.
+- `LEARNING_DESIGN.md`: the research basis (12 principles with sources), proposed K / grade 1 / grade 2 bands, content rules and open research questions.
 - Picture review page at `tools/pictures.html`: every picture with its word and levels, flagging ones a child might name differently.
 - Read it: "Sound it out" now says each sound slowly without saying the whole word, so the child does the blending.
 - Blend it and Read it: wrong pictures now sound like the answer (cat → cap, can, hat), chosen from every word the child can decode by that stage, so the first sound alone isn't enough. New checks enforce it.
