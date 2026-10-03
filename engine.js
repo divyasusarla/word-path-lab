@@ -1,6 +1,6 @@
 // Word Path game rules, kept free of screen code so they can be unit-tested (tests/unit/).
 // app.js draws the screens and plays the audio; everything it decides comes from here.
-import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, PICS, WORDS, phonemes, soundSimilarity } from './content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, PICS, WORDS, phonemes, soundSimilarity, confusedWith } from './content.js?v=dev';
 
 // Every level from content.js, plus the screen kind (pop / match / sort) and mode the game uses
 export const LV = LEVELS.map(l => ({ ...l,
@@ -131,12 +131,17 @@ export function pickReview(L, n, mastery = {}, rng = Math.random, rule = MASTERY
 }
 
 const keyFor = (L, x) => L.kind === 'pop' ? `${{ sound: 'sound', name: 'name', word: 'word' }[L.mode]}:${x}` : `${L.mode}:${x}`;
-// One round for a target: tiles for pop levels, a picture and two near misses for blend/read
+// A letter's usual mix-up (b for d), if it's been taught by this level (here or in an earlier level of the same kind)
+export const mixUpFor = (L, t) => L.kind === 'pop' && L.mode !== 'word'
+  ? confusedWith(t).find(x => L.pool.includes(x) || reviewItems(L).includes(x)) ?? null : null;
+// One round for a target: tiles for pop levels (always including the letter's usual mix-up once it's taught),
+// a picture and two near misses for blend/read
 export function makeRound(L, t, flags = {}, rng = Math.random) {
   if (L.kind === 'pop') {
-    const tiles = Math.min(L.tiles || 4, L.pool.length);
+    const tiles = Math.min(L.tiles || 4, L.pool.length), mix = mixUpFor(L, t);
+    const others = shuffle(L.pool.filter(x => x !== t && x !== mix), rng).slice(0, tiles - 1 - (mix ? 1 : 0));
     return { target: t, ...flags,
-      options: shuffle([t, ...shuffle(L.pool.filter(x => x !== t), rng).slice(0, tiles - 1)], rng)
+      options: shuffle([t, ...(mix ? [mix] : []), ...others], rng)
         .map(label => ({ label, bob: (rng() * 1.5).toFixed(2), dur: (2.6 + rng()).toFixed(2) })) };
   }
   return { target: { w: t }, ...flags, options: shuffle([{ w: t }, ...nearOptions(t, L.stage, rng).map(x => ({ w: x }))], rng) };

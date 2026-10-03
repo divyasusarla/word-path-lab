@@ -153,9 +153,16 @@ export const decodableBy = stage => Object.keys(WORDS).filter(w => PICS[w] && ph
 
 // How alike two words sound, for choosing wrong options in Blend it and Read it. Higher = more alike.
 // Sharing the first or last sound means a child can't pick the answer from that sound alone.
+// Letters children commonly mix up: mirror images (b/d, p/q), look-alikes (m/n) and close short vowels (e/i).
+// Once both are taught, each is offered as a wrong option for the other (backlog #17, LEARNING_DESIGN.md).
+export const CONFUSIONS = [['b', 'd'], ['p', 'q'], ['m', 'n'], ['e', 'i']];
+export const confusedWith = x => CONFUSIONS.filter(p => p.includes(x)).map(p => p[0] === x ? p[1] : p[0]);
 export function soundSimilarity(a, b) {
   const A = phonemes(a), B = phonemes(b);
   let s = 0;
+  // one sound swapped for its usual mix-up (pin / pen, bad / dad): the best test of careful reading
+  const diff = A.length === B.length ? A.map((x, i) => [x, B[i]]).filter(([x, y]) => x !== y) : [];
+  if (diff.length === 1 && confusedWith(diff[0][0]).includes(diff[0][1])) s += 2;
   if (A[0] === B[0]) s += 3;
   if (A[A.length - 1] === B[B.length - 1]) s += 2;
   if (A.length === B.length) s += 1;

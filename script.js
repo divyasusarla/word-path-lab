@@ -1,7 +1,7 @@
 // Everything the game can say that isn't a letter sound or name (those are in sounds.js): words and lines,
 // worked out from the levels so the list never falls behind the game. Used by the recorder (tools/record.html)
 // and the checks. Each clip is first needed in one stage; the recorder offers them stage by stage (batches).
-import { LV, prompt, praiseParts, modelParts, missParts, finishParts, heroParts, levelLine, reviewItems,
+import { LV, mixUpFor, prompt, praiseParts, modelParts, missParts, finishParts, heroParts, levelLine, reviewItems,
   sayId, PICTURE_WORDS, TRY_AGAIN, BONUS, LOCKED } from './engine.js?v=dev';
 import { STAGES, FRY, soundSimilarity } from './content.js?v=dev';
 import { SOUND_IDS } from './sounds.js?v=dev';
@@ -25,7 +25,7 @@ export function levelSpeech(L) {
   if (L.kind === 'sort') for (const r of L.items) { each(r, 9); out.push(missParts(L, r, 1 - r.bin)); }
   else if (L.kind === 'pop') for (const t of [...L.pool, ...reviewItems(L)]) {
     each({ target: t }, 0);
-    for (const o of L.pool) if (o !== t) out.push(missParts(L, { target: t }, { label: o }));
+    for (const o of new Set([...L.pool, mixUpFor(L, t)])) if (o && o !== t) out.push(missParts(L, { target: t }, { label: o }));
   }
   else if (L.mode === 'rhyme') for (const t of L.pairs) {
     each({ target: t }, 0);
