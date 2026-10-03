@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- Sort levels: the picture on each sound's bin (sun for s, pig for p…) also appeared as a picture to sort, so it showed up twice. Removed from the sorting pile in every sort level, with a content check to stop it recurring (found in testing).
 - About screen: "Castles, Rastle & Nation" showed as "&amp;amp;"; fixed, with a check that no HTML codes show as text.
 - Backlog: research questions R1–R7 (including a literature review); picture decisions moved to testing.
 - Checks run automatically on every pull request and push (GitHub Actions, headless Chrome); the site only publishes from `main` when every check passes. Replaces the publish-only workflow.

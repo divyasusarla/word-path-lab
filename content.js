@@ -103,31 +103,31 @@ const rhyme = () => ({ type: 'rhyme', title: 'Rhyme time', pairs: RHYMES });
 export const STAGES = [
   { title: 'Stage 1', sounds: 's a t p i n', levels: [
     sounds('s a t p i n'), names('s a t p i n'),
-    sort('start', 's', 'p', ['sun sock snake sandwich', 'pig pen pizza pear penguin popcorn'], 'First sounds: s or p'),
+    sort('start', 's', 'p', ['sock snake sandwich star six', 'pen pizza pear penguin popcorn'], 'First sounds: s or p'),
     blend('pan pin ant tap nap'), sight(1, 25) ] },
   { title: 'Stage 2', sounds: 'm d g o c k ck', levels: [
     sounds('m d g o c k ck'), names('m d g o c k'),
-    sort('start', 'm', 'd', ['mouse monkey milk mushroom moon', 'duck door dolphin drum dog'], 'First sounds: m or d'),
+    sort('start', 'm', 'd', ['mouse monkey milk mushroom map', 'duck door dolphin drum'], 'First sounds: m or d'),
     blend('cat dog map pig cap can sock'), read('cat dog map pig cap pan pin ant'), sight(26, 50) ] },
   { title: 'Stage 3', sounds: 'e u r h b f l', levels: [
     sounds('e u r h b f l'), names('e u r h b f l'),
-    sort('start', 'b', 'f', ['banana bear balloon bell bus', 'fox frog fire fork fish'], 'First sounds: b or f'),
+    sort('start', 'b', 'f', ['banana bear balloon bell bus', 'fox frog fire fork'], 'First sounds: b or f'),
     blend('bed sun bug hen rat bus nut hat bat leg net log ten cup pen'), rhyme(), sight(51, 100) ] },
   { title: 'Stage 4', sounds: 'j v w x y z qu', levels: [
     sounds('j v w x y z qu'), names('j v w x y z q'),
-    sort('start', 'j', 'v', ['jellyfish juice jeans jar jet', 'violin volcano vase vest van'], 'First sounds: j or v'),
+    sort('start', 'j', 'v', ['jellyfish juice jeans jar', 'violin volcano vase vest'], 'First sounds: j or v'),
     blend('jet van web fox box six'), read('jet van web fox box six bed bug hat'), sight(101, 150) ] },
   { title: 'Stage 5', sounds: 'sh ch th ng', levels: [
     sounds('sh ch th ng'),
-    sort('start', 'sh', 'ch', ['sheep shoe shirt shark shell', 'cheese cherries chair chocolate chick'], 'sh or ch'),
+    sort('start', 'sh', 'ch', ['sheep shoe shirt shark shell', 'cheese cherries chair chocolate'], 'sh or ch'),
     blend('ship fish dish shell chick bath ring king wing cash'), read('ship fish chick bath ring king'), sight(151, 200) ] },
   { title: 'Stage 6', sounds: 'a_e i_e o_e u_e', levels: [
     sounds('a_e i_e o_e u_e', 'Magic e'),
-    sort('has', 'a', 'a_e', ['cat map hat bat cap', 'cake game snake whale'], 'Short a or long a'),
+    sort('has', 'a', 'a_e', ['cat map hat bat cap', 'game snake whale'], 'Short a or long a'),
     blend('cake kite bone cube rose nose bike five game snake'), read('cake kite bone cube nose bike five'), sight(201, 250) ] },
   { title: 'Stage 7', sounds: 'ee oa ai oo ow oi ar or er', levels: [
     sounds('ee oa ai oo ow oi ar or er', 'Vowel teams'),
-    sort('has', 'ee', 'oa', ['bee tree feet sheep', 'boat goat coat soap'], 'ee or oa'),
+    sort('has', 'ee', 'oa', ['tree feet sheep cheese', 'goat coat soap'], 'ee or oa'),
     blend('bee tree feet sheep boat goat rain snail moon spoon cow owl coin car star fork corn'),
     read('bee tree boat goat rain moon cow coin car star'), sight(251, 300, 'Word boss') ] }
 ];
@@ -195,7 +195,11 @@ export function coverage() {
         }
       }
     }
-    if (l.type === 'sort') for (const b of l.bins) if (!GRAPHEMES[b]) problems.push(`${where}: unknown sound "${b}"`);
+    if (l.type === 'sort') for (const b of l.bins) {
+      if (!GRAPHEMES[b]) { problems.push(`${where}: unknown sound "${b}"`); continue; }
+      // the bin shows its example word's picture, so that word can't also be one of the pictures to sort
+      if (l.items.some(x => x.w === GRAPHEMES[b].ex)) problems.push(`${where}: "${GRAPHEMES[b].ex}" is both the "${b}" bin picture and a picture to sort`);
+    }
     if (l.type === 'sounds') for (const gr of l.pool) if (!GRAPHEMES[gr]) problems.push(`${where}: unknown sound "${gr}"`);
     if (l.type === 'sight' && l.pool.length < l.tiles) problems.push(`${where}: fewer words than tiles`);
   }
