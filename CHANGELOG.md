@@ -4,6 +4,16 @@ Each version is tagged in git, and the tags are listed under the repo's Tags on 
 
 ## Unreleased
 - Rumble filter on recordings: removes sound below 80 Hz from every clip, and below 300 Hz (steeper) from voiceless sounds (s, f, sh, th, h, p, t, k, ch, x). Low rumble in s dropped from 12% of the clip's energy to under 1%, in f from 18% to 2%. All 69 clips re-imported with it.
+- Game rules moved into `engine.js` (rounds, wrong options, unlocking, speech, saved progress) as plain functions; `app.js` now only draws the screens and plays audio.
+- 27 unit tests for the rules and the content check (`tests/unit/`), run in Node on every pull request and shown on the checks page. Several deliberately break a copy of the content to prove the content check catches each kind of mistake.
+- Saved progress is now the list of finished level ids, not positions, so adding or reordering levels keeps a child's progress. Existing saves migrate automatically. The content check rejects duplicate ids.
+- Layout for every device, following the approved designs ("Word Path layouts" canvas): four layouts chosen from the screen size: wide (tablet landscape, desktop, Chromebook), tablet portrait, phone portrait and phone landscape.
+  - Map: the path runs across in landscape and down in portrait; on phones "Next up" moves to a bar at the bottom and the header shrinks.
+  - Play screens: top bar (back, level, progress), answers sized to the screen, and Hear again always in the same place (bottom-left; a full-width bar on phones).
+  - Pictures stack on phones; sort levels put the picture on top with the two bins below; bubbles size themselves to the screen.
+- Browsers always get the newest files after a publish (file versions are stamped at publish time).
+- `tools/serve.py`: local server that disables caching, so reloads always show the latest edits.
+- New checks: at four screen sizes, the map and every kind of level fit without scrolling, stops stay inside the map, Hear again stays on screen and never covers an answer, buttons are at least 40px and answers at least 64px.
 - Sort levels: the picture on each sound's bin (sun for s, pig for p…) also appeared as a picture to sort, so it showed up twice. Removed from the sorting pile in every sort level, with a content check to stop it recurring (found in testing).
 - About screen: "Castles, Rastle & Nation" showed as "&amp;amp;"; fixed, with a check that no HTML codes show as text.
 - Backlog: research questions R1–R7 (including a literature review); picture decisions moved to testing.

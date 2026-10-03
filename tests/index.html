@@ -41,6 +41,7 @@
 </main>
 <script type="module">
 import { SOUNDS } from '../sounds.js';
+import { tests as unitTests } from './unit/engine.test.js';
 import { LEVELS, STAGES, STICKERS, coverage, allPictureFiles, decodableBy, phonemes, soundSimilarity } from '../content.js';
 const levelOf = type => LEVELS.find(l => l.type === type).n;
 const usedClips = new Map();   // clip id -> where the game got it ('recording' or 'voice')
@@ -132,6 +133,7 @@ async function runAll() {
   runBtn.disabled = true; list.innerHTML = ''; passed = failed = 0; usedClips.clear();
   summary.className = ''; summary.textContent = 'Running…';
 
+  for (const [name, fn] of unitTests) await check(`Unit: ${name}`, async () => { await fn(); });
   await check('Content: every letter and sound is taught, every word has a picture, words only use sounds already taught', async () => {
     const problems = coverage();
     expect(!problems.length, problems.join('\n'));
@@ -279,6 +281,37 @@ async function runAll() {
     expect(said.every(x => x.clip), `said something other than sounds: ${said.filter(x => !x.clip).map(x => x.t).join(', ')}`);
     expect(said.length === phonemes(target).length, `expected ${phonemes(target).length} sounds for "${target}", got ${said.length}`);
     return `${target}: ${said.map(x => x.clip).join(' · ')}`;
+  });
+  const SIZES = [['wide', 1180, 820], ['tablet-portrait', 820, 1180], ['phone', 390, 844], ['phone-landscape', 844, 390]];
+  for (const [name, wd, ht] of SIZES) await check(`Layout ${name} (${wd}×${ht}): map and every kind of level fit the screen, with big enough buttons`, async () => {
+    frame.style.width = `${wd}px`; frame.style.height = `${ht}px`; frame.style.aspectRatio = 'auto';
+    try {
+      const issues = [];
+      for (const q of ['done=8', 'level=1', 'level=3', 'level=9', 'level=10', 'level=11', 'level=30']) {
+        const w = await load(q);
+        await sleep(w.wp.state().kind === 'pop' ? 1800 : 150);  // bubbles fly in from below; measure once they've landed
+        if (w.wp.layout() !== name) issues.push(`${q}: layout ${w.wp.layout()}`);
+        const de = doc().documentElement;
+        if (de.scrollWidth > wd + 1) issues.push(`${q}: scrolls sideways (${de.scrollWidth}px wide)`);
+        if (de.scrollHeight > ht + 2) issues.push(`${q}: scrolls down (${de.scrollHeight}px tall)`);
+        const box = doc().querySelector('.map-box');
+        if (box) {
+          const b = box.getBoundingClientRect();
+          doc().querySelectorAll('.map-stop').forEach(el => { const r = el.getBoundingClientRect(); if (r.left < b.left - 1 || r.right > b.right + 1 || r.top < b.top - 1 || r.bottom > b.bottom + 1) issues.push(`${q}: "${el.innerText.replace(/\s+/g, ' ').trim()}" sticks out of the map`); });
+        }
+        const hear = doc().querySelector('.hear');
+        if (hear) { const r = hear.getBoundingClientRect(); if (r.bottom > ht || r.right > wd || r.left < 0) issues.push(`${q}: Hear again is off screen`); }
+        const small = [...doc().querySelectorAll('main button')].filter(el => { const r = el.getBoundingClientRect(); return r.width && (r.width < 40 || r.height < 40); });
+        if (small.length) issues.push(`${q}: ${small.length} buttons smaller than 40px`);
+        const answers = [...doc().querySelectorAll('.play-main button')].filter(el => el.getBoundingClientRect().width);
+        const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        for (const c of doc().querySelectorAll('.play-bottom button')) for (const ans of answers)
+          if (overlaps(c.getBoundingClientRect(), ans.getBoundingClientRect())) { issues.push(`${q}: "${c.innerText.trim() || c.getAttribute('aria-label')}" covers an answer`); break; }
+        const tiny = answers.filter(el => { const r = el.getBoundingClientRect(); return r.width < 64 || r.height < 64; });
+        if (tiny.length) issues.push(`${q}: ${tiny.length} answers smaller than 64px`);
+      }
+      expect(!issues.length, issues.join('\n'));
+    } finally { frame.style.width = ''; frame.style.height = ''; frame.style.aspectRatio = ''; }
   });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
