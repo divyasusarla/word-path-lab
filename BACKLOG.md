@@ -22,7 +22,9 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 10 | ✅ ~~**Move game logic into its own module, with unit tests**: building rounds, choosing wrong options, unlocking; tests that `coverage()` catches broken content~~ | | | Shipped (CHANGELOG) |
 | 11 | ✅ ~~**Store progress by level id, not position**~~ | | | Shipped (CHANGELOG) |
 | 12 | ✅ ~~**Mastery tracking**~~ | | | Shipped (CHANGELOG) |
-| 13 | ✅ ~~Don't let guessing finish a level (and informational praise, 13b)~~ | | | Shipped (CHANGELOG) |
+| 13 | ✅ ~~Don't let guessing finish a level~~ | | | Shipped (CHANGELOG) |
+| 13b | ✅ ~~Informational praise~~ | | | Shipped (CHANGELOG) |
+| 13c | **Session stopping point**: a gentle "great work today" after about 15 minutes; grown-up setting for session length | S | Learning | R5 / GraphoGame dosage |
 | 14 | **Developmental bands**: regroup stages into K / grade 1 / grade 2 per `LEARNING_DESIGN.md`; add grade 2 content (endings -s -ed -ing, more vowel patterns, two-syllable words) | L | Learning | Fits the K–2 span properly; needs #5 and #11 |
 | 14b | **Consonant blends as a teaching step**: st, sp, sn, fr, tr, cl, -nd, -mp… with sorting, blending and reading levels; today some words (snake, star, spoon, tree) use blends that were never taught | M | Learning | Gap found in LEARNING_DESIGN.md; part of band B |
 | 15 | ✅ ~~**Sight words: full coverage**: rotate through every word in a level across plays, bringing missed words back~~ | | | Shipped (CHANGELOG) |
@@ -33,6 +35,7 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 20 | **Export / import progress**: a file or code to move a child between devices or collect a class's results | M | Product | Pairs with #19 |
 | 21 | **Usage data**: decide which questions to answer (finishing levels? where children get stuck?), then pick the lightest approach (see FUTURE.md) | S + M | Product · decision | Needs #12 to have data worth looking at |
 | 22 | **Teacher-led group mode**: big-screen layout, teacher picks the level, the group answers together, no stickers or progress saved | M | Product | Second use case alongside individual play |
+| 22b | **Grown-up prompts**: optional off-screen activity ideas after a level ("Find three things at home that start with s") for families and teachers | S | Learning | Social and meaningful pillars (Hirsh-Pasek et al. 2015) |
 | 23 | **Segmenting levels**: hear "cat", tap the sounds in order | M | Learning | Missing core skill (reverse of blending) |
 | 24 | **Spelling levels**: build the word from letter tiles | M | Learning | Spelling strongly reinforces reading |
 | 25 | **Heart words**: teach decodable high-frequency words as decoding once their sounds are taught; drill only the irregular parts | M | Learning | Better sight-word method |
@@ -51,13 +54,15 @@ Questions to answer before or alongside the learning items. Findings go into LEA
 
 | # | Question | How | Informs |
 |---|---|---|---|
-| R1 | **Literature review**: a structured review of (a) foundational reading instruction for ages 5–8, (b) evidence on digital and game-based phonics practice (what works and what doesn't in apps), (c) design for young children (feedback, rewards, attention, accessibility). Output: a summary with verified citations in LEARNING_DESIGN.md | Desk research: practice guides, meta-analyses and systematic reviews first; verify every citation | Everything; especially #12–#16, #22–#26 |
+| R1 | **Literature review**: first pass done (LEARNING_DESIGN.md, "Literature review"): apps and digital phonics, spacing, mastery criteria, session length, feedback, rewards, app design for young children. Next: verify the flagged citations, then a deeper pass on decodable text and phonological awareness | Desk research | Everything |
 | R2 | **Picture naming**: which pictures do children name as intended? Decide on the 10 flagged as likely misnamed and 11 worth a look (`tools/pictures.html`) | During testing: ask children to name pictures; note mismatches | #3 part 2 |
 | R3 | **Programme alignment**: how much would matching a school's sequence (e.g. UFLI) help children, and what's allowed without using its materials? | Desk research; compare published sequences; check terms | #14 bands |
-| R4 | **Mastery threshold**: is "3 first-try correct of the last 4, over 2 days" right for ages 5–8? | Literature (R1) and published practice | #12, #13 |
-| R5 | **Session length**: how many rounds hold attention for a 5-year-old vs an 8-year-old? | Literature (R1) and observation during testing | Rounds per level, #33 |
+| R4 | **Mastery threshold** (first answer: keep the placeholder; per-item, about 3 correct, spaced over days fits the evidence; revisit with data): is "3 first-try correct of the last 4, over 2 days" right for ages 5–8? | Literature (R1) and published practice | #12, #13 |
+| R5 | **Session length** (first answer: about 10–15 minutes, i.e. 2–3 levels): how many rounds hold attention for a 5-year-old vs an 8-year-old? | Literature (R1) and observation during testing | Rounds per level, #33 |
 | R6 | **Group mode needs**: what does teacher-led use need that individual play doesn't (choral answers, pacing, pause)? | Talk to teachers; observe a group session | #22 |
 | R7 | **Sight-word list**: Fry vs Dolch vs a list from public word-frequency data, for learning value and licensing | Desk research | #15, #25, FUTURE.md |
+| R8 | **Evaluation plan**: how we'll know Word Path helps. A short pre/post check of letter sounds and decoding (ideally with a comparison group) before claiming impact; engagement alone isn't evidence | Design the measures; pilot with a small group | Claims, product decisions |
+| R9 | **Reward design**: expected rewards for completion can undermine motivation; informational praise helps. Review stickers and praise wording | Literature (done in R1) plus observation | Praise lines, stickers |
 
 ## Ongoing
 
