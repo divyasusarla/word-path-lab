@@ -5,6 +5,7 @@ import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage } from './content.js?v=dev'
 import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
+  sayId, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from './engine.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
@@ -237,7 +238,7 @@ class App extends Component {
     for (const p of parts) {
       if (id !== this.sid) return false;
       if (typeof p === 'number') { if (!mute) await this.wait(p); continue; }
-      const o = typeof p === 'string' ? { t: p } : p;
+      const o = typeof p === 'string' ? { t: p, clip: sayId(p) } : p;  // a plain line has a recording slot named after its text
       const rec = o.clip && this.recorded.has(o.clip);
       if (mute) { if (TEST) this.caption(o.t, o.clip, o.clip ? (rec ? 'recording' : 'voice') : null); await this.wait(0); continue; }
       // A recording only plays if sound is running; otherwise the browser voice says it, so there's never silence
@@ -264,7 +265,7 @@ class App extends Component {
   start(i) {
     if (i < 0 || i >= LV.length) return;
     if (this.sessionStart == null) this.sessionStart = Date.now();  // the session starts with the first level played
-    if (!this.unlocked(i)) { this.speak(['That level is locked. Finish the one before it.']); return; }
+    if (!this.unlocked(i)) { this.speak([LOCKED]); return; }
     this.stop();
     const L = LV[i], rounds = this.build(L);
     this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false, misses:0, modelled:false, firstTries:[], missed:[] });
@@ -280,8 +281,7 @@ class App extends Component {
       const again = shouldPractiseAgain(this.state.firstTries);
       const rest = sessionOver(this.sessionStart, Date.now(), this.state.audio.session);
       this.setState({ restTime: rest });
-      this.speak(['You did it!', 400, `You earned the ${L.sticker.name} sticker!`, ...(stageDone ? [500, `You finished stage ${L.stage + 1}!`] : []),
-        ...(rest ? [500, 'Great work today! Time for a break.'] : again ? [500, 'Let\'s practise this one again.'] : [])]);
+      this.speak(finishParts(L, { stageDone, rest, again }));
       return;
     }
     // A bonus round is filled now, from what was missed in this play
@@ -292,14 +292,14 @@ class App extends Component {
       list = rounds.slice(); list[round + 1] = upcoming;
     }
     this.setState({ round: round + 1, rounds: list, wrong:[], solved:false, binWrong:null, answered:false, misses:0, modelled:false });
-    this.speak([...(upcoming.bonus && !rounds[round].bonus ? ['Bonus round!', 500] : []), ...this.prompt(L, upcoming, false, round + 1)]);
+    this.speak([...(upcoming.bonus && !rounds[round].bonus ? [BONUS, 500] : []), ...this.prompt(L, upcoming, false, round + 1)]);
   }
 
   // Count a miss; after enough misses, show and say the answer instead of letting guessing win
   miss(L, r, said) {
     const misses = this.state.misses + 1, model = misses >= modelAfter(L);
     this.setState({ misses, modelled: this.state.modelled || model });
-    this.speak(model ? [...said, 600, ...modelParts(L, r)] : [...said, 600, 'Try again.', 700, ...this.prompt(L, r, false)]);
+    this.speak(model ? [...said, 600, ...modelParts(L, r)] : [...said, 600, TRY_AGAIN, 700, ...this.prompt(L, r, false)]);
   }
   praise(L, r) { return praiseParts(L, r, { modelled: this.state.modelled, mastered: this.justMastered, n: this.state.round }); }
 
@@ -317,9 +317,7 @@ class App extends Component {
     this.record(L, r, isRight(L, r, o));
     if (isRight(L, r, o)) return this.win(this.praise(L, r));
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
-    this.miss(L, r, L.mode === 'sound' ? ['That one says', 300, gsnd(o.label)]
-      : L.mode === 'name' ? ['That letter is', 300, nsnd(o.label)]
-      : [{ t: `That word is: ${o.label}.`, rate: 0.85 }]);
+    this.miss(L, r, missParts(L, r, o));
   }
 
   pickMatch(i) {
@@ -328,7 +326,7 @@ class App extends Component {
     this.record(L, r, isRight(L, r, o));
     if (isRight(L, r, o)) return this.win(this.praise(L, r));
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
-    this.miss(L, r, L.mode === 'rhyme' ? [`${o.w} does not rhyme with ${r.target.cue}.`] : [`That is a ${o.w}.`]);
+    this.miss(L, r, missParts(L, r, o));
   }
 
   pickBin(b) {
@@ -340,7 +338,7 @@ class App extends Component {
       return this.win(this.praise(L, item));
     }
     this.setState({ binWrong: b });
-    this.miss(L, item, [L.ask === 'has' ? 'Listen to the middle sound.' : 'Listen to the first sound.', 500, { t: item.w, rate: 0.6 }]);
+    this.miss(L, item, missParts(L, item, b));
   }
 
   // Says each sound in the word, slowly, but not the word itself: the child does the blending
@@ -442,7 +440,7 @@ class App extends Component {
       heroTitle: nextIdx < 0 ? 'You finished every level!' : `Level ${nextIdx + 1}: ${LV[nextIdx].title}`,
       hasNext: nextIdx >= 0,
       heroPlay: () => this.start(nextIdx),
-      heroHear: () => this.speak(nextIdx < 0 ? ['You finished every level! Look at your stickers.'] : [`Level ${nextIdx + 1}.`, 300, `${LV[nextIdx].title}.`, 500, 'Press play.']),
+      heroHear: () => this.speak(heroParts(nextIdx)),
       nodes, mapPath: stagePath(pos, down), layout, mapDown: down,
       stageTitle: st.title, stageSounds: st.sounds.split(' ').map(showG).join(' '), stageNum: ms + 1, stageCount: STAGES.length,
       stageDoneCount: idxs.filter(i => done[i]).length, stageLevelCount: idxs.length,
@@ -492,7 +490,7 @@ class App extends Component {
       onVoice: e => this.setAudio({ voice: e.target.value }),
       onVol: e => this.setAudio({ vol: parseFloat(e.target.value) }),
       onRate: e => this.setAudio({ rate: parseFloat(e.target.value) }),
-      testVoice: () => this.speak(['Hi! Let\'s play with letters.', 500, 'This letter says', 400, gsnd('s')]),
+      testVoice: () => this.speak([{ t: 'Hi! Let\'s play with letters.' }, 500, { t: 'This letter says' }, 400, gsnd('s')]),  // tests the device voice, so no recordings for the lines
       resetAll: () => { if (window.confirm('Reset all progress and stickers?')) { const d = Array(LV.length).fill(false); this.save(d); if (!TEST) try { localStorage.removeItem(MKEY); } catch (e) {} this.setState({ done: d, mastery: {}, settings: false, mapStage: null }); } }
     };
   }

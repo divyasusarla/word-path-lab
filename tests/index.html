@@ -44,6 +44,7 @@ import { SOUNDS } from '../sounds.js';
 import { tests as unitTests } from './unit/engine.test.js';
 import { LEVELS, STAGES, STICKERS, coverage, allPictureFiles, decodableBy, phonemes, soundSimilarity } from '../content.js';
 import { PICTURE_WORDS } from '../engine.js?v=dev';
+import { SCRIPT, SCRIPT_IDS } from '../script.js?v=dev';
 const levelOf = type => LEVELS.find(l => l.type === type).n;
 const usedClips = new Map();   // clip id -> where the game got it ('recording' or 'voice')
 const frame = document.getElementById('game');
@@ -443,8 +444,9 @@ async function runAll() {
     expect(w.wp.blockAudio() === 'blocked', 'could not simulate stopped sound');
     w.wp.clearSpoken(); const before = w.wp.played().length;
     w.wp.replay();
-    await waitFor(() => w.wp.spokenDetail().some(x => x.clip), 8000, 'the sound after blocking');
-    const clip = w.wp.spokenDetail().find(x => x.clip);
+    const soundIds = new Set(SOUNDS.map(x => x.id)), isSound = x => x.clip && soundIds.has(x.clip);
+    await waitFor(() => w.wp.spokenDetail().some(isSound), 8000, 'the sound after blocking');
+    const clip = w.wp.spokenDetail().find(isSound);
     expect(clip.src === 'fallback', `expected the voice fallback, got ${clip.src}`);
     expect(w.wp.played().length === before, 'played a recording into stopped sound');
     frame.src = 'about:blank';
@@ -456,14 +458,14 @@ async function runAll() {
     await waitFor(() => w.wp.state().screen === 'play' && w.wp.state().level === 4, 2000, 'level 4 to start');
   });
 
-  await check('Recordings: every speech sound the levels use has a slot in the recording list', async () => {
-    const ids = new Set(SOUNDS.map(x => x.id));
-    expect(ids.size === SOUNDS.length, 'the recording list has duplicate ids');
+  await check('Recordings: every sound, word and line the levels use has a slot in the recording list', async () => {
+    const ids = new Set([...SOUNDS.map(x => x.id), ...SCRIPT_IDS]);
+    expect(ids.size === SOUNDS.length + SCRIPT.length, 'the recording list has duplicate ids');
     expect(SOUNDS.length === 69, `expected 69 sounds (43 + 26 letter names), found ${SOUNDS.length}`);
     const unknown = [...usedClips.keys()].filter(id => !ids.has(id));
-    expect(!unknown.length, `the game uses sounds with no recording slot: ${unknown.join(', ')}`);
+    expect(!unknown.length, `the game uses sounds, words or lines with no recording slot: ${unknown.join(', ')}`);
     const rec = [...usedClips].filter(([, src]) => src === 'recording').length;
-    return `${usedClips.size} different sounds used across all levels (3 rounds each); ${rec} played from recordings, ${usedClips.size - rec} from the browser voice`;
+    return `${usedClips.size} different sounds, words and lines used across all levels (3 rounds each); ${rec} played from recordings, ${usedClips.size - rec} from the browser voice`;
   });
   await check('Play-through checklist page: loads every section with level numbers from the content', async () => {
     frame.src = '../tools/checklist.html';
@@ -482,13 +484,16 @@ async function runAll() {
     const broken = brokenPictures(); expect(!broken.length, `broken pictures: ${broken.join(', ')}`);
     return `${w.picturesReady.pictures} pictures, ${w.picturesReady.high} flagged likely misnamed, ${w.picturesReady.mild} worth a look`;
   });
-  await check('Recorder page: loads with all 69 sounds and every icon', async () => {
+  await check('Recorder page: loads with the 69 sounds and every word and line, in batches, and every icon', async () => {
     frame.src = '../tools/record.html';
     const w = await waitFor(() => frame.contentWindow.recorderReady && frame.contentWindow, 6000, 'the recorder to load');
     expect(w.recorderReady.sounds === 69, `recorder lists ${w.recorderReady.sounds} sounds`);
-    expect(doc().querySelectorAll('nav button').length === 69, 'not every sound has a button');
+    expect(w.recorderReady.clips === 69 + SCRIPT.length, `recorder lists ${w.recorderReady.clips} clips, expected ${69 + SCRIPT.length}`);
+    expect(w.recorderReady.batches === STAGES.length + 1, `${w.recorderReady.batches} batches`);
+    expect(doc().querySelectorAll('nav button').length === 69, 'the first batch should show the 69 sounds');
+    expect(doc().querySelectorAll('#batches button').length === STAGES.length + 1, 'a button per batch');
     const m = missingIcons(); expect(!m.length, `missing icons: ${m.join(', ')}`);
-    return `${w.recorderReady.recorded} recorded in this browser`;
+    return `${w.recorderReady.clips} clips in ${w.recorderReady.batches} batches; ${w.recorderReady.recorded} recorded in this browser`;
   });
 
   summary.className = failed ? 'fail' : 'pass';

@@ -3,6 +3,10 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- **Recording words and lines:** the recorder (`tools/record.html`) now has every word and line the game says, 534 clips in 7 batches (one per stage, about 60–100 each), as well as the 69 letter sounds. A batch holds everything first needed in that stage. The game plays each recording as soon as it's imported and uses the device voice for the rest, so batches can be recorded in any order alongside other work.
+  - Sentences no longer have words baked in: "That is a cat" is now "That one is … cat", "Here it is: said" is "Here it is. … said", so 37 instruction lines cover every round.
+  - Each line's recording is named after its exact words, so if a line is reworded later the game uses the device voice for it (never an out-of-date recording) until it's re-recorded.
+  - The importer keeps pauses inside words and lines, and the recorder also trims the stop-key click.
 - From the first test with a child:
   - **Bonus rounds:** levels with fewer items than rounds (level 1 has 6 letters in 8 rounds) now play every item once first, then label the rest "⭐ Bonus round". Bonus rounds bring back what the child missed in this play, otherwise something still being learned, and never the item just played.
   - **Less repetition in sorting:** after the first two rounds, the question shortens to the word and the two sounds ("sock … s or m"). After round three, praise in sort and letter-sound levels is just "Yes!".

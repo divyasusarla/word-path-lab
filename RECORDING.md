@@ -1,6 +1,24 @@
-# Recording the sounds
+# Recording the sounds, words and lines
 
-69 short clips: 43 speech sounds and the 26 letter names. Allow one afternoon, about an hour of actual recording. The game uses each recording as soon as it's added and falls back to the browser voice for anything missing.
+The recorder has everything the game says, in batches:
+
+| Batch | Clips | What's in it |
+|---|---|---|
+| Letter sounds and names | 69 | 43 speech sounds and the 26 letter names (done; re-records in backlog #9) |
+| Stage 1 to Stage 7 | 60–100 each, 534 in all | Every word and line first needed in that stage: instructions and praise, level names and sticker lines, picture words, sight words |
+
+Do one batch at a time, in any order (Stage 1 first is most useful). Each batch takes about 15–25 minutes. The game uses each recording as soon as it's imported and the device voice for anything missing, so a half-recorded game works fine.
+
+**Words and lines are different from letter sounds:**
+
+- **Words:** say each one once, clearly and a little slowly, as if naming a picture for a child. Flat and friendly, not like a question.
+- **Lines with "…"** ("Find the letter that says …"): a word or sound follows. Leave it out; the game adds it after a short pause. Keep your voice up at the end, as if you're about to say it.
+- **Lines without "…"** ("Try again.", "You did it!"): say the whole line, warmly.
+- **Short sight words** ("a", "I", "the"): the way you'd say them in a sentence ("uh", not "ay"), unless you'd rather teach them differently.
+
+If a line is reworded later, its old recording isn't used any more (the game uses the device voice until you re-record it), so you'll never hear a mismatched line. Claude will mention reworded lines in the pull request.
+
+The rest of this guide was written for the letter sounds; the steps are the same for every batch.
 
 ## 1. Set up (5 minutes)
 
@@ -13,7 +31,7 @@
 
 **https://divyasusarla.github.io/word-path-lab/tools/record.html**
 
-Press **Start recording** and choose **Allow** when Chrome asks to use the microphone.
+Press **Start recording** and choose **Allow** when Chrome asks to use the microphone. Pick a batch from the row of buttons at the top; each shows how many are done. Next and back stay inside the batch.
 
 If the level bar doesn't move when you speak: open System Settings → Privacy & Security → Microphone, make sure **Google Chrome** is switched on, then reload the page.
 
@@ -46,7 +64,7 @@ Done sounds turn green in the list on the left; sounds with a note turn yellow. 
 
 ## 4. Download (2 minutes)
 
-When you're done (or at the end of a batch), press **Download all**. A file called `word-path-audio-<date>.zip` lands in your **Downloads** folder.
+At the end of each batch, press **Download all** (it includes every batch so far; re-importing ones already in the game is harmless). A file called `word-path-audio-<date>.zip` lands in your **Downloads** folder.
 
 Then tell Claude: *"The recordings are in Downloads."*
 

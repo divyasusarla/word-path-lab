@@ -12,6 +12,7 @@ index.html ──loads──▶ app.js (screens, audio, test mode)
                         │ uses
                         ▼
                       content.js (what children learn) ──▶ sounds.js (the 69 recordable sounds)
+                      script.js (every word and line to record, batched by stage; for the recorder and checks)
                                                             audio/ (the recordings)
                                                             vendor/noto/ (pictures)
 ```
@@ -23,7 +24,7 @@ index.html ──loads──▶ app.js (screens, audio, test mode)
 ## A round, step by step
 
 1. **Starting a level** (`start(i)`): the engine builds the rounds (`buildRounds`), choosing never-seen and still-learning items first, plus review items from earlier levels. The app shows the play screen and speaks the first question (`prompt` → `speak`).
-2. **Speaking** (`speak(parts)`): each part is a phrase, a pause, or a speech sound. For a speech sound with a recording, the app checks the audio engine is running (`audioReady`), fetches and decodes the clip once (`clipBuffer`), and plays it (`playClip`); otherwise the browser voice says it (`utter`). A newer `speak` call cancels an older one.
+2. **Speaking** (`speak(parts)`): each part is a line, a pause, a word or a speech sound, and each can have a recording: speech sounds and letter names (`sounds.js`), words (`word-cat`, from `word()`), and lines (a plain string; its clip is named after its text, `say-try-again`, via `sayId`). Words are separate parts, never baked into a line, so a few dozen lines cover every round. For a part with a recording, the app checks the audio engine is running (`audioReady`), fetches and decodes the clip once (`clipBuffer`), and plays it (`playClip`); otherwise the browser voice says it (`utter`). A newer `speak` call cancels an older one.
 3. **A tap** (`pickPop` / `pickMatch` / `pickBin`): the first tap of the round is recorded for mastery (`record` → `recordAttempt`). A right answer plays praise (`praiseParts`), waits the think time, then moves on (`next`). A wrong answer explains it; after enough misses the answer is shown and said (`miss` → `modelParts`).
 4. **Finishing a level** (`next` on the last round): the level is marked done and saved by id; the level complete screen shows the sticker, how many items are known, and Practise again or Time for a break when they apply.
 

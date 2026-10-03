@@ -6,8 +6,11 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
+  sayId, wordId, slug, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
-import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, FRY, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
+import { SOUND_IDS } from '../../sounds.js?v=dev';
+import { SCRIPT, SCRIPT_IDS, BATCHES } from '../../script.js?v=dev';
 
 const ok = (cond, msg) => { if (!cond) throw new Error(msg); };
 const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); };
@@ -89,6 +92,42 @@ export const tests = [
   ['prompts: every speech sound uses a known recording', () => {
     for (const L of LV) for (const r of buildRounds(L, 4, seeded(L.n)))
       for (const p of prompt(L, r, true)) if (p && p.clip) ok(/^[a-z-]+$/.test(p.clip), `level ${L.n}: odd clip "${p.clip}"`);
+  }],
+  // ---- recordings for words and lines (script.js)
+  ['recordings: every word and line the game can say has a slot in the recording list', () => {
+    const known = id => SOUND_IDS.has(id) || SCRIPT_IDS.has(id);
+    const check = (parts, where) => { for (const p of parts) if (typeof p !== 'number') {
+      const id = typeof p === 'string' ? sayId(p) : p.clip;
+      ok(id && known(id), `${where}: "${p.t ?? p}" (${id}) has no recording slot`);
+    } };
+    for (const L of LV) {
+      const rounds = buildRounds(L, 8, seeded(L.n));
+      rounds.forEach((r, n) => {
+        check(prompt(L, r, n === 0, n), `level ${L.n} prompt`);
+        check(praiseParts(L, r, { n }), `level ${L.n} praise`);
+        check(modelParts(L, r), `level ${L.n} answer`);
+        const wrong = L.kind === 'sort' ? [1 - r.bin] : r.options.filter(o => !isRight(L, r, o));
+        for (const o of wrong) check(missParts(L, r, o), `level ${L.n} wrong tap`);
+      });
+      check(finishParts(L, { stageDone: true, rest: true }), `level ${L.n} finish`);
+      check(finishParts(L, { again: true }), `level ${L.n} finish`);
+    }
+    check([TRY_AGAIN, BONUS, LOCKED], 'fixed lines');
+    check(heroParts(0), 'map'); check(heroParts(-1), 'map');
+  }],
+  ['recordings: every sight word and picture word has a slot, and ids are unique and file-safe', () => {
+    for (const w of [...FRY, ...PICTURE_WORDS]) ok(SCRIPT_IDS.has(wordId(w)), `"${w}" has no slot`);
+    eq(SCRIPT_IDS.size, SCRIPT.length, 'unique ids');
+    for (const c of SCRIPT) ok(/^(word|say)-[a-z0-9]+(-[a-z0-9]+)*$/.test(c.id), `odd id "${c.id}"`);
+    const texts = new Map(); for (const c of SCRIPT) { ok(!texts.has(c.id) || texts.get(c.id) === c.text, `"${c.text}" and "${texts.get(c.id)}" share ${c.id}`); texts.set(c.id, c.text); }
+    eq([slug("Let's practise this one again."), wordId('I'), wordId("don't")], ['lets-practise-this-one-again', 'word-i', 'word-dont'], 'slugs');
+  }],
+  ['recordings: lines are reusable (words are said separately), so the script stays small', () => {
+    const lines = SCRIPT.filter(c => c.kind === 'line');
+    ok(lines.length <= 45, `${lines.length} instruction lines: is a word baked into a sentence?`);
+    for (const c of lines) for (const w of PICTURE_WORDS) ok(!new RegExp(`\\b${w}\\b`, 'i').test(c.text) || ['can', 'tap', 'it'].includes(w), `"${c.text}" contains the word "${w}"`);
+    eq(BATCHES.length, STAGES.length, 'one batch per stage');
+    ok(BATCHES.every(b => b.clips.length), 'no empty batch');
   }],
   ['sound it out: one sound per letter group, never the whole word', () => {
     const parts = soundOutParts('ship').filter(p => typeof p === 'object');
@@ -257,7 +296,7 @@ export const tests = [
     ok(prompt(T, r, false, FULL_ROUNDS - 1).includes('Does it start with'), 'early rounds ask in full');
     const later = prompt(T, r, false, FULL_ROUNDS);
     ok(!later.includes('Does it start with'), 'later rounds drop the question');
-    eq(later.filter(p => p.clip).length, 2, 'both sounds');
+    eq(later.filter(p => p.clip && !p.clip.startsWith('word-')).length, 2, 'both sounds');
   }],
   ['prompts: sight words are said on their own, slowly, twice', () => {
     const words = prompt(level('sight'), { target: 'are' }, false).filter(p => p.t === 'are');
