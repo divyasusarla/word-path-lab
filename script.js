@@ -2,8 +2,8 @@
 // worked out from the levels so the list never falls behind the game. Used by the recorder (tools/record.html)
 // and the checks. Each clip is first needed in one stage; the recorder offers them stage by stage (batches).
 import { LV, mixUpFor, prompt, praiseParts, modelParts, missParts, finishParts, heroParts, levelLine, reviewItems,
-  sayId, word, PICTURE_WORDS, OPTION_WORDS, TRY_AGAIN, BONUS, LOCKED } from './engine.js?v=dev';
-import { STAGES, FRY, soundSimilarity, decodableBy } from './content.js?v=dev';
+  sayId, word, OPTION_WORDS, TRY_AGAIN, BONUS, LOCKED } from './engine.js?v=dev';
+import { STAGES, FRY, WORDS, PICS, soundSimilarity, wordStage, soundStage } from './content.js?v=dev';
 import { SOUND_IDS } from './sounds.js?v=dev';
 
 const FRY_SET = new Set(FRY);
@@ -69,9 +69,13 @@ export const BATCHES = (() => {
     if (had) { had.lead ||= c.lead; continue; }
     seen.set(c.id, c); batches[L.stage].clips.push(c);
   }
-  // every picture word keeps a slot, even one no level says today (kept for word games), in the stage it becomes readable
-  for (const w of PICTURE_WORDS) for (const c of clipsIn([word(w)])) if (!seen.has(c.id)) {
-    const st = STAGES.findIndex((_, i) => decodableBy(i).includes(w));
+  // every word in WORDS keeps a slot, even one no level says yet (picture words kept for word games, and the words
+  // for "find the word"), in the stage whose sounds make it readable; every picture too
+  // Pictures not in WORDS (for First sounds) go in the stage that teaches their first sound
+  const firstSound = w => ['sh', 'ch', 'th', 'qu'].find(g => w.startsWith(g)) || w[0];
+  const stageOf = w => WORDS[w] ? wordStage(w) : soundStage(firstSound(w)) ?? -1;
+  for (const w of [...Object.keys(WORDS), ...Object.keys(PICS)]) for (const c of clipsIn([word(w)])) if (!seen.has(c.id)) {
+    const st = stageOf(w);
     seen.set(c.id, c); batches[st < 0 ? STAGES.length - 1 : st].clips.push(c);
   }
   const order = Object.fromEntries(SCRIPT_GROUPS.map((g, i) => [g.key, i]));

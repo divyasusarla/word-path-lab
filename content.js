@@ -45,12 +45,23 @@ export const PICS = {
   pin:'📌', pizza:'🍕', popcorn:'🍿', rain:'🌧️', rat:'🐀', ring:'💍', rose:'🌹', sandwich:'🥪', shark:'🦈', sheep:'🐑',
   shell:'🐚', ship:'🚢', shirt:'👕', shoe:'👟', six:'6️⃣', snail:'🐌', snake:'🐍', soap:'🧼', sock:'🧦', spoon:'🥄',
   star:'⭐', sun:'☀️', tap:'🚰', ten:'🔟', tree:'🌳', van:'🚐', vase:'🏺', vest:'🦺', violin:'🎻', volcano:'🌋', web:'🕸️',
-  whale:'🐳', wing:'🪽'
+  whale:'🐳', wing:'🪽',
+  // more pictures for First sounds (#36), so every letter taught has about four
+  tiger:'🐯', turtle:'🐢', tomato:'🍅', tent:'⛺', tooth:'🦷', nest:'🪺', nine:'9️⃣', gift:'🎁', guitar:'🎸', gorilla:'🦍',
+  key:'🔑', kangaroo:'🦘', koala:'🐨', lemon:'🍋', lion:'🦁', lock:'🔒', ladder:'🪜', horse:'🐴', house:'🏠', hammer:'🔨',
+  honey:'🍯', watermelon:'🍉', worm:'🪱', wolf:'🐺', watch:'⌚', axe:'🪓', ambulance:'🚑', ox:'🐂', otter:'🦦', olive:'🫒',
+  egg:'🥚', octopus:'🐙', elephant:'🐘'
 };
 
 // Pictures a child might name differently (tools/pictures.html shows them). high = likely; mild = possible.
 // "high" pictures are never offered as wrong answers (engine.js OPTION_WORDS). Edit as decisions are made (R2).
 export const PICTURE_FLAGS = {
+  ox:     ['high', 'Likely "cow" or "bull".'],
+  otter:  ['mild', 'May be called "beaver".'],
+  olive:  ['mild', 'May be called "grape".'],
+  honey:  ['mild', 'A honey pot: may be called "jar".'],
+  watch:  ['mild', 'May be called "clock".'],
+  nine:   ['mild', 'A number tile: fine if children recognise 9 as "nine".'],
   tap:  ['high', 'Likely "water" or "sink".'],
   nap:  ['high', 'Likely "sleep" or "tired".'],
   cash: ['high', 'Likely "money".'],
@@ -90,7 +101,31 @@ export const WORDS = {
   five:'f i_e v', game:'g a_e m', snake:'s n a_e k',
   bee:'b ee', tree:'t r ee', feet:'f ee t', sheep:'sh ee p', boat:'b oa t', goat:'g oa t', coat:'c oa t', rain:'r ai n',
   snail:'s n ai l', moon:'m oo n', spoon:'s p oo n', cow:'c ow', owl:'ow l', coin:'c oi n', car:'c ar', star:'s t ar',
-  fork:'f or k', corn:'c or n'
+  fork:'f or k', corn:'c or n',
+  // Words without pictures, for "find the word" (#36): our own lists, built only from each stage's sounds.
+  // A word's stage is worked out from its sounds (wordStage), so these needn't be listed by stage.
+  sat:'s a t', pat:'p a t', tan:'t a n', tin:'t i n', sit:'s i t', pit:'p i t', tip:'t i p', sip:'s i p', nip:'n i p',
+  mad:'m a d', mat:'m a t', dad:'d a d', sad:'s a d', mom:'m o m', mop:'m o p', pot:'p o t', dot:'d o t', cot:'c o t',
+  dig:'d i g', dim:'d i m', kid:'k i d', kit:'k i t', pick:'p i ck', sick:'s i ck', kick:'k i ck', tick:'t i ck',
+  dock:'d o ck', pack:'p a ck', sack:'s a ck', tag:'t a g', gas:'g a s', nod:'n o d', pod:'p o d', gap:'g a p', dip:'d i p',
+  fed:'f e d', pet:'p e t', beg:'b e g', peg:'p e g', bet:'b e t', hum:'h u m', rug:'r u g', mug:'m u g', tug:'t u g',
+  dug:'d u g', bud:'b u d', cub:'c u b', rub:'r u b', tub:'t u b', bun:'b u n', gum:'g u m', hut:'h u t', hop:'h o p',
+  hot:'h o t', lot:'l o t', fog:'f o g', rib:'r i b', lip:'l i p', hip:'h i p', fit:'f i t', hit:'h i t', hid:'h i d',
+  lid:'l i d', bib:'b i b', fan:'f a n', ran:'r a n', ham:'h a m', lap:'l a p', bag:'b a g', rag:'r a g', cab:'c a b',
+  fell:'f e ll', sell:'s e ll', doll:'d o ll', hill:'h i ll', fill:'f i ll', bill:'b i ll', pill:'p i ll',
+  jam:'j a m', jog:'j o g', jug:'j u g', vet:'v e t', wig:'w i g', win:'w i n', wag:'w a g', wax:'w a x', mix:'m i x',
+  fix:'f i x', ox:'o x', yet:'y e t', yum:'y u m', yak:'y a k', zap:'z a p', quit:'qu i t', quiz:'qu i z',
+  quack:'qu a ck', wet:'w e t',
+  shop:'sh o p', shut:'sh u t', shed:'sh e d', wish:'w i sh', rush:'r u sh', mash:'m a sh', chip:'ch i p',
+  chop:'ch o p', chin:'ch i n', chat:'ch a t', rich:'r i ch', math:'m a th', moth:'m o th', thin:'th i n',
+  sing:'s i ng', bang:'b a ng', hang:'h a ng', rang:'r a ng',
+  bake:'b a_e k', lake:'l a_e k', gate:'g a_e t', tape:'t a_e p', cave:'c a_e v', wave:'w a_e v', save:'s a_e v',
+  hide:'h i_e d', ride:'r i_e d', pine:'p i_e n', dive:'d i_e v', hole:'h o_e l', pole:'p o_e l', rope:'r o_e p',
+  note:'n o_e t', joke:'j o_e k', mule:'m u_e l', cute:'c u_e t',
+  seed:'s ee d', week:'w ee k', deep:'d ee p', jeep:'j ee p', road:'r oa d', toad:'t oa d', load:'l oa d',
+  tail:'t ai l', mail:'m ai l', nail:'n ai l', wait:'w ai t', paid:'p ai d', room:'r oo m', cool:'c oo l',
+  pool:'p oo l', boot:'b oo t', zoo:'z oo', town:'t ow n', boil:'b oi l', soil:'s oi l', join:'j oi n',
+  park:'p ar k', farm:'f ar m', dark:'d ar k', born:'b or n', fern:'f er n'
 };
 export const phonemes = word => (WORDS[word] || '').split(' ').filter(Boolean);
 
@@ -175,6 +210,8 @@ export const soundStage = gr => {
   return base ? TAUGHT_BY[base[0]] : undefined;
 };
 // Words with a picture whose sounds are all taught by the given stage
+// The stage that teaches a word's last new sound (-1 if a sound isn't taught anywhere)
+export const wordStage = w => { const st = phonemes(w).map(soundStage); return st.length && st.every(x => x !== undefined) ? Math.max(...st) : -1; };
 export const decodableBy = stage => Object.keys(WORDS).filter(w => PICS[w] && phonemes(w).every(gr => soundStage(gr) !== undefined && soundStage(gr) <= stage));
 
 // How alike two words sound, for choosing wrong options in Blend it and Read it. Higher = more alike.
