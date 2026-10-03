@@ -36,6 +36,13 @@ Choices to discuss if Word Path moves from a free test tool towards a product. N
 - **Assets:** Noto Emoji (Apache 2.0), Fredoka (SIL OFL 1.1), Lucide (ISC), Preact (MIT), htm (Apache 2.0). Keep licence files and an in-game credits page.
 - **Voice recordings:** your recordings are in a public repo. A product might use a hired voice actor (with a written agreement) or a licensed AI voice (check the service's commercial terms, especially for cloned voices).
 
+## Build step and TypeScript
+
+- **Today:** Preact + htm with no build step (DECISIONS.md #3). Fast to work on, nothing to install.
+- **Switching to** React or Preact with a build step (e.g. Vite) and TypeScript adds type checking, cleaner components, more testing tools and a path towards React Native. The cost is a toolchain to maintain.
+- **Cheap middle step:** split `app.js` into modules (audio, screens, test mode), still with no build step.
+- **Decide before:** the teacher report (#19), or any app-store step.
+
 ## Accessibility and school requirements
 
 - Schools often require accessibility conformance (WCAG 2.1 AA; in the US, ADA and Section 508 for public institutions) and may ask for a VPAT.
