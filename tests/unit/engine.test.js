@@ -6,9 +6,9 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
-  sayId, wordId, slug, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
+  sayId, wordId, slug, mixUpFor, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
-import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, FRY, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, FRY, CONFUSIONS, confusedWith, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
 import { SCRIPT, SCRIPT_IDS, BATCHES } from '../../script.js?v=dev';
 
@@ -78,6 +78,26 @@ export const tests = [
         if (pool.some(x => x !== w && shares(x))) ok(near.some(shares), `"${w}" got ${near.join(', ')}`);
       }
     }
+  }],
+
+  // ---- letter mix-ups (#17)
+  ['mix-ups: once both are taught, a letter\'s usual mix-up is always among its tiles', () => {
+    let seen = 0;
+    for (const L of LV.filter(l => l.kind === 'pop' && l.mode !== 'word')) {
+      const taught = new Set(LV.filter(l => l.type === L.type && l.n <= L.n).flatMap(l => l.pool));
+      for (const r of buildRounds(L, 8, seeded(L.n))) {
+        const mix = confusedWith(r.target).find(x => taught.has(x)), labels = r.options.map(o => o.label);
+        eq(mixUpFor(L, r.target), mix ?? null, `level ${L.n}: mix-up for ${r.target}`);
+        if (mix) { ok(labels.includes(mix), `level ${L.n}: ${r.target} without ${mix}: ${labels.join(' ')}`); seen++; }
+        eq(new Set(labels).size, labels.length, `level ${L.n} duplicate tiles`);
+      }
+      for (const t of L.pool) for (const x of confusedWith(t)) if (!taught.has(x)) eq(mixUpFor(L, t), null, `level ${L.n}: ${x} offered before it's taught`);
+    }
+    ok(seen > 0, 'no level ever offered a mix-up');
+  }],
+  ['mix-ups: words one confusable sound apart count as closer (pin / pen)', () => {
+    ok(soundSimilarity('pin', 'pen') > soundSimilarity('pin', 'pan'), 'pin/pen vs pin/pan');
+    for (const [a, b] of CONFUSIONS) { ok(confusedWith(a).includes(b) && confusedWith(b).includes(a), `${a}/${b} both ways`); }
   }],
 
   // ---- speech
