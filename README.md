@@ -4,28 +4,55 @@ The tinkering copy of Word Path, an early-reading game with spoken prompts. 38 l
 
 - Live: https://divyasusarla.github.io/word-path-lab/
 - All versions: https://divyasusarla.github.io/word-path-lab/versions/
-- Class version (kept separate, don't change): https://divyasusarla.github.io/word-path/
+- Automatic checks: https://divyasusarla.github.io/word-path-lab/tests/
+- Recorder: https://divyasusarla.github.io/word-path-lab/tools/record.html
+- Class version (kept separate, don't change): https://divyasusarla.github.io/word-path/ (repo `divyasusarla/word-path`)
+
+## How it fits together
+
+A plain static site with no build step: the browser loads `index.html`, which runs `app.js`.
+
+- `content.js` decides **what** children learn: stages, levels, sounds, words, pictures and stickers.
+- `sounds.js` lists every **recorded** sound; `audio/` holds the recordings.
+- `app.js` is the **game**: it reads both files, runs the levels, plays recordings (falling back to the browser's voice) and draws the screens.
+- Progress and settings are saved in the browser (localStorage), per device.
 
 ## Files
 
-- `index.html` – page shell
-- `content.js` – **what children learn**: the stages and levels, sounds, words, pictures, sight words and stickers, plus a coverage check. Edit this to change content.
-- `app.js` – the game: speech, gameplay and screens (Preact + htm, no build step)
-- `styles.css` – base styles, hover states and animations
-- `vendor/` – Preact/htm, icon font, Fredoka font and Noto Emoji pictures, kept locally so no outside servers are needed
-- `CHANGELOG.md` – what changed in each version
-- `versions/` – playable copy of every past version, with an index page
-- `tests/` – automatic checks that play every level (see `TESTING.md`)
-- `TESTING.md` – test mode, automatic checks and the hands-on checklist
-- `sounds.js` – the 69 recorded sounds (43 speech sounds + letter names) and how to say each
-- `audio/` – the recordings (`<id>.wav`) and `manifest.json` listing which exist
-- `tools/record.html` – the recorder; `tools/import_audio.py` – imports its zip into `audio/`
-- `RECORDING.md` – step-by-step recording guide
+| Path | What it is |
+|---|---|
+| `index.html` | Page shell that loads the game |
+| `app.js` | The game: gameplay, speech and recordings, screens, test mode (Preact + htm) |
+| `content.js` | **What children learn**: the teaching order, words, pictures, sight words, stickers, and `coverage()`, which checks it. Edit this to change content |
+| `sounds.js` | The 69 recorded sounds (43 speech sounds + 26 letter names) and how to say each |
+| `styles.css` | Base styles, hover states and animations |
+| `audio/` | The recordings (`<id>.wav`) and `manifest.json`, which lists those that exist |
+| `vendor/` | Third-party files kept locally so nothing loads from outside servers: Preact/htm, icon font, Fredoka font, Noto Emoji pictures (see `vendor/README.md`) |
+| `tests/` | Automatic checks that play every level in the browser (see `TESTING.md`) |
+| `tools/record.html` | The recorder for all 69 sounds |
+| `tools/import_audio.py` | Brings the recorder's zip into `audio/`, removing clicks and silence and evening out volume |
+| `versions/` | A playable copy of every past version, with an index page |
+| `.github/workflows/pages.yml` | Publishes the site to GitHub Pages on every push to `main` |
+| `README.md` | This file |
+| `CHANGELOG.md` | What changed in each version |
+| `BACKLOG.md` | Planned work and ideas |
+| `FUTURE.md` | Longer-term decisions: hosting, app stores, privacy, licensing |
+| `TESTING.md` | Test mode, automatic checks and the hands-on checklist |
+| `RECORDING.md` | Step-by-step recording guide |
+| `CLAUDE.md` | Working notes for Claude Code sessions on this project |
 
-## Run locally
+## Common tasks
+
+**Run it locally**
 
 ```
 python3 -m http.server 8765
 ```
 
-then open http://127.0.0.1:8765/. Add `?test` to unlock every level without saving (see `TESTING.md`). Pushing to `main` publishes to GitHub Pages.
+then open http://127.0.0.1:8765/. Add `?test` to open every level without saving anything (see `TESTING.md`).
+
+**Change content** (words, levels, pictures): edit `content.js`. In test mode, the panel shows whether the content check passes; `tests/` gives details. A new picture needs its emoji added to `PICS` and the matching file in `vendor/noto/`.
+
+**Add or redo recordings**: follow `RECORDING.md`, then run `python3 tools/import_audio.py ~/Downloads/word-path-audio-<date>.zip`.
+
+**Publish**: each change goes on its own branch and pull request. After review, merging into `main` publishes through GitHub Actions in about a minute. Add a `CHANGELOG.md` entry; tag milestones (`git tag -a v3.1`) and copy them into `versions/`.
