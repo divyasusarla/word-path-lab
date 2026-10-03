@@ -2,7 +2,13 @@
 
 There are three layers. Run the first two before every push. Run the third before using the game with children, and whenever the voice or layout changes.
 
-## 1. Automatic checks (about 30 seconds)
+## 1. Automatic checks (about a minute)
+
+Two kinds, both run on every pull request:
+
+- **Unit tests** (`tests/unit/engine.test.js`): check the game rules one at a time (rounds, wrong options, unlocking, saved progress, layouts), and prove the content check catches each kind of content mistake by breaking a copy of the content on purpose. They run in Node on GitHub and also appear as "Unit:" lines on the checks page.
+- **Browser checks** (`tests/index.html`): play the real game, every level and screen at four screen sizes.
+
 
 **These run by themselves** on every pull request and every merge to `main` (GitHub Actions, headless Chrome). A pull request shows a green tick or red cross next to **Checks**; click **Details** to see each result. The site only publishes if every check passes. You can still run them yourself in a browser:
 

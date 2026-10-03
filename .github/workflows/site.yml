@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Unit tests (game rules and content check)
+        run: node tests/unit/run.mjs
       - name: Install Playwright (uses the runner's installed Chrome)
         run: npm install --no-save --no-package-lock playwright@1.48.2
       - name: Serve the site
@@ -52,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Stamp file versions so browsers fetch the new files
-        run: sed -i "s/?v=dev/?v=${GITHUB_SHA::7}/g" index.html app.js content.js
+        run: sed -i "s/?v=dev/?v=${GITHUB_SHA::7}/g" index.html app.js content.js engine.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,7 +1,9 @@
 // Word Path (lab) — ported from the Claude Design "Word Path v2" file.
 // Preact + htm, vendored (see vendor/README.md): no build step, edit and reload.
 import { h, html, render, Component } from './vendor/preact-htm.module.js';
-import { LEVELS, STAGES, GRAPHEMES, NAME_SAY, picSrc, phonemes, coverage, decodableBy, soundSimilarity } from './content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage } from './content.js?v=dev';
+import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
+  unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2 } from './engine.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
 const CONFIG = {
@@ -26,42 +28,14 @@ if (TEST) {
   if (T.think !== null) CONFIG.thinkTime = T.think;
 }
 
-// Levels, words, pictures and stickers all come from content.js
-const LV = LEVELS.map(l => ({ ...l,
-  kind: { sounds:'pop', names:'pop', sight:'pop', sort:'sort', blend:'match', read:'match', rhyme:'match' }[l.type],
-  mode: { sounds:'sound', names:'name', sight:'word', blend:'blend', read:'read', rhyme:'rhyme' }[l.type] }));
-const stageOf = i => LV[i].stage;
-// Which layout fits the screen (see styles.css and the "Word Path layouts" design canvas)
-const layoutFor = (w, h) => w < 600 && h >= w ? 'phone' : h < 500 && w > h ? 'phone-landscape' : h > w && w < 1000 ? 'tablet-portrait' : 'wide';
-// Map stop positions for a stage with n levels (percent of the map's width and height).
-// Across in landscape; down in portrait, where every label sits to the right of its stop.
-const stagePos = (n, down, phone) => Array.from({ length: n }, (_, i) => {
-  const t = n === 1 ? 0.5 : i / (n - 1);
-  return down ? [i % 2 ? (phone ? 42 : 40) : (phone ? 22 : 20), 9 + t * 82] : [12 + t * 76, i % 2 ? 66 : 34];
-});
-// Smooth path through the stops, in a 1000 x 1000 drawing space stretched to fit the map
-const stagePath = (pts, down) => {
-  const P = pts.map(([x, y]) => [x * 10, y * 10]);
-  if (P.length < 2) return '';
-  let d = `M${P[0][0]} ${P[0][1]}`;
-  for (let i = 0; i < P.length - 1; i++) {
-    const [x0, y0] = P[i], [x1, y1] = P[i + 1], mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
-    d += down ? ` C${x0} ${my} ${x1} ${my} ${x1} ${y1}` : ` C${mx} ${y0} ${mx} ${y1} ${x1} ${y1}`;
-  }
-  return d;
-};
-// What the browser voice / recording says for a letter sound, letter name, or sound in a word
-const gsnd = gr => ({ t: GRAPHEMES[gr].say, rate: GRAPHEMES[gr].rate, clip: GRAPHEMES[gr].clip });
-const nsnd = l => ({ t: NAME_SAY[l], rate: 0.8, clip: `name-${l}` });
-const showG = gr => gr;  // how a sound is written on a tile (a_e stays a_e)
-
 const PAL = [
   { bg:'#F2544A', sh:'#C83A31', fg:'#fff' }, { bg:'#FFC23C', sh:'#DB9A0A', fg:'#2A2350' },
   { bg:'#2EC4A6', sh:'#17977F', fg:'#2A2350' }, { bg:'#7B61FF', sh:'#5940D6', fg:'#fff' }, { bg:'#4DB3FF', sh:'#2188D6', fg:'#2A2350' }
 ];
 const PRAISE = ['Yes!', 'Great job!', 'You got it!', 'Nice work!', 'Super!'];
 // Own storage keys so the lab never touches progress saved by the class version (same github.io origin)
-const KEY = 'wordpath-lab.v2';  // v2: progress for the 38-level teaching order
+const KEY = 'wordpath-lab.v3';  // v3: finished level ids. v2 (true/false by position) is migrated once
+const KEY_V2 = 'wordpath-lab.v2';
 const AKEY = 'wordpath-lab.audio';
 
 class App extends Component {
@@ -73,14 +47,19 @@ class App extends Component {
   // In test mode nothing is read from or written to storage
   load() {
     if (TEST) return Array.from({ length: LV.length }, (_, i) => i < (T.done || 0));
-    try { const d = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(d)) return Array.from({ length: LV.length }, (_, i) => !!d[i]); } catch (e) {}
+    try {
+      const ids = JSON.parse(localStorage.getItem(KEY));
+      if (Array.isArray(ids)) return doneFromIds(ids);
+      const v2 = idsFromV2(JSON.parse(localStorage.getItem(KEY_V2)));
+      if (v2.length) { localStorage.setItem(KEY, JSON.stringify(v2)); return doneFromIds(v2); }
+    } catch (e) {}
     return Array(LV.length).fill(false);
   }
   loadAudio() {
     if (!TEST) try { const a = JSON.parse(localStorage.getItem(AKEY)); if (a) return { voice: a.voice || '', vol: a.vol ?? 0.6, rate: a.rate ?? 0.85 }; } catch (e) {}
     return { voice:'', vol:0.6, rate:0.85 };
   }
-  save(done) { if (!TEST) try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {} }
+  save(done) { if (!TEST) try { localStorage.setItem(KEY, JSON.stringify(idsFromDone(done))); } catch (e) {} }
   setAudio(patch) {
     const audio = { ...this.state.audio, ...patch };
     if (!TEST) try { localStorage.setItem(AKEY, JSON.stringify(audio)); } catch (e) {}
@@ -138,8 +117,7 @@ class App extends Component {
     const { screen, lvl, rounds, round, wrong } = this.state; if (screen !== 'play') return false;
     const L = LV[lvl], r = rounds[round]; if (!r) return false;
     if (L.kind === 'sort') return this.pickBin(correct ? r.bin : 1 - r.bin), true;
-    const isRight = o => L.kind === 'pop' ? o.label === r.target : o.w === r.target.w;
-    const i = r.options.findIndex((o, k) => isRight(o) === correct && !wrong.includes(k));
+    const i = r.options.findIndex((o, k) => isRight(L, r, o) === correct && !wrong.includes(k));
     if (i < 0) return false;
     L.kind === 'pop' ? this.pickPop(i) : this.pickMatch(i);
     return true;
@@ -241,54 +219,10 @@ class App extends Component {
   // a speech sound: plays the recording if there is one, otherwise the browser voice says the fallback text
   snd(pair, clip) { return { t: pair[0], rate: pair[1], clip }; }
 
-  shuf(a) { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
-  cycle(pool, n) { let o = []; while (o.length < n) o = o.concat(this.shuf(pool)); return o.slice(0, n); }
-  unlocked(i) { return CONFIG.unlockAll || i === 0 || this.state.done[i - 1] || this.state.done[i]; }
-
-  build(L) {
-    const R = CONFIG.rounds;
-    if (L.kind === 'pop') {
-      const tiles = Math.min(L.tiles || 4, L.pool.length);
-      return this.cycle(L.pool, R).map(t => ({
-        target: t,
-        options: this.shuf([t, ...this.shuf(L.pool.filter(x => x !== t)).slice(0, tiles - 1)]).map(label => ({ label, bob: (Math.random() * 1.5).toFixed(2), dur: (2.6 + Math.random()).toFixed(2) }))
-      }));
-    }
-    if (L.kind === 'match') {
-      if (L.mode === 'rhyme') return this.cycle(L.pairs, R).map(t => ({ target: t, options: this.shuf([t, ...this.shuf(L.pairs.filter(x => x.w !== t.w)).slice(0, 2)]) }));
-      // Blend it / Read it: wrong options sound like the answer (cat → cap, can, hat), drawn from every word the
-      // child can decode by this stage, so they have to use every sound, not just the first
-      const pool = decodableBy(L.stage);
-      return this.cycle(L.words, R).map(w => {
-        const near = pool.filter(x => x !== w).map(x => [x, soundSimilarity(w, x) + Math.random() * 0.6]).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([x]) => ({ w: x }));
-        return { target: { w }, options: this.shuf([{ w }, ...near]) };
-      });
-    }
-    return this.shuf(L.items);
-  }
-
-  prompt(L, r, first) {
-    const pre = first ? [`Level ${L.n}. ${L.title}.`, 700] : [];
-    if (L.kind === 'pop') {
-      if (L.mode === 'sound') { const gr = GRAPHEMES[r.target]; return [...pre, r.target.length > 1 ? 'Find the letters that say' : 'Find the letter that says', 500, gsnd(r.target), 500, 'like in', { t: gr.ex, rate: 0.8 }]; }
-      if (L.mode === 'name') return [...pre, 'Find the letter', 400, nsnd(r.target)];
-      return [...pre, { t: `Pop the word: ${r.target}.`, rate: 0.85 }];
-    }
-    if (L.kind === 'match') {
-      if (L.mode === 'blend') return [...pre, 'Listen.', 500, ...phonemes(r.target.w).flatMap(p => [gsnd(p), 450]), 400, 'What word is that?'];
-      if (L.mode === 'rhyme') return [...pre, 'Which picture rhymes with', 400, { t: r.target.cue, rate: 0.7 }];
-      return [...pre, 'Read the word. Then tap its picture.'];
-    }
-    const [A, B] = L.bins;
-    return [...pre, { t: r.w, rate: 0.7 }, 700, L.ask === 'has' ? 'Does it have' : 'Does it start with', 300, gsnd(A), 400, 'or', 300, gsnd(B)];
-  }
-
-  // The map shows the stage you picked, or else the stage of the next level to play
-  mapStage() {
-    if (this.state.mapStage !== null) return this.state.mapStage;
-    const next = this.state.done.findIndex(d => !d);
-    return next < 0 ? STAGES.length - 1 : stageOf(next);
-  }
+  unlocked(i) { return unlocked(i, this.state.done, CONFIG.unlockAll); }
+  build(L) { return buildRounds(L, CONFIG.rounds); }
+  prompt(L, r, first) { return speechFor(L, r, first); }
+  mapStage() { return mapStageFor(this.state.done, this.state.mapStage); }
 
   start(i) {
     if (i < 0 || i >= LV.length) return;
@@ -303,7 +237,7 @@ class App extends Component {
     const { round, rounds, lvl } = this.state, L = LV[lvl];
     if (round + 1 >= rounds.length) {
       const done = this.state.done.slice(); done[lvl] = true; this.save(done);
-      const stageDone = LV.every((l, i) => l.stage !== L.stage || done[i]);
+      const stageDone = stageComplete(L.stage, done);
       this.setState({ screen:'done', done });
       this.speak(['You did it!', 400, `You earned the ${L.sticker.name} sticker!`, ...(stageDone ? [500, `You finished stage ${L.stage + 1}!`] : [])]);
       return;
@@ -325,7 +259,7 @@ class App extends Component {
   pickPop(i) {
     const { rounds, round, solved, lvl, wrong } = this.state; if (solved || wrong.includes(i)) return;
     const L = LV[lvl], r = rounds[round], o = r.options[i];
-    if (o.label === r.target) return this.win([this.praise()]);
+    if (isRight(L, r, o)) return this.win([this.praise()]);
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
     const say = L.mode === 'sound' ? ['That one says', 300, gsnd(o.label)]
       : L.mode === 'name' ? ['That letter is', 300, nsnd(o.label)]
@@ -336,7 +270,7 @@ class App extends Component {
   pickMatch(i) {
     const { rounds, round, solved, lvl, wrong } = this.state; if (solved || wrong.includes(i)) return;
     const L = LV[lvl], r = rounds[round], o = r.options[i];
-    if (o.w === r.target.w) return this.win(L.mode === 'rhyme' ? ['Yes!', 300, `${r.target.cue}, ${o.w}.`] : [`${o.w}!`, 300, this.praise()]);
+    if (isRight(L, r, o)) return this.win(L.mode === 'rhyme' ? ['Yes!', 300, `${r.target.cue}, ${o.w}.`] : [`${o.w}!`, 300, this.praise()]);
     this.setState(s => ({ wrong: s.wrong.concat(i) }));
     if (L.mode === 'rhyme') this.speak([`${o.w} does not rhyme with ${r.target.cue}.`, 500, 'Try again.']);
     else this.speak([`That is a ${o.w}.`, 500, 'Try again.', ...(L.mode === 'blend' ? [700, ...this.prompt(L, r, false)] : [])]);
@@ -345,7 +279,7 @@ class App extends Component {
   pickBin(b) {
     const { rounds, round, solved, lvl } = this.state; if (solved) return;
     const L = LV[lvl], item = rounds[round];
-    if (item.bin === b) {
+    if (isRight(L, item, b)) {
       this.setState(s => { const sorted = [s.sorted[0].slice(), s.sorted[1].slice()]; sorted[b].push(item); return { sorted, binWrong:null }; });
       return this.win(['Yes!', 300, L.ask === 'has' ? `${item.w} has` : `${item.w} starts with`, 300, gsnd(L.bins[b])]);
     }
@@ -356,7 +290,7 @@ class App extends Component {
   // Says each sound in the word, slowly, but not the word itself: the child does the blending
   soundOut() {
     const r = this.state.rounds[this.state.round]; if (!r || !r.target?.w) return;
-    this.speak(phonemes(r.target.w).flatMap(p => [gsnd(p), 600]).slice(0, -1));
+    this.speak(soundOutParts(r.target.w));
   }
 
   popField(L) {
@@ -397,7 +331,7 @@ class App extends Component {
   renderVals() {
     const { screen, lvl, round, rounds, wrong, solved, sorted, binWrong, done, audio } = this.state;
     const L = LV[lvl], r = rounds[round], P = PAL;
-    const nextIdx = done.findIndex(d => !d);
+    const nextIdx = nextLevel(done);
     const goMap = () => { this.stop(); this.setState({ screen:'map', mapStage:null }); };
     const goStickers = () => { this.stop(); this.setState({ screen:'stickers' }); };
     const isPlay = screen === 'play';
@@ -437,7 +371,7 @@ class App extends Component {
     const dl = LV[lvl], dc = P[lvl % 5];
     const doneSticker = screen === 'done' ? h('div', { key: 'st' + lvl, style: { width:260, height:260, flexShrink:0, borderRadius:'50%', border:'10px solid #fff', background:dc.bg, boxShadow:`0 10px 0 ${dc.sh}`, display:'flex', alignItems:'center', justifyContent:'center', animation:'wpSticker .8s cubic-bezier(.34,1.56,.64,1) both' } },
       h('img', { src: dl.sticker.src, alt: '', style: { width:150, height:150 } })) : null;
-    const stageDone = LV.every((l, i) => l.stage !== dl.stage || done[i]);
+    const stageDone = stageComplete(dl.stage, done);
 
     const voiceOpts = [{ name:'', label:'Automatic (best available)' }].concat(this.voices.map(v => ({ name: v.name, label: `${v.name} (${v.lang})` })));
 
