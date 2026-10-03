@@ -4,7 +4,8 @@ import { h, html, render, Component } from './vendor/preact-htm.module.js';
 import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage } from './content.js?v=dev';
 import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
-  itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain } from './engine.js?v=dev';
+  itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain,
+  SESSION_CHOICES, sessionOver } from './engine.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
 const CONFIG = {
@@ -21,6 +22,7 @@ const TEST = Q.has('test');
 const num = (k, lo, hi) => { const n = parseInt(Q.get(k), 10); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : null; };
 const T = TEST ? {
   level: num('level', 1, LEVELS.length), screen: Q.get('screen'), done: num('done', 0, LEVELS.length),
+  session: Q.has('session') ? Math.max(0, parseFloat(Q.get('session')) || 0) : null,
   rounds: num('rounds', 1, 20), think: Q.has('think') ? Math.max(0, parseFloat(Q.get('think')) || 0) : null, mute: Q.has('mute')
 } : null;
 if (TEST) {
@@ -57,8 +59,8 @@ class App extends Component {
     return Array(LV.length).fill(false);
   }
   loadAudio() {
-    if (!TEST) try { const a = JSON.parse(localStorage.getItem(AKEY)); if (a) return { voice: a.voice || '', vol: a.vol ?? 0.6, rate: a.rate ?? 0.85 }; } catch (e) {}
-    return { voice:'', vol:0.6, rate:0.85 };
+    if (!TEST) try { const a = JSON.parse(localStorage.getItem(AKEY)); if (a) return { voice: a.voice || '', vol: a.vol ?? 0.6, rate: a.rate ?? 0.85, session: a.session ?? 15 }; } catch (e) {}
+    return { voice:'', vol:0.6, rate:0.85, session: TEST && T.session !== null ? T.session : 15 };
   }
   loadMastery() {
     if (!TEST) try { const m = JSON.parse(localStorage.getItem(MKEY)); if (m && typeof m === 'object') return m; } catch (e) {}
@@ -243,6 +245,7 @@ class App extends Component {
 
   start(i) {
     if (i < 0 || i >= LV.length) return;
+    if (this.sessionStart == null) this.sessionStart = Date.now();  // the session starts with the first level played
     if (!this.unlocked(i)) { this.speak(['That level is locked. Finish the one before it.']); return; }
     this.stop();
     const L = LV[i], rounds = this.build(L);
@@ -257,7 +260,10 @@ class App extends Component {
       const stageDone = stageComplete(L.stage, done);
       this.setState({ screen:'done', done });
       const again = shouldPractiseAgain(this.state.firstTries);
-      this.speak(['You did it!', 400, `You earned the ${L.sticker.name} sticker!`, ...(stageDone ? [500, `You finished stage ${L.stage + 1}!`] : []), ...(again ? [500, 'Let\'s practise this one again.'] : [])]);
+      const rest = sessionOver(this.sessionStart, Date.now(), this.state.audio.session);
+      this.setState({ restTime: rest });
+      this.speak(['You did it!', 400, `You earned the ${L.sticker.name} sticker!`, ...(stageDone ? [500, `You finished stage ${L.stage + 1}!`] : []),
+        ...(rest ? [500, 'Great work today! Time for a break.'] : again ? [500, 'Let\'s practise this one again.'] : [])]);
       return;
     }
     this.setState({ round: round + 1, wrong:[], solved:false, binWrong:null, answered:false, misses:0, modelled:false });
@@ -438,7 +444,10 @@ class App extends Component {
       doneStage: stageDone ? `You finished stage ${dl.stage + 1}!` : '',
       hasNextAfter: lvl + 1 < LV.length,
       playNext: () => this.start(lvl + 1),
-      practiseAgain: screen === 'done' && shouldPractiseAgain(this.state.firstTries),
+      practiseAgain: screen === 'done' && !this.state.restTime && shouldPractiseAgain(this.state.firstTries),
+      restTime: screen === 'done' && !!this.state.restTime,
+      sessionMins: audio.session, sessionOpts: SESSION_CHOICES.map(m => ({ value: String(m), label: m ? `${m} minutes` : 'Off' })),
+      onSession: e => this.setAudio({ session: parseFloat(e.target.value) }),
       playAgain: () => this.start(lvl),
       stickerGroups: STAGES.map((stg, k) => ({
         title: `${stg.title}: ${stg.sounds.split(' ').map(showG).join(' ')}`,
@@ -636,6 +645,7 @@ class App extends Component {
             <div style="font-size:22px;font-weight:600;color:#5940D6">Level ${v.levelNum} complete!</div>
             <div style="font-size:60px;font-weight:700;line-height:1.05">You got the ${v.doneName} sticker</div>
             ${v.doneStage && html`<div style="font-size:28px;font-weight:700;color:#17977F;margin-top:8px">${v.doneStage}</div>`}
+            ${v.restTime && html`<div class="rest-time" style="font-size:24px;font-weight:700;color:#5940D6;margin-top:10px">Great work today! Time for a break.</div>`}
             ${v.doneKnown && html`<div class="done-known" style="font-size:20px;font-weight:600;color:#5C5677;margin-top:8px">${v.doneKnown}</div>`}
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:12px">
@@ -717,6 +727,12 @@ class App extends Component {
         </label>
         <label style="display:flex;flex-direction:column;gap:8px;font-size:18px;font-weight:600"><span>Talking speed: ${v.rateLabel}</span>
           <input type="range" min="0.6" max="1.1" step="0.05" value=${v.rate} onInput=${v.onRate} style="accent-color:#7B61FF" />
+        </label>
+        <label style="display:flex;flex-direction:column;gap:8px;font-size:18px;font-weight:600">Suggest a break after
+          <select value=${String(v.sessionMins)} onChange=${v.onSession} style="height:52px;padding:0 14px;border:3px solid #E8DCC8;border-radius:16px;font-family:inherit;font-size:17px;color:#2A2350;background:#fff">
+            ${v.sessionOpts.map(o => html`<option value=${o.value}>${o.label}</option>`)}
+          </select>
+          <span style="font-size:14px;font-weight:400;color:#5C5677">About 15 minutes suits most 5–8 year olds. The game never stops a child; it just suggests a break at the end of a level.</span>
         </label>
         <div style="display:flex;flex-wrap:wrap;gap:12px">
           <button onClick=${v.testVoice} style="height:56px;padding:0 24px 0 18px;border:0;border-radius:999px;background:#7B61FF;color:#fff;font-size:19px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px"><i class="icon-volume-2" style="font-size:22px;line-height:1"></i>Test voice</button>

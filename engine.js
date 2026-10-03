@@ -219,3 +219,9 @@ export function praiseParts(L, r, { modelled = false, mastered = false } = {}) {
 }
 // Suggest practising a level again when fewer than half the first taps were right
 export const shouldPractiseAgain = firstTries => firstTries.length > 0 && firstTries.filter(Boolean).length / firstTries.length < 0.5;
+
+// ---- Session length ------------------------------------------------------------------------------
+// About 15 minutes a session suits ages 5–8 (LEARNING_DESIGN.md, R5). After that, the level complete screen
+// suggests a break. 0 turns it off.
+export const SESSION_CHOICES = [10, 15, 20, 0];
+export const sessionOver = (startedAt, now, minutes) => minutes > 0 && startedAt != null && now - startedAt >= minutes * 60000;

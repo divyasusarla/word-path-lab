@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- Session stopping point: after about 15 minutes of play, the level complete screen says "Great work today! Time for a break." (on screen and spoken). Nothing is blocked. Grown-ups can choose 10, 15 or 20 minutes, or off, in Settings (backlog 13c, from the literature review).
 - Coverage: each play picks never-seen words and sounds first, then ones still being learned (least recently practised first), then mastered ones, so playing a level a few times works through its whole list (for example, all 50 sight words in a 50-word level in 9 plays) instead of random picks.
 - Cumulative review: from the second level of each kind onwards, 2 of every 8 rounds review items from earlier levels of the same kind (letter sounds, letter names, sight words, decodable words), choosing words the child is still learning first, then mastered ones not seen for longest. Sort and rhyme levels don't review.
 - Guessing no longer wins a round: after two misses (one in a sort, which has only two bins), the game shows the answer with a glowing outline, says it ("Here it is: said. Tap it."), and the child taps it. That round counts as not right first time.
