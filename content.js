@@ -158,39 +158,40 @@ const names = pool => ({ type: 'names', title: 'Letter names', pool: pool.split(
 const sort = (ask, a, b, items, title) => ({ type: 'sort', ask, bins: [a, b], items: [...items[0].split(' ').map(w => ({ w, bin: 0 })), ...items[1].split(' ').map(w => ({ w, bin: 1 }))], title });
 const blend = words => ({ type: 'blend', title: 'Blend it', words: words.split(' ') });
 const read = words => ({ type: 'read', title: 'Read it', words: words.split(' ') });
-const sight = (from, to, title) => ({ type: 'sight', title: title || `Sight words ${from}–${to}`, pool: FRY.slice(from - 1, to), tiles: to - from >= 40 ? 5 : 4 });
+// sight: the pool is filled below (heart words), from the words whose regular sounds this stage has taught
+const sight = title => ({ type: 'sight', title, pool: [], tiles: 4 });
 const rhyme = () => ({ type: 'rhyme', title: 'Rhyme time', pairs: RHYMES });
 
 export const STAGES = [
   { title: 'Stage 1', sounds: 's a t p i n', levels: [
     sounds('s a t p i n'), names('s a t p i n'),
     sort('start', 's', 'p', ['sock snake sandwich star six', 'pen pizza pear penguin popcorn'], 'First sounds: s or p'),
-    blend('pan pin ant tap nap'), sight(1, 25, 'Word pop 1') ] },
+    blend('pan pin ant tap nap'), sight('Word pop 1') ] },
   { title: 'Stage 2', sounds: 'm d g o c k ck', levels: [
     sounds('m d g o c k ck'), names('m d g o c k'),
     sort('start', 'm', 'd', ['mouse monkey milk mushroom map', 'duck door dolphin drum'], 'First sounds: m or d'),
-    blend('cat dog map pig cap can sock'), read('cat dog map pig cap pan pin ant'), sight(26, 50, 'Word pop 2') ] },
+    blend('cat dog map pig cap can sock'), read('cat dog map pig cap pan pin ant'), sight('Word pop 2') ] },
   { title: 'Stage 3', sounds: 'e u r h b f l', levels: [
     sounds('e u r h b f l'), names('e u r h b f l'),
     sort('start', 'b', 'f', ['banana bear balloon bell bus', 'fox frog fire fork'], 'First sounds: b or f'),
-    blend('bed sun bug hen rat bus nut hat bat leg net log ten cup pen'), rhyme(), sight(51, 100, 'Word pop 3') ] },
+    blend('bed sun bug hen rat bus nut hat bat leg net log ten cup pen'), rhyme(), sight('Word pop 3') ] },
   { title: 'Stage 4', sounds: 'j v w x y z qu', levels: [
     sounds('j v w x y z qu'), names('j v w x y z q'),
     sort('start', 'j', 'v', ['jellyfish juice jeans jar', 'violin volcano vase vest'], 'First sounds: j or v'),
-    blend('jet van web fox box six'), read('jet van web fox box six bed bug hat'), sight(101, 150, 'Word pop 4') ] },
+    blend('jet van web fox box six'), read('jet van web fox box six bed bug hat'), sight('Word pop 4') ] },
   { title: 'Stage 5', sounds: 'sh ch th ng', levels: [
     sounds('sh ch th ng'),
     sort('start', 'sh', 'ch', ['sheep shoe shirt shark shell', 'cheese cherries chair chocolate'], 'sh or ch'),
-    blend('ship fish dish shell chick bath ring king wing cash'), read('ship fish chick bath ring king'), sight(151, 200, 'Word pop 5') ] },
+    blend('ship fish dish shell chick bath ring king wing cash'), read('ship fish chick bath ring king'), sight('Word pop 5') ] },
   { title: 'Stage 6', sounds: 'a_e i_e o_e u_e', levels: [
     sounds('a_e i_e o_e u_e', 'Magic e'),
     sort('has', 'a', 'a_e', ['cat map hat bat cap', 'game snake whale'], 'Short a or long a'),
-    blend('cake kite bone cube rose nose bike five game snake'), read('cake kite bone cube nose bike five'), sight(201, 250, 'Word pop 6') ] },
+    blend('cake kite bone cube rose nose bike five game snake'), read('cake kite bone cube nose bike five'), sight('Word pop 6') ] },
   { title: 'Stage 7', sounds: 'ee oa ai oo ow oi ar or er', levels: [
     sounds('ee oa ai oo ow oi ar or er', 'Vowel teams'),
     sort('has', 'ee', 'oa', ['tree feet sheep cheese', 'goat coat soap'], 'ee or oa'),
     blend('bee tree feet sheep boat goat rain snail moon spoon cow owl coin car star fork corn'),
-    read('bee tree boat goat rain moon cow coin car star'), sight(251, 300, 'Word boss') ] }
+    read('bee tree boat goat rain moon cow coin car star'), sight('Word boss') ] }
 ];
 
 // Every level in play order, numbered from 1, with its stage and sticker
@@ -209,6 +210,85 @@ export const soundStage = gr => {
   const base = Object.entries(GRAPHEMES).find(([k, v]) => !v.helper && v.clip === GRAPHEMES[gr].clip);
   return base ? TAUGHT_BY[base[0]] : undefined;
 };
+// ---- Heart words (#25) ---------------------------------------------------------------------------
+// Each sight word with its tricky letters in [brackets]: the letters that don't make the sounds the game teaches,
+// either because the word is irregular (s[ai]d, [o][f]) or because the pattern isn't taught yet (h[igh]). Our own
+// analysis. Everything outside the brackets must be sounds the game teaches (the content check makes sure), and a
+// word's Word pop level is the stage that teaches the last of those sounds.
+export const HEART_MARKS = `
+th[e] [o][f] and [a] t[o] in i[s] y[ou] that it h[e] w[a][s] for on ar[e] a[s] with hi[s] th[ey] [I] at b[e]
+this hav[e] fr[o]m or [one] had b[y] w[or]d[s] but not w[h][a]t [a]ll wer[e] w[e] w[h]en y[our] can s[ai]d
+th[ere] u[s]e an [ea]ch w[h]ich sh[e] d[o] how th[ei]r if will up [o]ther [a]b[ou]t [ou]t m[a]n[y] then them
+th[ese] s[o] s[o]m[e] her w[oul]d make like him int[o] time ha[s] l[oo]k t[wo] mor[e] [w]rite g[o] see number
+n[o] w[ay] c[oul]d p[eo]p[le] m[y] than f[ir]st w[a]ter b[ee]n c[a]ll [wh][o] oil its now f[i]nd long down d[ay]
+did get c[o]m[e] made m[ay] part [o]ver n[ew] s[ou]nd take [o]nl[y] litt[le] w[or]k [k]n[ow] pla[c]e y[ea]r
+liv[e] m[e] back giv[e] m[o]st ver[y] after thing [our] just name g[oo]d sent[e]n[ce] man thi[n]k s[ay] gr[ea]t
+w[h][ere] help thr[ough] much b[e]for[e] line r[igh]t too m[ea]n [o]ld [a]n[y] same tell b[oy] foll[ow] came
+w[a]nt sh[ow] [a]ls[o] [a]r[ou]nd form three sm[a]ll set p[u]t end d[oe][s] [a]n[o]ther well lar[g][e] must big
+[e]v[e]n such b[e]c[au][se] t[ur]n h[ere] w[h][y] ask went men r[ea]d need land diff[ere]nt home us m[o]v[e]
+tr[y] k[i]nd hand pict[ure] [a]g[ai]n ch[ange] off pl[ay] spell [air] [a]w[ay] an[i]m[a]l h[ou][se] point pa[g]e
+letter m[o]ther ans[w]er f[ou]nd st[u]d[y] still l[ear]n sh[oul]d [A]m[e]r[i]c[a] w[or]ld h[igh] ever[y] n[ear]
+add food b[e]tween [ow]n b[e]l[ow] c[ou]ntr[y] plant last s[ch]ool f[a]ther keep tree never start [c]it[y]
+[ear]th [eye] l[igh]t th[ough]t h[ea]d under stor[y] s[aw] left d[o]n[']t f[ew] w[h]ile [a]long m[igh]t clo[s]e
+s[o]m[e]thing seem next hard [o]p[e]n [e]x[a]mp[le] b[e]gin life [a]lw[ay][s] tho[s]e b[o]th p[a]p[er]
+t[o]gether got gr[ou]p of[t]en run import[a]nt until children side feet car mile n[igh]t w[al]k w[h]ite s[ea]
+b[e]gan gr[ow] t[oo]k river f[our] c[arr][y] state [once] b[oo]k h[ear] stop with[ou]t sec[o]nd late miss
+[i]d[ea] [e]n[ough] [ea]t fa[c]e w[a][t]ch far [I]nd[ia]n r[ea]l [a]lm[o]st let [a]b[o]v[e] g[ir]l
+s[o]m[e]t[ime][s] m[ou]nt[ai]n cut y[ou]ng t[al]k soon list song b[e]ing l[ea]v[e] fam[i]l[y] it['s]`;
+export const MARKED = Object.fromEntries(HEART_MARKS.split(/\s+/).filter(Boolean).map(m => [m.replace(/[\[\]]/g, ''), m]));
+// A sight word as parts: [{ t, tricky }]
+export const heartParts = w => !MARKED[w] ? [{ t: w, tricky: false }]
+  : MARKED[w].split(/(\[[^\]]*\])/).filter(Boolean).map(x => x[0] === '[' ? { t: x.slice(1, -1), tricky: true } : { t: x, tricky: false });
+export const isHeart = w => heartParts(w).some(p => p.tricky);
+// The taught sounds in the regular letters (longest spelling first; a vowel, one letter and a final e is a split
+// sound like a_e). null if a regular letter isn't a taught sound.
+const SPELLINGS = Object.keys(GRAPHEMES).filter(g => !g.includes('_')).sort((a, b) => b.length - a.length);
+// heartTokens gives each sound with the letter positions it covers.
+export function heartTokens(w) {
+  const L = heartParts(w).flatMap(p => [...p.t.toLowerCase()].map(c => ({ c, tricky: p.tricky })));
+  const out = [], used = new Set();
+  for (let i = 0; i < L.length; i++) {
+    if (used.has(i) || L[i].tricky) continue;
+    const mid = L[i + 1], e = L[i + 2];
+    if ('aiou'.includes(L[i].c) && mid && !'aeiou'.includes(mid.c) && e && e.c === 'e' && !e.tricky && i + 2 === L.length - 1) { out.push({ g: `${L[i].c}_e`, at: [i, i + 2] }); used.add(i + 2); continue; }
+    const stop = L.findIndex((x, k) => k > i && x.tricky), text = L.slice(i, stop < 0 ? L.length : stop).map(x => x.c).join('');
+    const g = SPELLINGS.find(sp => text.startsWith(sp));
+    if (!g || g.length > 1 && [...Array(g.length - 1)].some((_, k) => used.has(i + k + 1))) return null;
+    out.push({ g, at: [...Array(g.length).keys()].map(k => i + k) }); for (let k = 1; k < g.length; k++) used.add(i + k);
+  }
+  return out;
+}
+export const heartSounds = w => { const t = heartTokens(w); return t && t.map(x => x.g); };
+// The word as shown in a level of a given stage: tricky letters, plus any sound not taught yet by that stage
+// (an early heart word like "the" in stage 1 shows all its letters as tricky until "th" is taught)
+export function heartPartsAt(w, stage) {
+  const tokens = heartTokens(w) || [], later = new Set(tokens.filter(t => (soundStage(t.g) ?? 99) > stage).flatMap(t => t.at));
+  const letters = heartParts(w).flatMap(p => [...p.t].map(c => ({ c, tricky: p.tricky })));
+  letters.forEach((x, i) => { if (later.has(i)) x.tricky = true; });
+  return letters.reduce((parts, x) => { const last = parts.at(-1); if (last && last.tricky === x.tricky) last.t += x.c; else parts.push({ t: x.c, tricky: x.tricky }); return parts; }, []);
+}
+// The stage that teaches a sight word's regular sounds (0 when every letter is tricky); -1 if it doesn't parse
+export const heartStage = w => { const s = heartSounds(w); return !s ? -1 : s.length ? Math.max(...s.map(g => soundStage(g) ?? 99)) : 0; };
+// Word pop levels: each stage's level gets the sight words whose regular sounds are taught by then, most common
+// first, up to 25 words in the first two stages and 50 after; the last level (Word boss) takes everything left.
+// The most common words come early (EARLY_SIGHT). A word can also come no more than one level before its place in the frequency list (so a rare word that happens
+// to be all tricky letters, like "people", doesn't land in Word pop 1).
+export const SIGHT_CAP = [25, 25, 50, 50, 50, 50];
+const BAND_END = SIGHT_CAP.reduce((a, c) => [...a, (a.at(-1) || 0) + c], []);   // 25, 50, 100, 150, …
+export const frequencyLevel = w => { const r = FRY.indexOf(w); const k = BAND_END.findIndex(e => r < e); return k < 0 ? BAND_END.length : k; };
+// The most common words come early as heart words, even before their regular sounds are taught (their untaught
+// letters show as tricky until then): children meet "the", "you" and "was" in almost every sentence.
+export const EARLY_SIGHT = { the: 0, you: 0, was: 0, said: 0, he: 0, we: 0, my: 0, she: 1, they: 1, are: 1, for: 1, have: 1, what: 1, be: 1 };
+export const sightStage = w => EARLY_SIGHT[w] ?? Math.max(heartStage(w), frequencyLevel(w) - 1);
+{
+  const left = [...FRY], levels = LEVELS.filter(l => l.type === 'sight');
+  levels.forEach((l, k) => {
+    const take = k === levels.length - 1 ? left.slice() : left.filter(w => sightStage(w) <= l.stage).slice(0, SIGHT_CAP[k] ?? 50);
+    l.pool = take; l.tiles = take.length >= 40 ? 5 : 4;
+    for (const w of take) left.splice(left.indexOf(w), 1);
+  });
+}
+
 // Words with a picture whose sounds are all taught by the given stage
 // The stage that teaches a word's last new sound (-1 if a sound isn't taught anywhere)
 export const wordStage = w => { const st = phonemes(w).map(soundStage); return st.length && st.every(x => x !== undefined) ? Math.max(...st) : -1; };
@@ -286,6 +366,11 @@ export function coverage({ levels = LEVELS, graphemes = GRAPHEMES, pics = PICS, 
     if (l.type === 'sight' && l.pool.length < l.tiles) problems.push(`${where}: fewer words than tiles`);
   }
   if (fry.length !== 300) problems.push(`Fry list has ${fry.length} words, expected 300`);
+  // Heart words: every sight word is marked, and its regular letters are sounds the game teaches
+  for (const w of fry) {
+    if (!MARKED[w]) problems.push(`Sight word "${w}" has no heart-word marking in HEART_MARKS`);
+    else if (heartSounds(w) === null) problems.push(`Sight word "${w}" (${MARKED[w]}) has letters outside [brackets] that aren't a taught sound`);
+  }
   return problems;
 }
 

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word Path heart words</title>
+<link rel="stylesheet" href="../vendor/fredoka/fredoka.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #FFF7EA; color: #2A2350; font-family: 'Fredoka', system-ui, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 32px; margin: 0 0 8px; }
+  p { font-size: 17px; line-height: 1.5; margin: 0 0 12px; max-width: 75ch; }
+  .level { background: #fff; border-radius: 28px; padding: 18px 22px; margin-top: 18px; box-shadow: 0 6px 0 #E8DCC8; }
+  .level h2 { font-size: 22px; margin: 0 0 4px; }
+  .level .sub { color: #5C5677; font-size: 15px; margin-bottom: 12px; }
+  .words { display: flex; flex-wrap: wrap; gap: 8px; }
+  .w { font-size: 22px; font-weight: 600; padding: 4px 12px; border-radius: 999px; background: #F3EEFF; }
+  .w.plain { background: #D5F5EC; }
+  .w b { color: #F2544A; text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 4px; }
+  .w small { font-size: 13px; color: #8A2A22; margin-left: 4px; }
+  .key { display: flex; gap: 12px; flex-wrap: wrap; font-size: 15px; margin: 8px 0 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Heart words</h1>
+  <p>Every sight word, in the Word pop level it's taught in. <b style="color:#F2544A">Red, underlined</b> letters are tricky: they don't make the sounds the game has taught (the word is irregular, like s<b style="color:#F2544A">ai</b>d, or the pattern isn't taught yet, like h<b style="color:#F2544A">igh</b>). The game marks those letters and shows a ♥. Green words have no tricky letters: the child can sound them out.</p>
+  <p>A word goes in the level of the stage that teaches its last regular sound, most common words first (25 words in the first two levels, 50 after). The 14 most common words come early anyway (the, you, was, said, he, we, my; then she, they, are, for, have, what, be): until their sounds are taught, those letters show as tricky too. To change a marking, tell Claude the word and which letters should be tricky; it lives in <code>HEART_MARKS</code> in content.js.</p>
+  <div class="key"><span class="w plain">can</span> no tricky letters <span class="w">s<b>ai</b>d</span> heart word</div>
+  <div id="levels"></div>
+</main>
+<script type="module">
+import { LEVELS, STAGES, heartPartsAt, EARLY_SIGHT } from '../content.js?v=dev';
+
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+let words = 0, hearts = 0;
+for (const L of LEVELS.filter(l => l.type === 'sight')) {
+  const box = el('section', 'level');
+  box.append(el('h2', null, `Level ${L.n} · ${L.title}`));
+  const isHeart = w => heartPartsAt(w, L.stage).some(p => p.tricky), n = L.pool.filter(isHeart).length;
+  box.append(el('div', 'sub', `Stage ${L.stage + 1} (${STAGES[L.stage].sounds}) · ${L.pool.length} words · ${n} heart words`));
+  const list = el('div', 'words');
+  for (const w of L.pool) {
+    const chip = el('span', isHeart(w) ? 'w' : 'w plain');
+    if (w in EARLY_SIGHT) chip.title = 'Taught early (one of the most common words)';
+    for (const p of heartPartsAt(w, L.stage)) chip.append(p.tricky ? el('b', null, p.t) : document.createTextNode(p.t));
+    list.append(chip);
+  }
+  box.append(list);
+  document.getElementById('levels').append(box);
+  words += L.pool.length; hearts += n;
+}
+window.heartsReady = { words, hearts, levels: document.querySelectorAll('.level').length };
+</script>
+</body>
+</html>

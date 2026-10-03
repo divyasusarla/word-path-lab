@@ -1,7 +1,7 @@
 // Word Path (lab) — ported from the Claude Design "Word Path v2" file.
 // Preact + htm, vendored (see vendor/README.md): no build step, edit and reload.
 import { h, html, render, Component } from './vendor/preact-htm.module.js';
-import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage } from './content.js?v=dev';
+import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage, heartPartsAt } from './content.js?v=dev';
 import { LV, shuffle, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
@@ -461,6 +461,7 @@ class App extends Component {
         }) : [];
         return h('div', { key: `${round}-${i}`, style: { position:'relative', width:size, height:size, animation:`wpIn 1.1s cubic-bezier(.22,1,.36,1) ${(i * 0.14).toFixed(2)}s both`, pointerEvents: gone ? 'none' : 'auto' } },
           right && h('span', { style: { position:'absolute', inset:0, borderRadius:'50%', border:`8px solid ${c.bg}`, animation:'wpRing .6s ease-out forwards' } }),
+          L.mode === 'word' && !right && heartPartsAt(o.label, L.stage).some(p => p.tricky) && h('span', { className: 'heart-badge', 'aria-hidden': 'true', style: { opacity: bad || gone ? 0.3 : 1 } }, '♥'),
           ...sparks,
           h('button', {
             key: bad ? 'bad' : 'ok',
@@ -474,7 +475,9 @@ class App extends Component {
               fontFamily:"'Fredoka',system-ui,sans-serif", fontWeight:700, fontSize: Math.round(size * (L.mode === 'word' ? (o.label.length > 6 ? 0.17 : 0.23) : (o.label.length > 2 || L.mode === 'name' ? 0.38 : 0.5))),
               animation: anim
             }
-          }, L.mode === 'name' ? o.label.toUpperCase() + o.label : showG(o.label)));
+          }, L.mode === 'name' ? o.label.toUpperCase() + o.label
+            : L.mode === 'word' ? h('span', null, heartPartsAt(o.label, L.stage).map((p, k) => p.tricky ? h('span', { key: k, className: 'tricky' }, p.t) : p.t))  // tricky letters underlined
+            : showG(o.label)));
       }));
   }
 
@@ -545,7 +548,7 @@ class App extends Component {
       levelNum: L.n, levelTitle: L.title, roundNum: Math.min(round + 1, rounds.length), roundCount: rounds.length, isBonus: !!(r && r.bonus),
       hintPic: isPlay && !solved && this.state.hintPic ? picSrc(this.state.hintPic) : '',
       reveal: isPlay && solved && r ? (rv => rv && { pic: rv.pic ? picSrc(rv.pic) : '', words: rv.words.map(segs => segs.map(x =>
-        ({ t: x.t, on: x.on || this.state.cue === 'all' || (x.k !== null && x.k === this.state.cue) })) ) })(revealFor(L, r)) : null,
+        ({ t: x.t, heart: !!x.heart, on: x.on || this.state.cue === 'all' || (x.k !== null && x.k === this.state.cue) })) ) })(revealFor(L, r)) : null,
       progress: rounds.map((_, k) => ({ color: k < round || (k === round && solved) ? '#FFC23C' : '#E6E1EE' })),
       replay: () => r && this.speak(this.prompt(L, r, false)),
       soundOut: () => this.soundOut(),
@@ -758,7 +761,7 @@ class App extends Component {
         ${v.reveal && html`
           <div class="reveal" aria-live="polite">
             ${v.reveal.pic && html`<img src=${v.reveal.pic} alt="" />`}
-            ${v.reveal.words.map((segs, i) => html`${i > 0 && html`<span class="reveal-dot">·</span>`}<span class="reveal-word">${segs.map(x => html`<span class=${x.on ? 'on' : ''}>${x.t}</span>`)}</span>`)}
+            ${v.reveal.words.map((segs, i) => html`${i > 0 && html`<span class="reveal-dot">·</span>`}<span class="reveal-word">${segs.map(x => html`<span class=${(x.on ? 'on' : '') + (x.heart ? ' tricky' : '')}>${x.t}</span>`)}</span>${segs.some(x => x.heart) && html`<span class="reveal-heart" aria-label="heart word">♥</span>`}`)}
           </div>`}
         </div>
 
