@@ -12,7 +12,6 @@ Work top to bottom. "Parallel" items are mostly your time and can happen alongsi
 |---|---|---|---|---|
 | 9 | **Re-record letter sounds** (done 2026-10-03: rumble gone from s and f). Optional: f, th (thin), th (this) and ng are still under a second (0.6–0.9 s); held for about 2 seconds they'd be clearer | S | Audio · parallel | Yours, optional |
 | 3 | **Picture naming review** (part 1 shipped: `tools/pictures.html`; part 2, the decisions, happens during testing: see Research R2): check pictures a child could name differently (tap → "water", cup → "drink", pan → "egg", nap → "sleep", cash → "money", king → "prince"); swap or rename; say a picture's name when it's pressed and held | S | Learning | A misnamed picture makes a right answer look wrong |
-| 36 | **Word pool breadth**: far more words per level, so plays don't repeat the same few. A "hear it, find the word" game (hear "map", pick from map / mop / nap) needs no picture, so any decodable word can be used; First sounds varies its letter pair each play across every letter taught; letter levels mix in more earlier letters. New words are recorded in batches like before | M–L | Learning | Repeats felt in the first child test; decoding practice needs many words with taught sounds (Foorman et al. 2016, rec. 3) |
 | 14 | **Developmental bands**: regroup stages into K / grade 1 / grade 2 per `LEARNING_DESIGN.md`; add grade 2 content (endings -s -ed -ing, more vowel patterns, two-syllable words) | L | Learning | Fits the K–2 span properly; needs #5 and #11 |
 | 14b | **Consonant blends as a teaching step**: st, sp, sn, fr, tr, cl, -nd, -mp… with sorting, blending and reading levels; today some words (snake, star, spoon, tree) use blends that were never taught | M | Learning | Gap found in LEARNING_DESIGN.md; part of band B |
 | 26 | **Early phonological awareness**: syllable clapping, first/last sound matching for the K band | M | Learning | Fills the start of the sequence |
@@ -67,6 +66,7 @@ Details in CHANGELOG.md.
 | 34 | ✅ ~~**Show the word after the answer**~~ | | | Shipped (CHANGELOG) |
 | 25 | ✅ ~~**Heart words**~~ (first version: marks for all 300, Word pop grouped by sounds taught; review on `tools/hearts.html`) | | | Shipped (CHANGELOG) |
 | 35 | ✅ ~~**Hint ladder**~~ | | | Shipped (CHANGELOG) |
+| 36 | ✅ ~~**Word pool breadth**~~ (decodable words in Word pop; rotating First sounds pairs) | | | Shipped (CHANGELOG) |
 
 ## Research
 

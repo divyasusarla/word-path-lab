@@ -155,7 +155,10 @@ export const STICKERS = [
 // rhyme (pick the picture that rhymes), sight (pop the sight word).
 const sounds = (pool, title = 'Letter sounds') => ({ type: 'sounds', title, pool: pool.split(' ') });
 const names = pool => ({ type: 'names', title: 'Letter names', pool: pool.split(' ') });
-const sort = (ask, a, b, items, title) => ({ type: 'sort', ask, bins: [a, b], items: [...items[0].split(' ').map(w => ({ w, bin: 0 })), ...items[1].split(' ').map(w => ({ w, bin: 1 }))], title });
+// A First sounds sort between two single letters rotates its pair after the first play (engine.js sortPair), so its
+// title doesn't name the letters
+const sort = (ask, a, b, items, title) => ({ type: 'sort', ask, bins: [a, b], items: [...items[0].split(' ').map(w => ({ w, bin: 0 })), ...items[1].split(' ').map(w => ({ w, bin: 1 }))],
+  rotate: ask === 'start' && a.length === 1 && b.length === 1, title: ask === 'start' && a.length === 1 && b.length === 1 ? 'First sounds' : title });
 const blend = words => ({ type: 'blend', title: 'Blend it', words: words.split(' ') });
 const read = words => ({ type: 'read', title: 'Read it', words: words.split(' ') });
 // sight: the pool is filled below (heart words), from the words whose regular sounds this stage has taught

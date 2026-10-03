@@ -108,3 +108,8 @@ Why Word Path is built the way it is. Each entry: the decision, why, what else w
 - **Why:** high-frequency words are learned by connecting their letters to their sounds (Ehri 2014), so the regular parts should be readable when the word is taught and only the tricky part needs remembering. The markings are our own analysis, not a programme's lists.
 - **Early words:** strict alignment would put very common words late ("the" in Word pop 5, because of "th"). So the 14 most common (`EARLY_SIGHT`: the, you, was, said, he, we, my in Word pop 1; she, they, are, for, have, what, be in Word pop 2) come early, and any letter whose sound isn't taught yet shows as tricky until it is ("the" is all tricky in Word pop 1, th[e] from stage 5).
 - **Revisit:** after review of `tools/hearts.html` and testing.
+
+### 22. More words without renumbering: decodable words in Word pop, rotating First sounds (2026-10-03)
+- **Decision:** the "hear it, find the written word" practice lives in Word pop (the same mechanic), which now mixes in each stage's new decodable words with near-miss wrong answers. First sounds keeps its own pair on the first play, then picks a new pair of taught letters each play.
+- **Why:** a new level would renumber every later level, making the recorded "Level N…" and sticker lines wrong. Decoding practice needs many words with taught sounds (Foorman et al. 2016), and near misses make the child read every letter.
+- **Revisit:** if Word pop feels like two games in one (testing), split it into its own level with the bands work (#14), when levels are renumbered anyway.

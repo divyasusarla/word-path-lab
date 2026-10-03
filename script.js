@@ -1,7 +1,7 @@
 // Everything the game can say that isn't a letter sound or name (those are in sounds.js): words and lines,
 // worked out from the levels so the list never falls behind the game. Used by the recorder (tools/record.html)
 // and the checks. Each clip is first needed in one stage; the recorder offers them stage by stage (batches).
-import { LV, mixUpFor, prompt, praiseParts, modelParts, missParts, finishParts, heroParts, levelLine, reviewItems,
+import { LV, mixUpFor, ownItems, sortLetters, SORT_PICS, prompt, praiseParts, modelParts, missParts, finishParts, heroParts, levelLine, reviewItems,
   sayId, word, OPTION_WORDS, TRY_AGAIN, BONUS, LOCKED } from './engine.js?v=dev';
 import { STAGES, FRY, WORDS, PICS, soundSimilarity, wordStage, soundStage } from './content.js?v=dev';
 import { SOUND_IDS } from './sounds.js?v=dev';
@@ -22,8 +22,12 @@ export function levelSpeech(L) {
   for (const f of [{}, { stageDone: lastInStage }, { rest: true }, { again: true }]) out.push(finishParts(L, f));
   const each = (r, n) => out.push(prompt(L, r, true, 0), prompt(L, r, false, n), praiseParts(L, r, { n: 0 }), praiseParts(L, r, { n: 9 }),
     praiseParts(L, r, { mastered: true }), praiseParts(L, r, { modelled: true }), modelParts(L, r));
-  if (L.kind === 'sort') for (const r of L.items) { each(r, 9); out.push(missParts(L, r, 1 - r.bin)); }
-  else if (L.kind === 'pop') for (const t of [...L.pool, ...reviewItems(L)]) {
+  if (L.kind === 'sort') {
+    for (const r of L.items) { each(r, 9); out.push(missParts(L, r, 1 - r.bin)); }
+    // a rotating First sounds level can ask about any letter taught by then, with any of its pictures
+    if (L.rotate) for (const g of sortLetters(L.stage)) for (const w of SORT_PICS[g]) { const r = { w, bin: 0, bins: [g, g] }; out.push(prompt(L, r, false, 0), praiseParts(L, r), modelParts(L, r), missParts(L, r, 1)); }
+  }
+  else if (L.kind === 'pop') for (const t of [...ownItems(L), ...reviewItems(L)]) {
     each({ target: t }, 0);
     for (const o of new Set([...L.pool, mixUpFor(L, t)])) if (o && o !== t) out.push(missParts(L, { target: t }, { label: o }));
   }

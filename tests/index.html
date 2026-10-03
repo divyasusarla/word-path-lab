@@ -623,6 +623,16 @@ async function runAll() {
     s = w.wp.state();
     expect(!s.easy && s.options.length === full, `after a first-try right, back to ${full} bubbles, got ${s.options.length}`);
   });
+  await check('First sounds: after the first play, a new pair of letters, each bin with its own picture', async () => {
+    const L = LEVELS.find(l => l.rotate), w = await load(`level=${L.n}&demo`);
+    await waitFor(() => w.wp.state().screen === 'play', 2000, 'the level');
+    const bins = [...doc().querySelectorAll('.bin-label')].map(b => b.innerText.trim());
+    const anchors = [...doc().querySelectorAll('.bin-anchor img')].map(i => i.getAttribute('src'));
+    expect(text().includes('First sounds') && bins.length === 2 && bins[0] !== bins[1], `bins ${bins.join(' / ')}`);
+    expect(anchors.length === 2 && anchors.every(Boolean), 'each bin needs a picture');
+    expect(w.wp.spoken().some(t => /^Does it start with/.test(t)), 'the question should be asked');
+    return `level ${L.n}: ${bins.join(' or ')} (own pair ${L.bins.join(' or ')})`;
+  });
   await check('Level complete: Next level button goes to the next level', async () => {
     const w = await load('screen=done&level=3');
     expect(/You did it!/.test(text()) && text().includes(`You earned the ${LEVELS[2].sticker.name} sticker!`), 'level complete text wrong');
