@@ -44,7 +44,7 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 28 | **Child profiles**: name and avatar; several children per device | M | Product | Classroom sharing |
 | 29 | **Drag to sort**, as well as tapping | S | Product | Nice to have |
 | 30 | **Accessibility pass**: screen-reader labels, contrast, captions for spoken prompts | M | Product | Wider reach; captions help in noisy classrooms |
-| 31 | **Tests for the audio tools**: recorder processing and `import_audio.py` with synthetic recordings | S | Testing | Low risk today |
+| 31 | ✅ ~~**Tests for the audio tools**: recorder processing and `import_audio.py` with synthetic recordings~~ | | | Shipped (CHANGELOG) |
 | 32 | **Decodable sentences**: short sentences from taught sounds and heart words, then pick the picture | L | Learning | The step from words to reading text |
 | 33 | **Adaptive difficulty**: adjust rounds, wrong options and review from mastery | L | Learning | Builds on everything above |
 

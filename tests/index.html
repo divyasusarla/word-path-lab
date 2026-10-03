@@ -496,6 +496,32 @@ async function runAll() {
     return `${w.recorderReady.clips} clips in ${w.recorderReady.batches} batches; ${w.recorderReady.recorded} recorded in this browser`;
   });
 
+  await check('Recorder processing: trims key clicks, keeps pauses inside a word, evens volume, warns on bad takes, zips', async () => {
+    frame.src = '../tools/record.html?selftest';
+    const w = await waitFor(() => frame.contentWindow.recorderTest && frame.contentWindow, 6000, 'the recorder test hooks');
+    const T = w.recorderTest; T.init();
+    const R = 22050, tone = (sec, amp = 0.3, f = 220) => Array.from({ length: Math.round(sec * R) }, (_, i) => amp * Math.sin(2 * Math.PI * f * i / R));
+    const sil = sec => new Array(Math.round(sec * R)).fill(0), click = () => tone(0.015, 0.7, 3000);
+    const take = parts => T.encodeWav(Float32Array.from(parts.flat()), R);
+    // start click (inside the skipped first 0.25 s), a word with a 0.2 s gap, a stop click in the last 0.12 s
+    const word = await T.processBlob(take([sil(0.05), click(), sil(0.4), tone(0.5), sil(0.2), tone(0.4), sil(0.3), click(), sil(0.03)]), 'word');
+    expect(!word.empty && Math.abs(word.dur - 1.24) < 0.12, `word kept ${word.dur?.toFixed(2)}s, expected about 1.24s (both halves, no clicks)`);
+    expect(!word.warn, `unexpected warning: ${word.warn}`);
+    const quiet = await T.processBlob(take([sil(0.3), tone(0.6, 0.03), sil(0.3)]), 'word');
+    const loud = await T.processBlob(take([sil(0.3), tone(0.6, 0.5), sil(0.3)]), 'word');
+    const level = async wav => { const x = new Int16Array((await wav.arrayBuffer()).slice(44)); let e = 0; for (const v of x) e += (v / 32768) ** 2; return Math.sqrt(e / x.length); };
+    const [lq, ll] = [await level(quiet.wav), await level(loud.wav)];
+    expect(Math.abs(lq - ll) < 0.03, `volumes not evened out: ${lq.toFixed(3)} vs ${ll.toFixed(3)}`);
+    expect((await T.processBlob(take([sil(0.3), tone(0.6, 0.999), sil(0.3)]), 'word')).warn.includes('too loud'), 'no warning for a clipped take');
+    expect((await T.processBlob(take([sil(0.3), tone(2), sil(0.3)]), 'word')).warn.includes('quicker'), 'no warning for a long word');
+    expect((await T.processBlob(take([sil(0.3), tone(0.4), sil(0.3)]), 'hold')).warn.includes('longer'), 'no warning for a short held sound');
+    expect((await T.processBlob(take([sil(1)]), 'word')).empty, 'silence should count as empty');
+    const zip = new Uint8Array(await (await T.makeZip([{ name: 'word-cat.wav', blob: word.wav }, { name: 'say-yes.wav', blob: loud.wav }])).arrayBuffer());
+    const head = String.fromCharCode(...zip.slice(0, 4)), names = new TextDecoder().decode(zip);
+    expect(head === 'PK\x03\x04' && names.includes('word-cat.wav') && names.includes('say-yes.wav'), 'zip is not a valid archive of both clips');
+    return `word ${word.dur.toFixed(2)}s; levels ${lq.toFixed(3)} / ${ll.toFixed(3)}`;
+  });
+
   summary.className = failed ? 'fail' : 'pass';
   summary.textContent = failed ? `${failed} failed, ${passed} passed` : `All ${passed} checks passed`;
   runBtn.disabled = false;
