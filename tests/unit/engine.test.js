@@ -3,7 +3,8 @@
 // tests/unit/run.mjs (GitHub Actions).
 import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuffle, unlocked, nextLevel,
   stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2, prompt, soundOutParts,
-  MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today } from '../../engine.js?v=dev';
+  MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
+  modelAfter, modelParts, praiseParts, shouldPractiseAgain } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, WORDS, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 
 const ok = (cond, msg) => { if (!cond) throw new Error(msg); };
@@ -169,6 +170,30 @@ export const tests = [
     eq(masteredIn(L, st), [`blend:${w1}`], 'mastered');
   }],
   ['today() gives a calendar date', () => ok(/^\d{4}-\d{2}-\d{2}$/.test(today()), today())],
+
+  // ---- feedback
+  ['feedback: answer shown after 2 misses, or 1 in a sort', () => {
+    eq(modelAfter(level('blend')), 2, 'blend'); eq(modelAfter(level('sight')), 2, 'sight'); eq(modelAfter(level('sort')), 1, 'sort');
+  }],
+  ['feedback: showing the answer names it', () => {
+    const B = level('blend'); ok(modelParts(B, { target: { w: 'cat' } }).some(p => p.t && p.t.includes('cat')), 'blend names the word');
+    const S = level('sounds'); ok(modelParts(S, { target: 'm' }).some(p => p.clip === 'm'), 'sound plays the sound');
+    const T = level('sort'); ok(modelParts(T, T.items[0]).some(p => p.clip === GRAPHEMES[T.bins[T.items[0].bin]].clip), 'sort plays the right sound');
+  }],
+  ['feedback: praise says what was right; "You know that one now" only when newly mastered', () => {
+    const S = level('sounds');
+    ok(praiseParts(S, { target: 'sh' }).some(p => p.clip === 'sh'), 'sound praise plays the sound');
+    ok(!praiseParts(S, { target: 'sh' }).includes('You know that one now!'), 'no mastery news by default');
+    ok(praiseParts(S, { target: 'sh' }, { mastered: true }).includes('You know that one now!'), 'mastery news');
+    eq(praiseParts(S, { target: 'sh' }, { modelled: true }), ["That's it."], 'after the answer was shown');
+    ok(praiseParts(level('sight'), { target: 'said' })[0].t.includes('said'), 'sight word praise says the word');
+  }],
+  ['feedback: practise again below half right first time', () => {
+    ok(shouldPractiseAgain([false, false, true]), '1 of 3');
+    ok(!shouldPractiseAgain([true, false]), '1 of 2 is half, not under');
+    ok(!shouldPractiseAgain([true, true, false]), '2 of 3');
+    ok(!shouldPractiseAgain([]), 'nothing played');
+  }],
 
   // ---- layout
   ['layoutFor picks the right layout for common screens', () => {
