@@ -24,7 +24,7 @@ Each item ships as its own pull request, reviewed before merging. Longer-term de
 | 12 | ✅ ~~**Mastery tracking**~~ | | | Shipped (CHANGELOG) |
 | 13 | ✅ ~~Don't let guessing finish a level~~ | | | Shipped (CHANGELOG) |
 | 13b | ✅ ~~Informational praise~~ | | | Shipped (CHANGELOG) |
-| 13c | **Session stopping point**: a gentle "great work today" after about 15 minutes; grown-up setting for session length | S | Learning | R5 / GraphoGame dosage |
+| 13c | ✅ ~~Session stopping point~~ | | | Shipped (CHANGELOG) |
 | 14 | **Developmental bands**: regroup stages into K / grade 1 / grade 2 per `LEARNING_DESIGN.md`; add grade 2 content (endings -s -ed -ing, more vowel patterns, two-syllable words) | L | Learning | Fits the K–2 span properly; needs #5 and #11 |
 | 14b | **Consonant blends as a teaching step**: st, sp, sn, fr, tr, cl, -nd, -mp… with sorting, blending and reading levels; today some words (snake, star, spoon, tree) use blends that were never taught | M | Learning | Gap found in LEARNING_DESIGN.md; part of band B |
 | 15 | ✅ ~~**Sight words: full coverage**: rotate through every word in a level across plays, bringing missed words back~~ | | | Shipped (CHANGELOG) |
