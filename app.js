@@ -6,7 +6,7 @@ import { LV, shuffle, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt 
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
   sayId, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED, gateQuestion, gateOk,
-  SESSION_CHOICES, sessionOver, progressReport, revealFor, codecOffset, hintFor, shouldEase, easeRound } from './engine.js?v=dev';
+  SESSION_CHOICES, sessionOver, progressReport, revealFor, codecOffset, hintFor, shouldEase, easeRound, binsOf, binPicture } from './engine.js?v=dev';
 import { SCRIPT, levelSpeech } from './script.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
@@ -516,8 +516,8 @@ class App extends Component {
     }) : [];
 
     const binC = [P[0], P[3]];
-    const bins = isPlay && L.kind === 'sort' ? L.bins.map((b, k) => ({
-      label: showG(b), anchor: picSrc(GRAPHEMES[b].ex), aria: L.ask === 'has' ? `Has ${b}` : `Starts with ${b}`, order: k === 0 ? 0 : 2,
+    const bins = isPlay && L.kind === 'sort' ? binsOf(L, r || rounds[0]).map((b, k) => ({
+      label: showG(b), anchor: picSrc(binPicture(b, rounds.map(x => x.w))), aria: L.ask === 'has' ? `Has ${b}` : `Starts with ${b}`, order: k === 0 ? 0 : 2,
       bg: binC[k].bg, sh: binC[k].sh, transform: binWrong === k ? 'scale(.96)' : 'scale(1)', shown: this.state.modelled && !solved && r && r.bin === k,
       items: sorted[k].map(x => ({ pic: picSrc(x.w) })), onClick: () => this.pickBin(k)
     })) : [];

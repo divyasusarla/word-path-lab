@@ -6,7 +6,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
-  sayId, wordId, slug, hintFor, shouldEase, easeRound, EASE_AFTER, codecOffset, KEEP_LEAD, mixUpFor, OPTION_WORDS, spell, revealFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
+  sayId, wordId, slug, ownItems, sortPair, sortLetters, SORT_PICS, binPicture, binsOf, hintFor, shouldEase, easeRound, EASE_AFTER, codecOffset, KEEP_LEAD, mixUpFor, OPTION_WORDS, spell, revealFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, PICTURE_FLAGS, WORDS, FRY, CONFUSIONS, confusedWith, wordStage, heartParts, heartSounds, heartStage, sightStage, isHeart, heartPartsAt, EARLY_SIGHT, soundStage, heartTokens, SIGHT_CAP, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
@@ -140,6 +140,38 @@ export const tests = [
   }],
   ['content check catches a sight word with no heart marking', () => {
     ok(coverage({ fry: [...FRY, 'xyzzy'] }).some(p => p.includes('"xyzzy" has no heart-word marking')), 'unmarked word not caught');
+  }],
+
+  // ---- word pool breadth (#36)
+  ['Word pop: each stage adds its new decodable words, with near misses so they must be read', () => {
+    for (const L of LV.filter(l => l.type === 'sight')) {
+      ok(L.extra.length >= 5, `${L.title}: only ${L.extra.length} extra words`);
+      for (const w of L.extra) ok(wordStage(w) === L.stage && !FRY.includes(w), `${L.title}: "${w}"`);
+      for (const r of buildRounds(L, 8, seeded(L.n)).filter(r => L.extra.includes(r.target))) {
+        const labels = r.options.map(o => o.label);
+        ok(labels.includes(r.target) && new Set(labels).size === labels.length, `${L.title}: ${labels.join('/')}`);
+        for (const x of labels) ok(wordStage(x) >= 0 && wordStage(x) <= L.stage, `${L.title}: "${x}" can't be read yet`);
+        ok(labels.some(x => x !== r.target && soundSimilarity(x, r.target) >= 3), `${L.title}: no near miss for "${r.target}" in ${labels.join('/')}`);
+      }
+    }
+  }],
+  ['First sounds: the level\'s own pair first; once tried, a new pair of taught letters each play', () => {
+    const L = LV.find(l => l.rotate);
+    ok(LV.filter(l => l.rotate).every(l => l.title === 'First sounds'), 'rotating levels are called First sounds');
+    eq(sortPair(L, {}, seeded(1)), null, 'first play: own pair');
+    let st = {}; for (const x of L.items) st = recordAttempt(st, `sort:${x.w}`, true, 'd1');
+    const pairs = new Set();
+    for (let k = 1; k < 25; k++) {
+      const rounds = buildRounds(L, 8, seeded(k * 104729), st), [a, b] = rounds[0].bins;   // spread-out seeds: small ones start almost alike
+      pairs.add(`${a}${b}`);
+      ok(GRAPHEMES[a].clip !== GRAPHEMES[b].clip && sortLetters(L.stage).includes(a) && sortLetters(L.stage).includes(b), `pair ${a}/${b}`);
+      for (const r of rounds) { ok(SORT_PICS[r.bins[r.bin]].includes(r.w), `"${r.w}" doesn't start with ${r.bins[r.bin]}`); ok(r.w !== binPicture(r.bins[r.bin]), `"${r.w}" is also the bin picture`); }
+      ok(rounds.filter(r => r.bin === 0).length >= 4 && rounds.filter(r => r.bin === 1).length >= 4, 'at least 4 pictures per bin');
+    }
+    ok(pairs.size >= 3, `only ${pairs.size} different pairs in 24 plays`);
+  }],
+  ['bin pictures: never one of the pictures to sort, for every sorting level', () => {
+    for (const L of LV.filter(l => l.kind === 'sort')) for (const g of L.bins) ok(!L.items.some(x => x.w === binPicture(g, L.items.map(y => y.w))), `level ${L.n}: ${g}'s picture is also in the pile`);
   }],
 
   // ---- hint ladder (#35)

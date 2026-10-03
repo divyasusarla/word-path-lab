@@ -30,13 +30,15 @@ A plain static site with no build step: the browser loads `index.html`, which ru
 | `content.js` | **What children learn**: the teaching order, words, pictures, sight words, stickers, and `coverage()`, which checks it. Edit this to change content |
 | `sounds.js` | The 69 recorded sounds (43 speech sounds + 26 letter names) and how to say each |
 | `styles.css` | Base styles, hover states and animations |
-| `audio/` | The recordings (`<id>.wav`) and `manifest.json`, which lists those that exist |
+| `audio/` | The recordings: `<id>.wav` masters and small `<id>.m4a` copies the game plays, `manifest.json` (which exist) and `sources.json` (which takes were imported) |
+| `script.js` | Every word and line the game can say, worked out from the levels and batched by stage for the recorder |
 | `vendor/` | Third-party files kept locally so nothing loads from outside servers: Preact/htm, icon font, Fredoka font, Noto Emoji pictures (see `vendor/README.md`) |
 | `tests/` | Browser checks that play every level (`index.html`; `run-checks.mjs` runs them headlessly on GitHub) and unit tests for the rules (`unit/`; `node tests/unit/run.mjs`) (see `TESTING.md`) |
 | `package.json` | Only tells Node the `.js` files are modules, for the unit tests. There's no build step or dependencies |
-| `tools/record.html` | The recorder for all 69 sounds |
+| `tools/record.html` | The recorder: letter sounds, then every word and line in batches by stage |
 | `tools/checklist.html` | Play-through checklist: ✓/✗ per item, notes, saved per device, copy notes to share |
 | `tools/pictures.html` | Review page: every picture with its word, the levels using it, and flags for pictures a child might name differently |
+| `tools/hearts.html` | Review page: every sight word in its Word pop level, with the tricky (heart) letters marked |
 | `tools/serve.py` | Local development server that disables caching |
 | `tools/import_audio.py` | Brings the recorder's zip into `audio/`, removing clicks and silence and evening out volume |
 | `versions/` | A playable copy of every past version, with an index page |
