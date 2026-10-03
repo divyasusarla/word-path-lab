@@ -43,7 +43,7 @@
 import { SOUNDS } from '../sounds.js';
 import { tests as unitTests } from './unit/engine.test.js';
 import { LEVELS, STAGES, STICKERS, coverage, allPictureFiles, decodableBy, phonemes, soundSimilarity } from '../content.js';
-import { PICTURE_WORDS, codecOffset, KEEP_LEAD } from '../engine.js?v=dev';
+import { PICTURE_WORDS, OPTION_WORDS, codecOffset, KEEP_LEAD } from '../engine.js?v=dev';
 import { SCRIPT, SCRIPT_IDS } from '../script.js?v=dev';
 const levelOf = type => LEVELS.find(l => l.type === type).n;
 const usedClips = new Map();   // clip id -> where the game got it ('recording' or 'voice')
@@ -290,12 +290,12 @@ async function runAll() {
     const notes = [];
     for (const L of LEVELS.filter(l => l.type === 'blend' || l.type === 'read')) {
       const w = await load(`level=${L.n}&rounds=8`);
-      const pool = PICTURE_WORDS;
+      const pool = OPTION_WORDS;
       for (let r = 0; r < 8; r++) {
         const s = w.wp.state();
         const wrongs = s.options.filter(o => o !== s.target);
         expect(wrongs.length === 2, `level ${L.n}: expected 2 wrong options, got ${wrongs.length}`);
-        for (const o of wrongs) expect(pool.includes(o), `level ${L.n}: "${o}" has no picture`);
+        for (const o of wrongs) expect(pool.includes(o), `level ${L.n}: "${o}" has no picture, or one likely to be misnamed`);
         const possible = pool.some(x => x !== s.target && shares(s.target, x));
         if (possible) expect(wrongs.some(o => shares(s.target, o)), `level ${L.n}: "${s.target}" got ${wrongs.join(', ')}, which share no first or last sound`);
         if (r === 0) notes.push(`${L.n}: ${s.target} → ${wrongs.join(', ')}`);
