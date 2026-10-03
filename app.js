@@ -6,7 +6,7 @@ import { LV, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speech
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
   sayId, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED, gateQuestion, gateOk,
-  SESSION_CHOICES, sessionOver, progressReport, revealFor } from './engine.js?v=dev';
+  SESSION_CHOICES, sessionOver, progressReport, revealFor, codecOffset } from './engine.js?v=dev';
 import { SCRIPT, levelSpeech } from './script.js?v=dev';
 
 // Gameplay settings (were the editor props in Claude Design)
@@ -233,7 +233,11 @@ class App extends Component {
     const c = this.audioCtx(); if (!c) return null;
     // The small .m4a copy first; the .wav master if there isn't one or this browser can't decode it
     const load = ext => fetch(`audio/${id}.${ext}`).then(r => r.ok ? r.arrayBuffer() : Promise.reject())
-      .then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no))).then(buf => { this.clipSources[id] = ext; return buf; });
+      .then(b => new Promise((ok, no) => c.decodeAudioData(b, ok, no))).then(buf => {
+        this.clipSources[id] = ext;
+        buf.skip = ext === 'm4a' ? codecOffset(buf.getChannelData(0), buf.sampleRate) : 0;  // codec padding, if this browser keeps it
+        return buf;
+      });
     if (!this.buffers[id]) this.buffers[id] = (this.compressed.has(id) ? load('m4a').catch(() => load('wav')) : load('wav')).catch(() => null);
     return this.buffers[id];
   }
@@ -243,8 +247,8 @@ class App extends Component {
       g.gain.value = this.state.audio.vol;  // same volume setting as the browser voice
       src.buffer = buf; src.connect(g); g.connect(c.destination);
       const done = () => { clearTimeout(fb); if (this.curSrc === src) this.curSrc = null; res(); };
-      const fb = setTimeout(done, buf.duration * 1000 + 500);
-      src.onended = done; this.curSrc = src; src.start();
+      const fb = setTimeout(done, (buf.duration - (buf.skip || 0)) * 1000 + 500);
+      src.onended = done; this.curSrc = src; src.start(0, buf.skip || 0);
       if (TEST) this.playedClips.push({ dur: +buf.duration.toFixed(2), state: c.state });
     });
   }
