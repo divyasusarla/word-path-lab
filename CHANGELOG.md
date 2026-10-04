@@ -3,6 +3,9 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+
+## v4.1 — 2026-10-04 (fixes during the first group test)
+Fixes from the v4.0 run-through, sent to testers mid-test. Feedback dated before this was on v4.0.
 - From your run-through of v4.0:
   - **No two bubbles make the same sound** in a letter-sounds round: c, k and ck never appear together, whatever the answer. The earlier fix only covered the case where one of them was the answer; about a quarter of level 6 rounds still showed two of them (656 of 2,400 in a simulation), now none.
   - **Nap and map never together:** when the answer's picture is one children may not recognise (nap's sleeping face), a picture that rhymes with it isn't offered as a wrong answer. No level loses any words.
