@@ -166,8 +166,12 @@ export const OPTION_WORDS = PICTURE_WORDS.filter(w => PICTURE_FLAGS[w]?.[0] !== 
 // Blend it / Read it: the two wrong options that sound most like the answer (cat → cap, can), so the first sound
 // alone isn't enough. They come from every picture word, not just ones the child can read yet: the child only has
 // to blend or read the answer, and a bigger pool keeps the pictures varied. A little randomness varies ties.
+// When the answer's picture is one children may not recognise (nap: a sleeping face), a picture that rhymes with
+// it (map) is never a wrong option: the two would be too easy to mix up (testing, 2026-10-03).
+export const rhymes = (a, b) => { const A = phonemes(a), B = phonemes(b); return A.length > 1 && B.length > 1 && A.slice(1).join(' ') === B.slice(1).join(' '); };
 export function nearOptions(w, stage, rng = Math.random) {
-  return OPTION_WORDS.filter(x => x !== w)
+  const unclear = PICTURE_FLAGS[w]?.[0] === 'high';
+  return OPTION_WORDS.filter(x => x !== w && !(unclear && rhymes(w, x)))
     .map(x => [x, soundSimilarity(w, x) + rng() * 0.6]).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([x]) => x);
 }
 // ---- Choosing what a play practises (coverage and cumulative review) ------------------------------
@@ -227,9 +231,14 @@ export function makeRound(L, t, flags = {}, rng = Math.random) {
   }
   if (L.kind === 'pop') {
     const tiles = Math.min(L.tiles || 4, L.pool.length), mix = mixUpFor(L, t);
-    // never a wrong answer that makes the same sound as the right one (c / k / ck, a_e / ai)
-    const same = x => L.mode === 'sound' && GRAPHEMES[x]?.clip === GRAPHEMES[t]?.clip;
-    const others = shuffle(L.pool.filter(x => x !== t && x !== mix && !same(x)), rng).slice(0, tiles - 1 - (mix ? 1 : 0));
+    // every bubble makes a different sound: never two spellings of one sound in a round (c / k / ck, a_e / ai),
+    // whether or not one of them is the answer (testing, 2026-10-03)
+    const sound = x => L.mode === 'sound' ? GRAPHEMES[x]?.clip ?? x : x, used = new Set([sound(t), ...(mix ? [sound(mix)] : [])]);
+    const others = [];
+    for (const x of shuffle(L.pool.filter(x => x !== t && x !== mix), rng)) {
+      if (others.length >= tiles - 1 - (mix ? 1 : 0)) break;
+      if (!used.has(sound(x))) { others.push(x); used.add(sound(x)); }
+    }
     return { target: t, ...flags,
       options: shuffle([t, ...(mix ? [mix] : []), ...others], rng)
         .map(label => ({ label, bob: (rng() * 1.5).toFixed(2), dur: (2.6 + rng()).toFixed(2) })) };

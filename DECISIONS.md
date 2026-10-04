@@ -113,3 +113,8 @@ Why Word Path is built the way it is. Each entry: the decision, why, what else w
 - **Decision:** the "hear it, find the written word" practice lives in Word pop (the same mechanic), which now mixes in each stage's new decodable words with near-miss wrong answers. First sounds keeps its own pair on the first play, then picks a new pair of taught letters each play.
 - **Why:** a new level would renumber every later level, making the recorded "Level N…" and sticker lines wrong. Decoding practice needs many words with taught sounds (Foorman et al. 2016), and near misses make the child read every letter.
 - **Revisit:** if Word pop feels like two games in one (testing), split it into its own level with the bands work (#14), when levels are renumbered anyway.
+
+### 23. Ask about sound; never override silent mode (2026-10-04)
+- **Decision:** a "Sound on?" card for grown-ups before the first level of each session, with a test sound and tips. The game doesn't use Safari's option to play through silent mode.
+- **Why:** a website can't detect that an iPad or iPhone is muted, so in testing the game simply seemed broken. Playing through silent mode would surprise families who muted the device on purpose (your call, 2026-10-04).
+- **Revisit:** if testers find the card a nuisance (it shows once per page load).

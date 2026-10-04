@@ -57,6 +57,7 @@ You can also set things up straight from the address. Combine options with `&`:
 | `?test&mute` | No voice; captions still show what would be said |
 | `?test&session=0.1` | Suggest a break after 0.1 minutes (to see the break message quickly) |
 | `?test&screen=report&demo` | The progress report with sample progress (9 levels finished, some words known, some often missed) |
+| `?test&soundcheck&level=1` | Show the Sound on? card before the level (test mode skips it otherwise) |
 | `?test&day=2026-10-04` | Pretend it's another day (for mastery, which needs two different days) |
 
 For example, `https://divyasusarla.github.io/word-path-lab/?test&level=7&rounds=2`

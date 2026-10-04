@@ -5,7 +5,7 @@ import { LEVELS, STAGES, GRAPHEMES, picSrc, coverage, heartPartsAt } from './con
 import { LV, shuffle, layoutFor, stagePos, stagePath, gsnd, nsnd, showG, prompt as speechFor, soundOutParts, buildRounds, isRight,
   unlocked, nextLevel, stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2,
   itemKey, recordAttempt, today, masteredIn, levelItems, isMastered, modelAfter, modelParts, praiseParts, shouldPractiseAgain, bonusRound,
-  sayId, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED, gateQuestion, gateOk,
+  sayId, missParts, finishParts, heroParts, levelLine, TRY_AGAIN, BONUS, LOCKED, gateQuestion, gateOk,
   SESSION_CHOICES, sessionOver, progressReport, revealFor, codecOffset, hintFor, shouldEase, easeRound, binsOf, binPicture } from './engine.js?v=dev';
 import { SCRIPT, levelSpeech } from './script.js?v=dev';
 
@@ -27,7 +27,7 @@ const T = TEST ? {
   level: num('level', 1, LEVELS.length), screen: Q.get('screen'), done: num('done', 0, LEVELS.length),
   session: Q.has('session') ? Math.max(0, parseFloat(Q.get('session')) || 0) : null,
   rounds: num('rounds', 1, 20), think: Q.has('think') ? Math.max(0, parseFloat(Q.get('think')) || 0) : null, mute: Q.has('mute'),
-  demo: Q.has('demo')
+  demo: Q.has('demo'), soundcheck: Q.has('soundcheck')
 } : null;
 // Sample progress for ?test&demo: levels 1–9 finished; items alternate between known, still learning and often missed
 function demoMastery() {
@@ -123,6 +123,7 @@ class App extends Component {
     else if (sc === 'stickers') this.setState({ screen:'stickers' });
     else if (sc === 'settings') this.setState({ settings:true });
     else if (sc === 'gate') this.openSettings();
+    else if (sc === 'soundcheck') this.setState({ soundCheck: { next: 0, help: false } });
     else if (sc === 'about') this.setState({ screen:'about' });
     else if (sc === 'report') this.setState({ screen:'report' });
     // Hook for the automated checks in tests/ and for poking around in the browser console
@@ -154,6 +155,7 @@ class App extends Component {
       blockAudio: () => { this.audioBlocked = true; return 'blocked'; },
       report: () => progressReport(this.state.done, this.state.mastery),
       reveal: () => { const el = document.querySelector('.reveal'); return el && { text: el.innerText.replace(/\s+/g, ' ').trim(), on: [...el.querySelectorAll('.on')].map(x => x.textContent) }; },
+      soundCheck: () => this.state.soundCheck && { ...this.state.soundCheck },
       gate: () => this.state.gate && { answer: this.state.gate.q.answer, typed: this.state.gate.typed, wrong: this.state.gate.wrong },
       replay: () => { const L = LV[this.state.lvl], r = this.state.rounds[this.state.round]; if (r) this.speak(this.prompt(L, r, false)); },
       clearSpoken: () => { this.spoken = []; }
@@ -301,6 +303,11 @@ class App extends Component {
   // a speech sound: plays the recording if there is one, otherwise the browser voice says the fallback text
   snd(pair, clip) { return { t: pair[0], rate: pair[1], clip }; }
 
+  soundTest() { const n = this.state.soundCheck?.next ?? 0; this.speak([levelLine(LV[n])]); }
+  soundOk() { const n = this.state.soundCheck?.next ?? 0; this.soundChecked = true; this.setState({ soundCheck: null }); this.start(n); }
+  // From Settings: run the check again (it then starts the next level to play)
+  soundAgain() { this.setState({ settings: false, soundCheck: { next: Math.max(0, nextLevel(this.state.done)), help: false } }); }
+
   // Grown-up gate: a sum before Settings opens; once answered it stays open until the page reloads
   openSettings() {
     if (this.grownUp) return this.setState({ settings: true });
@@ -345,6 +352,9 @@ class App extends Component {
 
   start(i) {
     if (i < 0 || i >= LV.length) return;
+    // Sound check: once a session, before the first level, a grown-up checks they can hear the game. A website
+    // can't tell that a device is on silent, so it asks instead of guessing. Test mode skips it unless ?soundcheck.
+    if (!this.soundChecked && this.unlocked(i) && (!TEST || T.soundcheck)) { this.stop(); this.setState({ soundCheck: { next: i, help: false } }); return; }
     if (this.sessionStart == null) this.sessionStart = Date.now();  // the session starts with the first level played
     if (!this.unlocked(i)) { this.speak([LOCKED]); return; }
     this.stop();
@@ -586,6 +596,9 @@ class App extends Component {
       isSettings: this.state.settings,
       openSettings: () => this.openSettings(),
       gate: this.state.gate,
+      soundCheck: this.state.soundCheck,
+      soundTest: () => this.soundTest(), soundOk: () => this.soundOk(), soundAgain: () => this.soundAgain(),
+      soundHelp: () => this.setState(s => ({ soundCheck: { ...s.soundCheck, help: true } })),
       gateKey: k => this.gateKey(k),
       closeGate: () => this.setState({ gate: null }),
       closeSettings: () => this.setState({ settings: false }),
@@ -887,6 +900,30 @@ class App extends Component {
       </section>`}
   </main>
 
+  ${v.soundCheck && html`
+    <div class="settings-backdrop">
+      <div class="settings-card sound-card" role="dialog" aria-label="Sound check">
+        <div class="sound-icon"><i class="icon-volume-2"></i></div>
+        <div class="sound-title">Sound on?</div>
+        <p>Word Path talks to your child. Check you can hear it before you start.</p>
+        ${v.soundCheck.help && html`
+          <div class="sound-help">
+            <div class="settings-heading">If you can't hear it</div>
+            <ul>
+              <li>Turn the volume up with the buttons on the side.</li>
+              <li><b>iPad:</b> swipe down from the top-right corner. If the bell is crossed out, tap it to turn silent mode off.</li>
+              <li><b>iPhone:</b> flip the switch on the side so no orange shows, or turn off Silent in Control Center.</li>
+              <li>Check that headphones or a Bluetooth speaker aren't connected.</li>
+            </ul>
+          </div>`}
+        <div class="sound-buttons">
+          <button class="sound-test" onClick=${v.soundTest}><i class="icon-volume-2"></i>${v.soundCheck.help ? 'Play it again' : 'Play a test sound'}</button>
+          <button class="sound-ok" onClick=${v.soundOk}><i class="icon-check"></i>I can hear it</button>
+        </div>
+        ${!v.soundCheck.help && html`<button class="sound-cant" onClick=${v.soundHelp}>I can't hear it</button>`}
+      </div>
+    </div>`}
+
   ${v.gate && html`
     <div class="settings-backdrop gate-backdrop">
       <div class="settings-card gate-card" role="dialog" aria-label="Grown-ups only">
@@ -937,6 +974,7 @@ class App extends Component {
               </select>
               <span class="settings-hint">About 15 minutes suits most 5–8 year olds. The game never stops a child; it suggests a break at the end of a level.</span>
             </label>
+            <button class="settings-link" onClick=${v.soundAgain}>Sound check<i class="icon-chevron-right"></i></button>
             <button class="settings-link" onClick=${v.openReport}>Progress report<i class="icon-chevron-right"></i></button>
             <button class="settings-link" onClick=${v.openAbout}>About and credits<i class="icon-chevron-right"></i></button>
           </div>

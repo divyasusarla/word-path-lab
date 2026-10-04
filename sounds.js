@@ -15,7 +15,7 @@ export const GROUPS = [
 const s = (id, show, group, kind, example, how) => ({ id, show, group, kind, example, how });
 
 export const SOUNDS = [
-  s('a-short', 'a', 'short-vowels', 'vowel', 'apple', '"a" as at the start of apple'),
+  s('a-short', 'a', 'short-vowels', 'vowel', 'apple', 'The start of apple or at: mouth wide, almost a smile. Not "ah" as in father.'),
   s('e-short', 'e', 'short-vowels', 'vowel', 'egg', '"e" as at the start of egg'),
   s('i-short', 'i', 'short-vowels', 'vowel', 'itch', '"i" as at the start of itch'),
   s('o-short', 'o', 'short-vowels', 'vowel', 'octopus', '"o" as at the start of octopus'),

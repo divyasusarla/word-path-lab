@@ -3,6 +3,11 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- From your run-through of v4.0:
+  - **No two bubbles make the same sound** in a letter-sounds round: c, k and ck never appear together, whatever the answer. The earlier fix only covered the case where one of them was the answer; about a quarter of level 6 rounds still showed two of them (656 of 2,400 in a simulation), now none.
+  - **Nap and map never together:** when the answer's picture is one children may not recognise (nap's sleeping face), a picture that rhymes with it isn't offered as a wrong answer. No level loses any words.
+  - **Sound check:** before the first level of each session, a grown-up card ("Sound on?") with a test sound (the level's name), "I can hear it", and tips for "I can't hear it" (iPad silent mode, iPhone side switch, volume, headphones). It never forces sound on when the device is set to silent. Settings → Sound check runs it again.
+  - The recorder's short-"a" card now says how to make the sound ("the start of apple or at… not 'ah'"), for the re-record.
 
 ## v4.0 — 2026-10-03 (first group test)
 The version sent to the first group of testers. Highlights: the whole game speaks in a recorded voice (69 sounds and 721 words and lines); heart words (tricky letters marked, Word pop follows the sounds taught); a hint ladder; the word shown after each answer; letter mix-ups and no same-sound wrong answers; more words (decodable words in Word pop, rotating First sounds pairs, 28 new pictures); bonus rounds; a progress report behind a grown-up gate; smaller audio files. Playable copy: versions/v4.0. Details below.
