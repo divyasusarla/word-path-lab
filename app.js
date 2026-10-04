@@ -905,7 +905,7 @@ class App extends Component {
       <div class="settings-card sound-card" role="dialog" aria-label="Sound check">
         <div class="sound-icon"><i class="icon-volume-2"></i></div>
         <div class="sound-title">Sound on?</div>
-        <p>Word Path talks to your child. Check you can hear it before you start.</p>
+        <p>Word Path is a sound game. Check you can hear it before you start.</p>
         ${v.soundCheck.help && html`
           <div class="sound-help">
             <div class="settings-heading">If you can't hear it</div>
