@@ -6,7 +6,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
   bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
-  sayId, wordId, slug, ownItems, sortPair, sortLetters, SORT_PICS, binPicture, binsOf, hintFor, shouldEase, easeRound, EASE_AFTER, codecOffset, KEEP_LEAD, mixUpFor, OPTION_WORDS, spell, revealFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
+  sayId, wordId, slug, rhymes, ownItems, sortPair, sortLetters, SORT_PICS, binPicture, binsOf, hintFor, shouldEase, easeRound, EASE_AFTER, codecOffset, KEEP_LEAD, mixUpFor, OPTION_WORDS, spell, revealFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, PICTURE_FLAGS, WORDS, FRY, CONFUSIONS, confusedWith, wordStage, heartParts, heartSounds, heartStage, sightStage, isHeart, heartPartsAt, EARLY_SIGHT, soundStage, heartTokens, SIGHT_CAP, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
 import { SOUND_IDS } from '../../sounds.js?v=dev';
@@ -140,6 +140,29 @@ export const tests = [
   }],
   ['content check catches a sight word with no heart marking', () => {
     ok(coverage({ fry: [...FRY, 'xyzzy'] }).some(p => p.includes('"xyzzy" has no heart-word marking')), 'unmarked word not caught');
+  }],
+
+  // ---- testing notes, 2026-10-03: the exact cases reported
+  ['every bubble in a round makes a different sound (c, k and ck never together, whatever the answer)', () => {
+    let rounds = 0;
+    for (const L of LV.filter(l => l.mode === 'sound')) for (let k = 0; k < 60; k++) for (const r of buildRounds(L, 8, seeded(k * 7919 + L.n))) {
+      const clips = r.options.map(o => GRAPHEMES[o.label].clip);
+      eq(new Set(clips).size, clips.length, `level ${L.n}, answer "${r.target}": ${r.options.map(o => o.label).join(' ')}`);
+      rounds++;
+    }
+    const L6 = LV.find(l => l.mode === 'sound' && l.pool.includes('ck'));
+    for (let k = 0; k < 200; k++) for (const r of buildRounds(L6, 8, seeded(k * 104729 + 1))) {
+      const labels = r.options.map(o => o.label);
+      ok(['c', 'k', 'ck'].filter(x => labels.includes(x)).length <= 1, `level ${L6.n}: ${labels.join(' ')}`);
+    }
+    ok(rounds > 1000, `only ${rounds} rounds checked`);
+  }],
+  ['an unclear picture (nap) is never shown with a picture that rhymes with it (map)', () => {
+    ok(rhymes('nap', 'map') && !rhymes('nap', 'nut'), 'rhymes');
+    const unclear = Object.keys(PICTURE_FLAGS).filter(w => PICTURE_FLAGS[w][0] === 'high' && WORDS[w]);
+    for (const w of unclear) for (let k = 0; k < 40; k++) for (const x of nearOptions(w, 6, seeded(k * 7919 + 3))) ok(!rhymes(w, x), `"${w}" shown with "${x}"`);
+    for (const L of LV.filter(l => l.mode === 'blend' || l.mode === 'read')) for (let k = 0; k < 40; k++)
+      for (const r of buildRounds(L, 8, seeded(k * 7919 + L.n))) { const ws = r.options.map(o => o.w); ok(!(ws.includes('nap') && ws.includes('map')), `level ${L.n}: nap and map together`); }
   }],
 
   // ---- word pool breadth (#36)
