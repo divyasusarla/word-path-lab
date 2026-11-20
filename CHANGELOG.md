@@ -3,6 +3,12 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- Bug fixes from testing (2026-11):
+  - **"Yes" and the next question no longer play over each other** (levels 3 and 4 when answering quickly, or pressing Hear again twice): a new line now stops a recording that's still playing. A check confirms at most one recording plays at a time (three overlapped before the fix).
+  - **Sound after leaving the app and coming back:** the game stops talking when it's put away, and the first tap after returning starts a fresh sound engine, so nobody has to reload (and lose their place in the level). iPhones and iPads often leave the old one silent.
+  - **Less audio held in memory:** only the current level's words stay loaded with the shared lines and sounds (about 150 clips instead of up to 345 by level 15). Phones can silence a page that holds too much decoded audio; a likely cause of sound stopping partway.
+  - **The word card's underline is unbroken** under letters with tails (p, g, y): it used to break around them, so "pin" looked partly underlined.
+  - **Level 8 "Yes! mmmm":** the sorting question is always asked in full; only the praise shortens in later rounds.
 
 ## v4.1 — 2026-10-04 (fixes during the first group test)
 Fixes from the v4.0 run-through, sent to testers mid-test. Feedback dated before this was on v4.0.

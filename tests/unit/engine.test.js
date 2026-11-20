@@ -5,7 +5,7 @@ import { LV, layoutFor, stagePos, buildRounds, isRight, nearOptions, cycle, shuf
   stageComplete, mapStageFor, doneFromIds, idsFromDone, idsFromV2, prompt, soundOutParts,
   MASTERY_RULE, itemKey, recordAttempt, isMastered, levelItems, masteredIn, today,
   modelAfter, modelParts, praiseParts, shouldPractiseAgain, pickTargets, reviewItems, reviewCount,
-  bonusTarget, bonusRound, PICTURE_WORDS, FULL_ROUNDS, FULL_PRAISE_ROUNDS,
+  bonusTarget, bonusRound, PICTURE_WORDS, FULL_PRAISE_ROUNDS,
   sayId, wordId, slug, rhymes, ownItems, sortPair, sortLetters, SORT_PICS, binPicture, binsOf, hintFor, shouldEase, easeRound, EASE_AFTER, codecOffset, KEEP_LEAD, mixUpFor, OPTION_WORDS, spell, revealFor, gateQuestion, gateOk, progressReport, itemLabel, PRACTICE_RULE, missParts, finishParts, heroParts, TRY_AGAIN, BONUS, LOCKED,
   SESSION_CHOICES, sessionOver } from '../../engine.js?v=dev';
 import { LEVELS, STAGES, GRAPHEMES, PICS, PICTURE_FLAGS, WORDS, FRY, CONFUSIONS, confusedWith, wordStage, heartParts, heartSounds, heartStage, sightStage, isHeart, heartPartsAt, EARLY_SIGHT, soundStage, heartTokens, SIGHT_CAP, coverage, decodableBy, phonemes, soundSimilarity } from '../../content.js?v=dev';
@@ -521,12 +521,12 @@ export const tests = [
     eq(praiseParts(T, T.items[0], { n: FULL_PRAISE_ROUNDS }), ['Yes!'], 'later sort praise');
     ok(praiseParts(S, { target: 'sh' }, { n: 7, mastered: true }).includes('You know that one now!'), 'mastery news still said');
   }],
-  ['prompts: sort questions shorten after the first rounds but still say both sounds', () => {
-    const T = level('sort'), r = T.items[0];
-    ok(prompt(T, r, false, FULL_ROUNDS - 1).includes('Does it start with'), 'early rounds ask in full');
-    const later = prompt(T, r, false, FULL_ROUNDS);
-    ok(!later.includes('Does it start with'), 'later rounds drop the question');
-    eq(later.filter(p => p.clip && !p.clip.startsWith('word-')).length, 2, 'both sounds');
+  ['prompts: the sorting question is always asked in full, in every round (level 8 "Yes! mmmm")', () => {
+    for (const T of LV.filter(l => l.kind === 'sort')) for (const n of [0, 1, 2, 5, 9]) {
+      const q = prompt(T, T.items[0], false, n);
+      ok(q.includes(T.ask === 'has' ? 'Does it have' : 'Does it start with'), `level ${T.n}, round ${n + 1}: question shortened`);
+      eq(q.filter(p => p.clip && !p.clip.startsWith('word-')).length, 2, `level ${T.n}: both sounds`);
+    }
   }],
   ['prompts: sight words are said on their own, slowly, twice', () => {
     const words = prompt(level('sight'), { target: 'are' }, false).filter(p => p.t === 'are');

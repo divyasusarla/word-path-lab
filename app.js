@@ -56,7 +56,7 @@ const MKEY = 'wordpath-lab.mastery.v1';  // first-try attempts per word and soun
 
 class App extends Component {
   sid = 0; run = 0; tms = []; voices = []; spoken = [];
-  recorded = new Set(); compressed = new Set(); clipSources = {}; buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
+  sounding = new Set(); recorded = new Set(); compressed = new Set(); clipSources = {}; buffers = {}; actx = null; curSrc = null; playedClips = [];  // recorded clips (audio/manifest.json)
 
   state = { screen:'map', mapStage:null, lvl:0, round:0, rounds:[], wrong:[], solved:false, sorted:[[],[]], binWrong:null, done:this.load(), mastery:this.loadMastery(), answered:false, misses:0, modelled:false, firstTries:[], missed:[], cue:null, hidden:[], hintPic:null, easy:false, settings:false, audio:this.loadAudio(), vtick:0, ctick:0, panel:true, vw: window.innerWidth, vh: window.innerHeight };
 
@@ -107,9 +107,17 @@ class App extends Component {
     // Safari (iPad/iPhone) only allows sound after a tap, so start the audio engine on taps and keys. Safari counts
     // some events (touchend, click) but not always others, so listen to all of them. Keep listening: iOS can pause
     // the engine again later (after the voice speaks, or when the app is in the background), and a tap restarts it.
-    const unlock = () => { const c = this.audioCtx(); if (c && c.state === 'running' && !this.preloaded) { this.preloaded = true; this.preload(); } };
+    const unlock = () => {
+      if (this.staleAudio) this.freshAudio();
+      const c = this.audioCtx(); if (c && c.state === 'running' && !this.preloaded) { this.preloaded = true; this.preload(); }
+    };
     ['pointerdown', 'touchend', 'click', 'keydown'].forEach(e => document.addEventListener(e, unlock, true));
-    this.onVisible = () => { if (document.visibilityState === 'visible' && this.actx) this.audioCtx(); };
+    // Leaving the app: stop talking. Coming back: iOS often leaves the old sound engine "interrupted" and silent even
+    // when it says it's running (testers had to reload), so the first tap after returning starts a fresh one.
+    this.onVisible = (e, state = document.visibilityState) => {
+      if (state === 'hidden') { this.stop(); if (this.actx) this.staleAudio = true; }
+      else if (this.actx) this.audioCtx();
+    };
     document.addEventListener('visibilitychange', this.onVisible);
     const ss = window.speechSynthesis; if (!ss) return;
     const pick = () => { this.voices = ss.getVoices().filter(v => /^en/i.test(v.lang)); this.setState(s => ({ vtick: s.vtick + 1 })); };
@@ -151,6 +159,10 @@ class App extends Component {
       clipSources: () => ({ ...this.clipSources }),  // id -> 'm4a' or 'wav', for clips decoded so far
       // Starts loading recordings as a first tap would (a scripted tap doesn't count as one in Safari)
       preloadNow: () => { this.preloaded = true; this.preload(); },
+      // Simulates leaving the app and coming back (visibility events), for the return-to-app check
+      background: () => { this.onVisible(null, 'hidden'); this.onVisible(null, 'visible'); return !!this.staleAudio; },
+      audioEngine: () => this.actx,
+      mostAtOnce: () => this.mostAtOnce || 0,  // the most recordings ever playing at the same time
       // Simulates iOS refusing to start sound (no tap yet, or interrupted), to check the voice fallback
       blockAudio: () => { this.audioBlocked = true; return 'blocked'; },
       report: () => progressReport(this.state.done, this.state.mastery),
@@ -219,6 +231,20 @@ class App extends Component {
   }
   // Recordings load in two steps so a phone never downloads all 27 MB: letter sounds and the instruction lines
   // when sound first starts, then each level's words and lines when it starts (and the level already open, if any)
+  // A new sound engine, made inside a tap (iOS only allows that); recordings are fetched again from the browser's cache
+  freshAudio() {
+    this.staleAudio = false;
+    const old = this.actx; this.actx = null; this.buffers = {}; this.clipSources = {}; this.preloaded = false;
+    if (old) old.close().catch(() => {});
+  }
+  // Keep only what's needed in memory: the shared lines and sounds, plus this level's words. Phones can silence a
+  // page that holds too much decoded audio, and by level 15 that was about 345 clips.
+  pruneClips(L) {
+    const keep = new Set(), lines = new Set(SCRIPT.filter(c => c.kind === 'line').map(c => c.id));
+    this.recorded.forEach(id => { if (!/^(word|say)-/.test(id) || lines.has(id)) keep.add(id); });
+    for (const parts of levelSpeech(L)) for (const p of parts) { const id = typeof p === 'string' ? sayId(p) : p && p.clip; if (id) keep.add(id); }
+    for (const id of Object.keys(this.buffers)) if (!keep.has(id)) { delete this.buffers[id]; delete this.clipSources[id]; }
+  }
   preload() {
     const lines = new Set(SCRIPT.filter(c => c.kind === 'line').map(c => c.id));
     this.recorded.forEach(id => { if (!/^(word|say)-/.test(id) || lines.has(id)) this.clipBuffer(id); });
@@ -249,10 +275,10 @@ class App extends Component {
       const c = this.actx, src = c.createBufferSource(), g = c.createGain();
       g.gain.value = this.state.audio.vol;  // same volume setting as the browser voice
       src.buffer = buf; src.connect(g); g.connect(c.destination);
-      const done = () => { clearTimeout(fb); if (this.curSrc === src) this.curSrc = null; res(); };
+      const done = () => { clearTimeout(fb); if (this.curSrc === src) this.curSrc = null; if (TEST) this.sounding.delete(src); res(); };
       const fb = setTimeout(done, (buf.duration - (buf.skip || 0)) * 1000 + 500);
       src.onended = done; this.curSrc = src; src.start(0, buf.skip || 0);
-      if (TEST) this.playedClips.push({ dur: +buf.duration.toFixed(2), state: c.state });
+      if (TEST) { this.playedClips.push({ dur: +buf.duration.toFixed(2), state: c.state }); this.sounding.add(src); this.mostAtOnce = Math.max(this.mostAtOnce || 0, this.sounding.size); }
     });
   }
 
@@ -279,6 +305,8 @@ class App extends Component {
     const id = ++this.sid, ss = window.speechSynthesis, mute = TEST && T.mute;
     if (!ss && !mute) return false;
     if (ss) ss.cancel();
+    // A new line also stops a recording still playing: answering quickly used to play "Yes!" over the question
+    if (this.curSrc) { try { this.curSrc.stop(); } catch (e) {} this.curSrc = null; }
     await this.wait(mute ? 0 : 80);
     for (const p of parts) {
       if (id !== this.sid) return false;
@@ -359,6 +387,7 @@ class App extends Component {
     if (!this.unlocked(i)) { this.speak([LOCKED]); return; }
     this.stop();
     const L = LV[i], rounds = this.build(L);
+    this.pruneClips(L);
     this.preloadLevel(L);
     this.setState({ screen:'play', lvl:i, mapStage:null, round:0, rounds, wrong:[], solved:false, sorted:[[],[]], binWrong:null, answered:false, misses:0, modelled:false, firstTries:[], missed:[], cue:null, hidden:[], hintPic:null, easy:false });
     this.speak(this.prompt(L, rounds[0], true));

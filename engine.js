@@ -72,8 +72,8 @@ export const word = (w, rate = 0.8) => ({ t: w, rate, clip: wordId(w) });
 export const levelLine = L => `Level ${L.n}. ${L.title}.`;
 
 // The spoken question for a round. Parts: strings, {t, rate, clip}, or numbers (pause in ms).
-// n: the round number (0-based). Sorting questions shorten after the first two rounds, once the child knows the game.
-export const FULL_ROUNDS = 2;
+// n: the round number (0-based). The question is always asked in full: only praise shortens in later rounds
+// (a shortened sorting question ran straight on from "Yes!" and sounded like part of it; testing, 2026-10).
 // Sight words are said slowly, on their own, twice: the device voice can be hard to make out on short words
 const slowWord = w => word(w, 0.6);
 export function prompt(L, r, first, n = 0) {
@@ -89,7 +89,6 @@ export function prompt(L, r, first, n = 0) {
     return [...pre, 'Read the word. Then tap its picture.'];
   }
   const [A, B] = binsOf(L, r);
-  if (n >= FULL_ROUNDS && !first) return [word(r.w, 0.7), 600, gsnd(A), 300, 'or', 300, gsnd(B)];
   return [...pre, word(r.w, 0.7), 700, L.ask === 'has' ? 'Does it have' : 'Does it start with', 300, gsnd(A), 400, 'or', 300, gsnd(B)];
 }
 

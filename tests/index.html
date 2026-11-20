@@ -516,6 +516,50 @@ async function runAll() {
     frame.src = 'about:blank';
     return `${srcs.length} clips decoded from .${srcs[0]}${aac ? '' : ' (this browser can\'t decode AAC, so the .wav fallback was used)'}`;
   });
+  await check('Sound: answering while a line is playing stops it first, so two recordings never play at once (levels 3 and 4)', async () => {
+    const notes = [];
+    for (const n of [LEVELS.find(l => l.type === 'sort').n, LEVELS.find(l => l.type === 'blend').n]) {
+      const w = await open(`../?test&think=3&level=${n}`);   // not muted: the real audio path
+      await waitFor(() => w.wp.recorded().length, 4000, 'the recording list');
+      w.wp.preloadNow();
+      const started = await waitFor(() => w.wp.played().length > 0 || null, 6000, 'a recording to play').catch(() => null);
+      if (!started) { notes.push(`level ${n}: no recordings play in this browser`); continue; }
+      w.wp.right();                                   // answer while the question is still playing
+      await sleep(1500);
+      w.wp.replay(); await sleep(200); w.wp.replay(); // and press Hear again twice, quickly
+      await sleep(800);
+      expect(w.wp.mostAtOnce() <= 1, `level ${n}: ${w.wp.mostAtOnce()} recordings played at the same time`);
+      notes.push(`level ${n}: at most ${w.wp.mostAtOnce()} at once`);
+    }
+    await blank();
+    return notes.join(' · ');
+  });
+  await check('Sound: leaving the app and coming back, the next tap starts a fresh sound engine (testers had to reload)', async () => {
+    const w = await open('../?test&think=0&level=1');
+    await waitFor(() => w.wp.recorded().length, 4000, 'the recording list');
+    frame.contentDocument.dispatchEvent(new Event('pointerdown'));
+    const first = await waitFor(() => w.wp.audioEngine(), 2000, 'the sound engine');
+    expect(w.wp.background(), 'leaving the app should mark the sound engine as stale');
+    expect(w.wp.state().screen === 'play', 'the level should still be open');
+    frame.contentDocument.dispatchEvent(new Event('pointerdown'));
+    const second = await waitFor(() => w.wp.audioEngine(), 2000, 'a sound engine after returning');
+    expect(second !== first, 'the first tap after returning should start a fresh sound engine');
+    w.wp.replay();
+    await waitFor(() => w.wp.spokenDetail().some(x => x.clip), 4000, 'the question after returning');
+    await blank();
+  });
+  await check('Sound: only the current level\'s words stay loaded (phones can go silent holding too much audio)', async () => {
+    const w = await open('../?test&think=0&level=1');
+    await waitFor(() => w.wp.recorded().length, 4000, 'the recording list');
+    w.wp.preloadNow();
+    await waitFor(() => w.wp.loadedClips().includes('word-apple'), 4000, 'level 1 words to load');
+    w.wp.start(LEVELS.find(l => l.type === 'read' && l.stage >= 3).n);
+    await sleep(300);
+    const loaded = w.wp.loadedClips();
+    expect(!loaded.includes('word-apple'), 'a level 1 word was still loaded after moving to a later level');
+    await blank();
+    return `${loaded.length} clips loaded in the later level`;
+  });
   await check('Sound: when iOS won\'t start sound, letter sounds fall back to the voice instead of silence', async () => {
     const w = await open('../?test&think=0&level=1');
     await waitFor(() => w.wp.spokenDetail().some(x => x.clip), 8000, 'the first speech sound');
@@ -561,6 +605,8 @@ async function runAll() {
           const s = w.wp.state(); w.wp.right();
           const rv = await waitFor(() => { const x = w.wp.reveal(); return x && (n !== cases[2][0] || x.on.join('') === s.target) && x; }, 3000, `the word in level ${n}`);
           expect(good(s, rv), `${name}, level ${n} (${s.target}): ${JSON.stringify(rv)}`);
+          const lit = doc().querySelector('.reveal-word .on, .reveal-word .tricky');
+          if (lit) expect(getComputedStyle(lit).textDecorationSkipInk === 'none', `${name}, level ${n}: the underline breaks around letters with tails (p, g, y)`);
           const el = doc().querySelector('.reveal');
           if (el) {
             await sleep(400);   // let the card finish sliding in before measuring
