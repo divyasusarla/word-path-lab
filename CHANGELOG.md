@@ -3,6 +3,7 @@
 Each version is tagged in git, and the tags are listed under the repo's Tags on GitHub. Play any version at https://divyasusarla.github.io/word-path-lab/versions/
 
 ## Unreleased
+- **Learning Labs research (docs only):** `learning-labs/PRINCIPLES.md`, the shared principles for Word Path and the number game (developmental sequence, cognitive load, practice, hints, feedback language, and what Learning Labs never does), and `learning-labs/NUMBER_GAME_RESEARCH.md`, a first-pass literature review for the number game (why early number matters, the number core, learning trajectories, number paths, digital practice, maths anxiety, grade bands, K-band game ideas).
 
 ## v4.1 — 2026-10-04 (fixes during the first group test)
 Fixes from the v4.0 run-through, sent to testers mid-test. Feedback dated before this was on v4.0.
